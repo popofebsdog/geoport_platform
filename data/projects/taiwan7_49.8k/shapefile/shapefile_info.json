@@ -1,0 +1,66 @@
+{
+  "shapefile_name": "DamanProfiles",
+  "description": "台7線49.8K路段 - DamanProfiles線條資料",
+  "coordinate_system": "TWD97 / TM2 zone 121 (EPSG:3826)",
+  "converted_to_wgs84": "WGS84 (EPSG:4326)",
+  "source_files": [
+    "DamanProfiles.shp",
+    "DamanProfiles.shx", 
+    "DamanProfiles.dbf",
+    "DamanProfiles.prj",
+    "DamanProfiles.cpg",
+    "DamanProfiles.sbn",
+    "DamanProfiles.sbx"
+  ],
+  "converted_files": [
+    "DamanProfiles.geojson"
+  ],
+  "geometry_type": "LineString",
+  "feature_count": 5,
+  "extent": {
+    "original_twd97": {
+      "min_x": 290971.241738,
+      "max_x": 291523.566329,
+      "min_y": 2729678.175010,
+      "max_y": 2730027.666113
+    },
+    "converted_wgs84": {
+      "min_lat": 24.673528,
+      "max_lat": 24.676674,
+      "min_lng": 121.404832,
+      "max_lng": 121.410294
+    }
+  },
+  "attributes": [
+    {
+      "name": "Id",
+      "type": "Integer",
+      "description": "要素識別碼"
+    }
+  ],
+  "processing_info": {
+    "upload_date": "2024-11-07",
+    "processed_date": "2024-11-08",
+    "processing_tool": "GDAL ogr2ogr",
+    "coordinate_transformation": "TWD97 TM2 zone 121 → WGS84",
+    "web_format": "GeoJSON",
+    "status": "已成功處理並可在地圖上顯示"
+  },
+  "visualization_config": {
+    "line_color": "#FF6B35",
+    "line_weight": 4,
+    "line_opacity": 0.9,
+    "line_style": "dashed",
+    "hover_color": "#FF4500",
+    "hover_weight": 6,
+    "popup_enabled": true
+  },
+  "metadata": {
+    "project_id": 4,
+    "project_name": "台7線49.8K",
+    "data_type": "道路設施分布向量資料",
+    "original_filename": "DamanProfiles.shp",
+    "file_size_mb": 0.001,
+    "last_modified": "2025-06-30"
+  }
+} 

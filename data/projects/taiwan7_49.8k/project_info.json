@@ -1,0 +1,53 @@
+{
+  "id": 4,
+  "eventName": "台7線49.8K",
+  "location": {
+    "lat": 24.67527860016387,
+    "lng": 121.40511190135854,
+    "coordinate_system": "WGS84 (EPSG:4326)"
+  },
+  "highway": "台7線",
+  "datetime": "2024-11-07T08:59:00.000Z",
+  "createdAt": "2024-11-07T08:59:00.000Z",
+  "description": "台7線49.8K路段災情監測專案",
+  "orthophoto": {
+    "filename": "560.T7_0049k+550-0050k+200_ortho_20241107.tif",
+    "web_image": "/images/orthophoto/taiwan7_orthophoto.png",
+    "capture_date": "2024-11-07",
+    "resolution": "0.1m/pixel",
+    "coordinate_system": "TWD97 / TM2 zone 121 (EPSG:3826)",
+    "bounds": {
+      "southwest": [24.668457, 121.401275],
+      "northeast": [24.679611, 121.411297]
+    },
+    "size": {
+      "width": 10143,
+      "height": 13590,
+      "area_m": "1014m × 1359m"
+    }
+  },
+  "uploads": [
+    {
+      "id": 4,
+      "dataType": "orthophoto",
+      "description": "台7線49.8K路段高解析度正射影像，使用UAV拍攝，解析度0.1m/pixel，涵蓋560.T7_0049k+550-0050k+200區段",
+      "uploader": "系統管理員",
+      "uploadedAt": "2024-11-07T09:00:00.000Z"
+    },
+    {
+      "id": 5,
+      "dataType": "shapefile",
+      "description": "台7線49.8K路段道路邊界與設施分布向量資料，包含道路中心線、護欄位置、邊坡範圍等空間資訊",
+      "uploader": "地理資訊專員",
+      "uploadedAt": "2024-11-07T10:30:00.000Z"
+    }
+  ],
+  "shapefile": {
+    "layers_count": 5,
+    "total_features": 270,
+    "coordinate_system": "TWD97 / TM2 zone 121 (EPSG:3826)",
+    "data_folder": "shapefile/",
+    "metadata_file": "shapefile/shapefile_info.json",
+    "description": "包含道路中心線、邊界、設施點位、邊坡範圍、排水系統等多圖層向量資料"
+  }
+} 

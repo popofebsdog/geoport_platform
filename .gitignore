@@ -1,0 +1,68 @@
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Build outputs
+dist/
+build/
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
+
+# Large binary / upload files
+data/uploads/
+backend/uploads/
+
+# Large raster / map files
+*.tif
+*.tiff
+*.mbtiles
+*.las
+*.obj
+
+# Image files (large)
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.webp
+
+# Other binary
+*.pdf
+*.zip
+*.mp4
+*.mov
+*.dmg
+*.xlsx
+*.numbers
+*.odt
+*.pages
+*.pptx
+*.docx
+*.pyc
+*.aux.xml
+
+# Backup files
+*.backup
+
+# Database
+*.sqlite
+*.db

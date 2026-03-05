@@ -1,0 +1,12 @@
+{
+"type": "FeatureCollection",
+"name": "DamanProfiles",
+"crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:OGC:1.3:CRS84" } },
+"features": [
+{ "type": "Feature", "properties": { "Id": "EE", "ProfileId": "EE", "PhotoPath": "/images/daman_profiles/Daman_EE_0.jpg", "Description": "Daman Profile EE - 最右側線條" }, "geometry": { "type": "LineString", "coordinates": [ [ 121.408278161045217, 24.676674330412979 ], [ 121.409896363368546, 24.673955871364676 ] ] } },
+{ "type": "Feature", "properties": { "Id": "AA", "ProfileId": "AA", "PhotoPath": "/images/daman_profiles/Daman_AA_0.jpg", "Description": "Daman Profile AA - 最上方線條" }, "geometry": { "type": "LineString", "coordinates": [ [ 121.408883003429466, 24.676343591760748 ], [ 121.404924843389011, 24.67352798378014 ] ] } },
+{ "type": "Feature", "properties": { "Id": "BB", "ProfileId": "BB", "PhotoPath": "/images/daman_profiles/Daman_BB_0.jpg", "Description": "Daman Profile BB - 第二條線條" }, "geometry": { "type": "LineString", "coordinates": [ [ 121.409910456359938, 24.675674861289824 ], [ 121.404831902868764, 24.673613411434353 ] ] } },
+{ "type": "Feature", "properties": { "Id": "CC", "ProfileId": "CC", "PhotoPath": "/images/daman_profiles/Daman_CC_0.jpg", "Description": "Daman Profile CC - 第三條線條" }, "geometry": { "type": "LineString", "coordinates": [ [ 121.410294059677071, 24.675069830988974 ], [ 121.405005710242136, 24.673640044699518 ] ] } },
+{ "type": "Feature", "properties": { "Id": "DD", "ProfileId": "DD", "PhotoPath": "/images/daman_profiles/Daman_DD_0.jpg", "Description": "Daman Profile DD - 第四條線條" }, "geometry": { "type": "LineString", "coordinates": [ [ 121.408641355396981, 24.673703759683569 ], [ 121.404993274089321, 24.673725255360516 ] ] } }
+]
+}
