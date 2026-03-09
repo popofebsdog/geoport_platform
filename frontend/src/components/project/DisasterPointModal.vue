@@ -379,6 +379,7 @@
 </template>
 
 <script>
+import api from '@/services/api.js'
 import { ref, computed, watch, onBeforeUnmount } from 'vue'
 import CustomAlert from '@/components/CustomAlert.vue'
 
@@ -617,7 +618,6 @@ export default {
           project_id: props.project?.projectId || props.project?.project_id
         }
         
-        console.log('提交災點紀錄:', props.isEditMode ? '編輯' : '新增', submitData)
         
         let response
         
@@ -630,7 +630,7 @@ export default {
           if (mediaToDelete.length > 0) {
             try {
               for (const media of mediaToDelete) {
-                await window.$api.delete(
+                await api.delete(
                   `/disaster-points/${disasterPointId}/media/${media.media_id}`
                 )
               }
@@ -665,7 +665,7 @@ export default {
               }
             })
             
-            response = await window.$api.put(`/disaster-points/${disasterPointId}`, formDataToSend, {
+            response = await api.put(`/disaster-points/${disasterPointId}`, formDataToSend, {
               headers: { 'Content-Type': 'multipart/form-data' }
             })
           } else {
@@ -678,11 +678,10 @@ export default {
               latitude: submitData.latitude,
               longitude: submitData.longitude
             }
-            response = await window.$api.put(`/disaster-points/${disasterPointId}`, updateData)
+            response = await api.put(`/disaster-points/${disasterPointId}`, updateData)
           }
           
           if (response.success) {
-            console.log('災點紀錄更新成功:', response.data)
             successMessage.value = '災點紀錄更新成功！'
             showSuccessAlert.value = true
             // 延遲關閉模態框，讓用戶看到成功提示
@@ -711,16 +710,15 @@ export default {
               formDataToSend.append('media_files', media.file)
             })
             
-            response = await window.$api.post('/disaster-points', formDataToSend, {
+            response = await api.post('/disaster-points', formDataToSend, {
               headers: { 'Content-Type': 'multipart/form-data' }
             })
           } else {
             // 沒有媒體文件，使用 JSON
-            response = await window.$api.post('/disaster-points', submitData)
+            response = await api.post('/disaster-points', submitData)
           }
           
           if (response.success) {
-            console.log('災點紀錄創建成功:', response.data)
             successMessage.value = '災點紀錄創建成功！'
             showSuccessAlert.value = true
             // 延遲關閉模態框，讓用戶看到成功提示

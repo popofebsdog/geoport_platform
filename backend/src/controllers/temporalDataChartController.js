@@ -70,7 +70,6 @@ const generateApexChartConfig = async (req, res) => {
     res.status(500).json({
       success: false,
       message: '生成 ApexCharts 配置失敗',
-      error: error.message
     });
   }
 };
@@ -376,7 +375,6 @@ const getChartPreview = async (req, res) => {
     res.status(500).json({
       success: false,
       message: '獲取圖表預覽失敗',
-      error: error.message
     });
   }
 };

@@ -5,6 +5,7 @@
  */
 
 import { pool } from '../config/database.js';
+import { validateUUID } from '../utils/validators.js';
 
 /**
  * 獲取所有母專案列表
@@ -55,7 +56,6 @@ export const getAllParentProjects = async (req, res) => {
     res.status(500).json({
       success: false,
       message: '獲取母專案列表失敗',
-      error: error.message
     });
   }
 };
@@ -67,6 +67,8 @@ export const getAllParentProjects = async (req, res) => {
 export const getParentProjectById = async (req, res) => {
   try {
     const { id } = req.params;
+
+    if (!validateUUID(id, res, '母專案 ID')) return;
 
     const result = await pool.query(`
       SELECT 
@@ -118,7 +120,6 @@ export const getParentProjectById = async (req, res) => {
     res.status(500).json({
       success: false,
       message: '獲取母專案詳情失敗',
-      error: error.message
     });
   }
 };
@@ -204,7 +205,6 @@ export const createParentProject = async (req, res) => {
     res.status(500).json({
       success: false,
       message: '創建母專案失敗',
-      error: error.message
     });
   }
 };
@@ -216,6 +216,9 @@ export const createParentProject = async (req, res) => {
 export const updateParentProject = async (req, res) => {
   try {
     const { id } = req.params;
+
+    if (!validateUUID(id, res, '母專案 ID')) return;
+
     const {
       name,
       description,
@@ -342,7 +345,6 @@ export const updateParentProject = async (req, res) => {
     res.status(500).json({
       success: false,
       message: '更新母專案失敗',
-      error: error.message
     });
   }
 };
@@ -354,6 +356,8 @@ export const updateParentProject = async (req, res) => {
 export const deleteParentProject = async (req, res) => {
   try {
     const { id } = req.params;
+
+    if (!validateUUID(id, res, '母專案 ID')) return;
 
     // 檢查是否有子專案
     const childCheck = await pool.query(`
@@ -392,7 +396,6 @@ export const deleteParentProject = async (req, res) => {
     res.status(500).json({
       success: false,
       message: '刪除母專案失敗',
-      error: error.message
     });
   }
 };

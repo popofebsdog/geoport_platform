@@ -5,6 +5,15 @@ import dotenv from 'dotenv';
 const { Pool } = pkg;
 dotenv.config();
 
+// 在生產環境缺少必要環境變數時提早失敗
+if (process.env.NODE_ENV === 'production') {
+  const required = ['DB_HOST', 'DB_NAME', 'DB_USER', 'DB_PASSWORD'];
+  const missing = required.filter(k => !process.env[k]);
+  if (missing.length > 0) {
+    throw new Error(`缺少必要的環境變數: ${missing.join(', ')}`);
+  }
+}
+
 // PostgreSQL 資料庫配置
 const config = {
   development: {
@@ -13,8 +22,8 @@ const config = {
     port: process.env.DB_PORT || 5432,
     database: process.env.DB_NAME || 'geoport_db',
     username: process.env.DB_USER || 'postgres',
-    password: process.env.DB_PASSWORD || 'password',
-    logging: console.log,
+    password: process.env.DB_PASSWORD,
+    logging: false,
     define: {
       timestamps: true,
       underscored: true,
@@ -34,7 +43,7 @@ const config = {
     port: process.env.DB_PORT || 5432,
     database: process.env.DB_NAME_TEST || 'geoport_test',
     username: process.env.DB_USER || 'postgres',
-    password: process.env.DB_PASSWORD || 'password',
+    password: process.env.DB_PASSWORD,
     logging: false,
     define: {
       timestamps: true,
@@ -64,10 +73,9 @@ const config = {
       idle: 10000
     },
     dialectOptions: {
-      ssl: {
-        require: true,
-        rejectUnauthorized: false
-      }
+      ssl: process.env.DB_SSL === 'true'
+        ? { require: true, rejectUnauthorized: true }
+        : false
     }
   }
 };
@@ -116,13 +124,16 @@ export const closeConnection = async () => {
 // 創建 pg 連接池 (用於原生 SQL 查詢)
 export const pool = new Pool({
   host: process.env.DB_HOST || 'localhost',
-  port: process.env.DB_PORT || 5432,
+  port: parseInt(process.env.DB_PORT || '5432'),
   database: process.env.DB_NAME || 'geoport_db',
   user: process.env.DB_USER || 'postgres',
-  password: process.env.DB_PASSWORD || 'password',
-  max: 20, // 最大連接數
-  idleTimeoutMillis: 30000, // 空閒連接超時
-  connectionTimeoutMillis: 2000, // 連接超時
+  password: process.env.DB_PASSWORD,
+  max: 20,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 2000,
+  ssl: process.env.DB_SSL === 'true'
+    ? { rejectUnauthorized: true }
+    : false
 });
 
 // 測試 pg 連接池

@@ -155,7 +155,6 @@ export default {
         
         if (result.success) {
           baseMaps.value = result.data
-          console.log('底圖列表載入成功:', result.data)
         } else {
           throw new Error(result.message || '載入底圖列表失敗')
         }
@@ -176,26 +175,21 @@ export default {
 
     // 切換底圖開啟/關閉
     const toggleBaseMap = async (baseMap) => {
-      console.log('toggleBaseMap 被調用:', baseMap.name, 'isLoadingBaseMap:', isLoadingBaseMap.value)
       
       if (baseMap && !isLoadingBaseMap.value) {
         // 檢查是否為 COG 文件
         const isCOG = props.baseMapService?.isCOGFile(baseMap.storagePath || baseMap.originalName)
-        console.log('是否為 COG 文件:', isCOG)
         
         
-        console.log('可以切換底圖')
         
         // 如果點擊的是當前選中的底圖，切換其狀態
         if (selectedBaseMapId.value === baseMap.id) {
           if (isBaseMapActive.value) {
             // 關閉底圖
-            console.log('關閉底圖')
             isBaseMapActive.value = false
             emit('base-map-changed', null)
           } else {
             // 開啟底圖，顯示載入動畫
-            console.log('開啟底圖')
             isLoadingBaseMap.value = true
             isBaseMapActive.value = true
             
@@ -216,7 +210,6 @@ export default {
           }
         } else {
           // 如果點擊的是其他底圖，先選擇它，然後開啟
-          console.log('切換到新底圖')
           selectedBaseMapId.value = baseMap.id
           isLoadingBaseMap.value = true
           isBaseMapActive.value = true
@@ -247,9 +240,7 @@ export default {
           }
         }
         
-        console.log('切換底圖狀態:', isBaseMapActive.value ? '開啟' : '關閉')
       } else {
-        console.log('無法切換底圖 - baseMap:', !!baseMap, 'isLoadingBaseMap:', isLoadingBaseMap.value)
       }
     }
 
@@ -260,19 +251,16 @@ export default {
 
     // 定位正射影像
     const locateBaseMap = (baseMap) => {
-      console.log('定位正射影像:', baseMap.name)
       emit('base-map-located', baseMap)
     }
 
     // 編輯正射影像
     const editBaseMap = (baseMap) => {
-      console.log('編輯正射影像:', baseMap.name)
       emit('base-map-edited', baseMap)
     }
 
     // 刪除正射影像
     const deleteBaseMap = (baseMap) => {
-      console.log('請求刪除正射影像:', baseMap.name)
       
       // 發射事件給父組件處理
       emit('base-map-delete-request', baseMap)
@@ -319,9 +307,7 @@ export default {
     
     // 監聽 baseMapService 變化
     watch(() => props.baseMapService, (newService) => {
-      console.log('BaseMapSelector baseMapService 變化:', !!newService)
       if (newService) {
-        console.log('BaseMapSelector 收到 baseMapService')
       }
     }, { immediate: true })
 
@@ -334,9 +320,7 @@ export default {
       
       // 檢查 baseMapService 是否已準備好
       if (props.baseMapService) {
-        console.log('BaseMapService 已準備好')
       } else {
-        console.log('BaseMapService 尚未準備好，等待傳遞...')
       }
     })
 

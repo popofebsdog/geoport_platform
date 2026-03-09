@@ -10,6 +10,16 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// Backend root = backend/ directory (two levels up from controllers/)
+const BACKEND_ROOT = path.resolve(path.join(__dirname, '../../'));
+
+// Resolve a storage_path (relative or legacy absolute) to an absolute fs path
+function resolveStoragePath(storagePath) {
+  if (!storagePath) return null;
+  if (path.isAbsolute(storagePath)) return storagePath; // backward-compat with old records
+  return path.join(BACKEND_ROOT, storagePath);
+}
+
 // 配置 multer 用於檔案上傳
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -68,7 +78,6 @@ const getTemporalDataList = async (req, res) => {
     res.status(500).json({
       success: false,
       message: '獲取時序資料列表失敗',
-      error: error.message
     });
   }
 };
@@ -108,7 +117,6 @@ const getTemporalDataById = async (req, res) => {
     res.status(500).json({
       success: false,
       message: '獲取時序資料詳情失敗',
-      error: error.message
     });
   }
 };
@@ -156,7 +164,7 @@ const uploadTemporalData = async (req, res) => {
       fileExtension,
       fileType,
       file.size,
-      file.path,
+      path.relative(BACKEND_ROOT, file.path), // store as relative path
       'local',
       hasSpatialData,
       new Date(),
@@ -299,7 +307,6 @@ const uploadTemporalData = async (req, res) => {
     res.status(500).json({
       success: false,
       message: '上傳時序資料失敗',
-      error: error.message
     });
   } finally {
     client.release();
@@ -503,7 +510,7 @@ const getTemporalDataChart = async (req, res) => {
     }
     
     const temporalData = temporalResult.rows[0];
-    const filePath = temporalData.storage_path;
+    const filePath = resolveStoragePath(temporalData.storage_path);
     
     if (!filePath || !await fsPromises.access(filePath).then(() => true).catch(() => false)) {
       return res.status(404).json({
@@ -552,7 +559,6 @@ const getTemporalDataChart = async (req, res) => {
     res.status(500).json({
       success: false,
       message: '獲取時序資料圖表失敗',
-      error: error.message
     });
   }
 };
@@ -718,7 +724,6 @@ const updateTemporalData = async (req, res) => {
     res.status(500).json({
       success: false,
       message: '更新時序資料失敗',
-      error: error.message
     });
   }
 };
@@ -754,7 +759,6 @@ const deleteTemporalData = async (req, res) => {
     res.status(500).json({
       success: false,
       message: '刪除時序資料失敗',
-      error: error.message
     });
   }
 };

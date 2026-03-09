@@ -206,13 +206,8 @@ export default {
   watch: {
     isVisible(newVal) {
       if (newVal) {
-        console.log('RoutineInspectionModal opened')
-        console.log('mileagePoints:', this.mileagePoints, 'length:', this.mileagePoints?.length)
-        console.log('editingRecord:', !!this.editingRecord)
-        console.log('pointInfo:', this.pointInfo)
         if (this.editingRecord) {
           // 編輯模式：填充現有數據
-          console.log('編輯模式 - editingRecord:', this.editingRecord)
           // 確保 inspection_data 已解析
           let data = this.editingRecord.inspection_data || {}
           if (typeof data === 'string') {
@@ -223,7 +218,6 @@ export default {
               data = {}
             }
           }
-          console.log('解析後的 data:', data)
           // 說明文字可能在 description 或 value 字段中
           const description = data.description || data.value || ''
           this.formData = {
@@ -232,7 +226,6 @@ export default {
             description: description,
             isDisaster: this.editingRecord.is_disaster || false
           }
-          console.log('填充後的 formData:', this.formData)
         } else {
           // 新增模式：重置表單，預設為當前年份
           this.formData = {
@@ -247,7 +240,6 @@ export default {
     editingRecord(newVal) {
       if (newVal && this.isVisible) {
         // 編輯模式：填充現有數據
-        console.log('editingRecord 變化 - newVal:', newVal)
         // 確保 inspection_data 已解析
         let data = newVal.inspection_data || {}
         if (typeof data === 'string') {
@@ -258,7 +250,6 @@ export default {
             data = {}
           }
         }
-        console.log('解析後的 data:', data)
         // 說明文字可能在 description 或 value 字段中
         const description = data.description || data.value || ''
         this.formData = {
@@ -267,7 +258,6 @@ export default {
           description: description,
           isDisaster: newVal.is_disaster || false
         }
-        console.log('填充後的 formData:', this.formData)
       }
     }
   },

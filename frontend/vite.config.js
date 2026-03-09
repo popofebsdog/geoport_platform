@@ -11,10 +11,14 @@ export default defineConfig({
     },
   },
   server: {
-    port: 5174,
+    port: 5173,
     open: true,
-    historyApiFallback: true,
     proxy: {
+      '/api/rain': {
+        target: 'http://140.113.16.140',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/rain/, '/rain')
+      },
       '^/api/(?!debug)': {
         target: 'http://localhost:3001',
         changeOrigin: true,
@@ -24,11 +28,6 @@ export default defineConfig({
         target: 'http://localhost:3001',
         changeOrigin: true,
         secure: false
-      },
-      '/api/rain': {
-        target: 'http://140.113.16.140',
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api\/rain/, '/rain')
       },
       '/data': {
         target: 'http://localhost:3001',

@@ -1,4 +1,5 @@
 import express from 'express';
+import { authenticate } from '../middleware/auth.js';
 import { 
   uploadData, 
   getProjectData, 
@@ -20,7 +21,7 @@ import {
 const router = express.Router();
 
 // 上傳資料 (需要檔案上傳)
-router.post('/upload', upload.single('file'), uploadData);
+router.post('/upload', authenticate, upload.single('file'), uploadData);
 
 // 獲取專案的資料列表
 router.get('/project/:projectId', getProjectData);
@@ -41,22 +42,22 @@ router.get('/potential-analysis/:fileId/intervals', getPotentialAnalysisInterval
 router.get('/:id', getDataById);
 
 // 更新資料
-router.put('/:id', updateData);
+router.put('/:id', authenticate, updateData);
 
 // 軟刪除資料
-router.delete('/:id', deleteData);
+router.delete('/:id', authenticate, deleteData);
 
 // 下載檔案
 router.get('/:id/download', downloadFile);
 
 // 關聯上傳到 GeoJSON feature
-router.post('/feature/upload', featureUpload.single('file'), uploadToFeature);
+router.post('/feature/upload', authenticate, featureUpload.single('file'), uploadToFeature);
 
 // 獲取 feature 的關聯上傳資料
 router.get('/feature/:dataFilesId/:featureId', getFeatureUploads);
 
 // 刪除關聯上傳資料
-router.delete('/feature/:uploadId', deleteFeatureUpload);
+router.delete('/feature/:uploadId', authenticate, deleteFeatureUpload);
 
 
 // API 資訊

@@ -5,6 +5,7 @@
  */
 
 import { pool } from '../config/database.js';
+import { validateUUID } from '../utils/validators.js';
 
 /**
  * 獲取特定母專案的所有子專案（時間軸）
@@ -13,6 +14,8 @@ import { pool } from '../config/database.js';
 export const getChildProjectsByParent = async (req, res) => {
   try {
     const { parentId } = req.params;
+
+    if (!validateUUID(parentId, res, '母專案 ID')) return;
 
     // 驗證母專案是否存在
     const parentCheck = await pool.query(`
@@ -87,7 +90,6 @@ export const getChildProjectsByParent = async (req, res) => {
     res.status(500).json({
       success: false,
       message: '獲取子專案列表失敗',
-      error: error.message
     });
   }
 };
@@ -99,6 +101,8 @@ export const getChildProjectsByParent = async (req, res) => {
 export const getChildProjectById = async (req, res) => {
   try {
     const { id } = req.params;
+
+    if (!validateUUID(id, res, '子專案 ID')) return;
 
     const result = await pool.query(`
       SELECT 
@@ -179,7 +183,6 @@ export const getChildProjectById = async (req, res) => {
     res.status(500).json({
       success: false,
       message: '獲取子專案詳情失敗',
-      error: error.message
     });
   }
 };
@@ -191,6 +194,9 @@ export const getChildProjectById = async (req, res) => {
 export const createChildProject = async (req, res) => {
   try {
     const { parentId } = req.params;
+
+    if (!validateUUID(parentId, res, '母專案 ID')) return;
+
     const {
       name,
       description,
@@ -340,7 +346,6 @@ export const createChildProject = async (req, res) => {
     res.status(500).json({
       success: false,
       message: '創建子專案失敗',
-      error: error.message
     });
   }
 };
@@ -352,6 +357,9 @@ export const createChildProject = async (req, res) => {
 export const updateChildProject = async (req, res) => {
   try {
     const { id } = req.params;
+
+    if (!validateUUID(id, res, '子專案 ID')) return;
+
     const {
       name,
       description,
@@ -532,7 +540,6 @@ export const updateChildProject = async (req, res) => {
     res.status(500).json({
       success: false,
       message: '更新子專案失敗',
-      error: error.message
     });
   }
 };
@@ -544,6 +551,8 @@ export const updateChildProject = async (req, res) => {
 export const deleteChildProject = async (req, res) => {
   try {
     const { id } = req.params;
+
+    if (!validateUUID(id, res, '子專案 ID')) return;
 
     const result = await pool.query(`
       UPDATE projects
@@ -570,7 +579,6 @@ export const deleteChildProject = async (req, res) => {
     res.status(500).json({
       success: false,
       message: '刪除子專案失敗',
-      error: error.message
     });
   }
 };
@@ -652,7 +660,6 @@ export const getAllChildProjects = async (req, res) => {
     res.status(500).json({
       success: false,
       message: '獲取所有子專案失敗',
-      error: error.message
     });
   }
 };

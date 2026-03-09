@@ -429,9 +429,9 @@ export default {
         return storagePath
       }
       
-      // 否則構建完整的 URL
-      const baseUrl = 'http://localhost:3001'
-      return `${baseUrl}/${storagePath}`
+      // Use relative path — Vite proxy routes /uploads and /data to localhost:3001
+      const cleanPath = storagePath.startsWith('/') ? storagePath : `/${storagePath}`
+      return cleanPath
     },
 
     // 獲取檔案類型顯示名稱

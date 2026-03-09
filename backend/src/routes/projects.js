@@ -9,17 +9,18 @@ import {
   getDeletedProjects,
   restoreProject
 } from '../controllers/projectController.js';
+import { authenticate } from '../middleware/auth.js';
 
 const router = express.Router();
 
 // 項目路由
-router.get('/', getAllProjects);           // 獲取所有項目
-router.get('/deleted', getDeletedProjects); // 獲取已刪除項目
-router.get('/:id', getProjectById);        // 獲取單個項目
-router.post('/', createProject);           // 創建項目
-router.put('/:id', updateProject);         // 更新項目
-router.delete('/:id', deleteProject);      // 刪除項目
-router.patch('/:id/bookmark', toggleBookmark); // 切換書籤
-router.patch('/:id/restore', restoreProject);  // 還原項目
+router.get('/', getAllProjects);
+router.get('/deleted', getDeletedProjects);
+router.get('/:id', getProjectById);
+router.post('/', authenticate, createProject);
+router.put('/:id', authenticate, updateProject);
+router.delete('/:id', authenticate, deleteProject);
+router.patch('/:id/bookmark', authenticate, toggleBookmark);
+router.patch('/:id/restore', authenticate, restoreProject);
 
 export default router;

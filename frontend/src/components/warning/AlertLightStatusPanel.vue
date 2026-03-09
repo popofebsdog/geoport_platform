@@ -363,7 +363,6 @@ export default {
   },
   methods: {
     handleClose() {
-      console.log('AlertLightStatusPanel: 收合按鈕被點擊');
       this.$emit('close');
     },
     handleLightClick(light) {

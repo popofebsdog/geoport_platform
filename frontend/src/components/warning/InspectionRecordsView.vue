@@ -215,19 +215,12 @@ export default {
     }
   },
   mounted() {
-    console.log('InspectionRecordsView mounted', {
-      isVisible: this.isVisible,
-      pointInfo: this.pointInfo,
-      regionCode: this.regionCode,
-      inspectionType: this.inspectionType
-    })
     if (this.isVisible) {
       this.loadRecords()
     }
   },
   watch: {
     isVisible(newVal) {
-      console.log('InspectionRecordsView isVisible changed:', newVal)
       if (newVal) {
         this.loadRecords()
         this.showAddForm = false
@@ -236,7 +229,6 @@ export default {
     },
     pointInfo: {
       handler(newVal) {
-        console.log('pointInfo changed:', newVal)
         if (this.isVisible && newVal) {
           this.loadRecords()
         }
@@ -244,7 +236,6 @@ export default {
       deep: true
     },
     regionCode(newVal) {
-      console.log('regionCode changed:', newVal)
       if (this.isVisible && newVal) {
         this.loadRecords()
       }
@@ -256,28 +247,23 @@ export default {
     },
     async loadRecords() {
       if (!this.pointInfo || !this.regionCode) {
-        console.log('缺少必要資訊:', { pointInfo: this.pointInfo, regionCode: this.regionCode })
         return
       }
       
       this.loading = true
       
       try {
-        console.log('載入巡查記錄，里程數:', this.pointInfo.mileage, '類型:', this.inspectionType)
         
         const response = await axios.get(
           `/api/warning-regions/${this.regionCode}/inspection-records`
         )
         
-        console.log('API 響應:', response.data)
         
         if (response.data.success) {
           // 過濾出該里程數和類型的記錄
           // 注意：里程數格式可能不同，需要精確匹配
           const pointMileage = String(this.pointInfo.mileage || '').trim()
           
-          console.log('開始匹配記錄，點位里程數:', pointMileage, '類型:', this.inspectionType)
-          console.log('總記錄數:', response.data.data.length)
           
           this.records = response.data.data.filter(record => {
             const recordMileage = String(record.mileage || '').trim()
@@ -355,8 +341,6 @@ export default {
             return false
           })
           
-          console.log(`找到 ${this.records.length} 筆匹配的記錄`)
-          console.log('匹配的記錄詳情:', this.records.map(r => ({ mileage: r.mileage, year: r.inspection_year, month: r.inspection_month })))
           
           // 解析 inspection_data JSON
           this.records = this.records.map(record => {
@@ -406,12 +390,12 @@ export default {
       }
       
       try {
-        // TODO: 實現刪除 API
-        // const response = await axios.delete(`/api/warning-regions/${this.regionCode}/inspection-records/${recordId}`)
-        // if (response.data.success) {
-        //   this.loadRecords()
-        // }
-        await showAlert('刪除功能待實現', '提示', this.isDarkMode)
+        const response = await axios.delete(`/api/warning-regions/${this.regionCode}/inspection-records/${recordId}`)
+        if (response.data.success) {
+          await this.loadRecords()
+        } else {
+          throw new Error(response.data.message || '刪除失敗')
+        }
       } catch (error) {
         console.error('刪除記錄失敗:', error)
         const errorMessage = error.response?.data?.message || error.message || '未知錯誤'
@@ -419,9 +403,6 @@ export default {
       }
     },
     editRecord(record) {
-      console.log('編輯記錄:', record)
-      console.log('inspection_data:', record.inspection_data)
-      console.log('is_disaster:', record.is_disaster)
       // 確保 inspection_data 已解析
       if (typeof record.inspection_data === 'string') {
         try {
@@ -435,7 +416,6 @@ export default {
       this.showAddForm = true
     },
     handleCloseForm() {
-      console.log('handleCloseForm called - closing form, keeping InspectionRecordsView visible')
       this.showAddForm = false
       this.editingRecord = null
       // 关闭表单后，保持 InspectionRecordsView 显示状态（不关闭整个视图）

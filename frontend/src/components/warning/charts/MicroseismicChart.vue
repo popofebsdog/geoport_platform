@@ -35,6 +35,10 @@ export default {
     regionCode: {
       type: String,
       default: null
+    },
+    regionId: {
+      type: String,
+      default: null
     }
   },
   data() {
@@ -328,7 +332,6 @@ export default {
     // generateMockData() 方法已移除 - 現在只使用 API 返回的真實數據
     // 如需測試，請確保後端 API 返回正確的數據格式
     prepareChartData() {
-      console.log('準備微地動圖表數據，原始數據:', this.data);
       
       // 固定生成當日00:00到23:59的標籤（用於X軸）
       const labels = this.generateTimeLabels();
@@ -369,7 +372,6 @@ export default {
       const dataToProcess = this.data;
       
       if (!dataToProcess || !Array.isArray(dataToProcess.time_series) || dataToProcess.time_series.length === 0) {
-        console.log('微地動數據為空或無效，顯示空圖表');
         return {
           labels: labels,
           datasets: Object.keys(typeMap).map(type => ({
@@ -386,14 +388,11 @@ export default {
       
       // 情況1: 時間序列數組
       if (Array.isArray(dataToProcess.time_series) && dataToProcess.time_series.length > 0) {
-        console.log('使用time_series數據，數量:', dataToProcess.time_series.length);
-        console.log('前3條time_series數據:', dataToProcess.time_series.slice(0, 3));
         
         dataToProcess.time_series.forEach((item, idx) => {
           // 檢查類型：支持所有类型
           const type = item.type || item.Type || '';
           if (!typeMap[type]) {
-            console.log(`跳過未知類型: ${type}`);
             return; // 跳過未知類型
           }
           
@@ -441,17 +440,8 @@ export default {
             y: typeMap[type]
           });
           
-          if (idx < 10) {
-            console.log(`處理第${idx}條: timeStr=${timeStr}, type=${type}, hourIndex=${hourIndex}, minute=${minute}, x=${xValue}, y=${typeMap[type]}`);
-          }
         });
       }
-      
-      console.log('最終圖表數據 - TYPE I:', typeDatasets['TYPE I'].length, 
-        'TYPE II:', typeDatasets['TYPE II'].length, 
-        'TYPE III:', typeDatasets['TYPE III'].length,
-        'TYPE NOISE:', typeDatasets['TYPE NOISE'].length,
-        'TYPE EARTHQUAKE:', typeDatasets['TYPE EARTHQUAKE'].length);
       
       // 只顯示 API 返回的真實數據，不使用假數據
       

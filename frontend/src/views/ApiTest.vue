@@ -41,9 +41,7 @@ export default {
         this.error = null
         this.result = null
         
-        console.log('開始測試獲取專案列表...')
         const response = await this.$api.projectAPI.getAll()
-        console.log('API 響應:', response)
         
         this.result = response
       } catch (error) {
@@ -71,9 +69,7 @@ export default {
           status: 'active'
         }
         
-        console.log('開始測試創建專案...', projectData)
         const response = await this.$api.projectAPI.create(projectData)
-        console.log('創建專案響應:', response)
         
         this.result = response
       } catch (error) {

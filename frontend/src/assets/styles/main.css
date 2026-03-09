@@ -9,14 +9,15 @@
   }
   
   html, body {
-    @apply bg-gray-50 text-gray-900;
+    @apply bg-surface-50 text-gray-900;
+    font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
     border: none !important;
     border-right: none !important;
     outline: none !important;
   }
   
   body {
-    font-feature-settings: "rlig" 1, "calt" 1;
+    font-feature-settings: "rlig" 1, "calt" 1, "cv02" 1, "cv03" 1, "cv04" 1;
   }
   
   /* 确保 html 和 body 没有右边框 */
@@ -76,11 +77,11 @@
   }
   
   .btn-primary {
-    @apply bg-primary-600 text-white hover:bg-primary-700 focus:ring-primary-500;
+    @apply bg-brand text-white hover:bg-brand-dark focus:ring-brand-400;
   }
   
   .btn-secondary {
-    @apply bg-gray-200 text-gray-900 hover:bg-gray-300 focus:ring-gray-500;
+    @apply bg-surface-100 text-gray-700 hover:bg-surface-200 focus:ring-surface-300 border border-surface-200;
   }
   
   .btn-danger {
@@ -92,7 +93,7 @@
   }
   
   .card {
-    @apply bg-white rounded-lg shadow-md border border-gray-200 p-6;
+    @apply bg-white rounded-lg shadow-sm border border-surface-200 p-6;
   }
   
   .leaflet-container {

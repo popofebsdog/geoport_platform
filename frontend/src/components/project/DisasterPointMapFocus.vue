@@ -77,12 +77,6 @@ export default {
         animate: true,
         duration: 0.5
       })
-      
-      console.log('聚焦到災點區域:', {
-        center: [centerLat, centerLng],
-        zoom: currentZoom,
-        bounds: { minLat, maxLat, minLng, maxLng }
-      })
     }
   }
 }

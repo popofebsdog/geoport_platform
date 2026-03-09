@@ -273,26 +273,18 @@ export default {
   computed: {
     // 合併所有災點的照片（支援單個或多個災點）
     mediaFiles() {
-      console.log('===== [DisasterPointBrowseModal.mediaFiles] 開始計算 =====')
-      console.log('[DisasterPointBrowseModal.mediaFiles] isVisible:', this.isVisible)
-      console.log('[DisasterPointBrowseModal.mediaFiles] orderNumber:', this.orderNumber)
-      console.log('[DisasterPointBrowseModal.mediaFiles] disasterPoint:', this.disasterPoint)
-      console.log('[DisasterPointBrowseModal.mediaFiles] disasterPoints 數量:', this.disasterPoints?.length)
       
       // 決定使用哪個 prop（優先使用 disasterPoints 數組，其次使用單個 disasterPoint）
       let pointsToProcess = []
       if (this.disasterPoints && this.disasterPoints.length > 0) {
         // 使用多個災點（動畫模式）
         pointsToProcess = this.disasterPoints
-        console.log('[DisasterPointBrowseModal.mediaFiles] 使用多個災點模式')
       } else if (this.disasterPoint) {
         // 使用單個災點（子專案內瀏覽）
         pointsToProcess = [this.disasterPoint]
-        console.log('[DisasterPointBrowseModal.mediaFiles] 使用單個災點模式')
       }
       
       if (pointsToProcess.length === 0) {
-        console.log('[DisasterPointBrowseModal.mediaFiles] ❌ 沒有災點數據')
         return []
       }
       
@@ -303,25 +295,11 @@ export default {
         return timeA - timeB  // 時間早的在前面
       })
       
-      console.log('[DisasterPointBrowseModal.mediaFiles] 災點排序結果:', sortedDisasterPoints.map(dp => ({
-        id: dp.disaster_point_id,
-        time: dp.disaster_time,
-        description: dp.description
-      })))
-      
       const allMediaFiles = []
       
       // 遍歷排序後的災點，收集照片
       sortedDisasterPoints.forEach((disasterPoint, dpIdx) => {
-        console.log(`[DisasterPointBrowseModal.mediaFiles] 處理災點 ${dpIdx + 1}:`, {
-          disaster_point_id: disasterPoint.disaster_point_id,
-          description: disasterPoint.description || '無描述',
-          disaster_time: disasterPoint.disaster_time || '無時間',
-          has_media_files: !!disasterPoint.media_files
-        })
-        
         if (!disasterPoint.media_files || !Array.isArray(disasterPoint.media_files)) {
-          console.log(`[DisasterPointBrowseModal.mediaFiles] 災點 ${dpIdx + 1} 沒有媒體文件`)
           return
         }
         
@@ -337,41 +315,16 @@ export default {
             }
             
             allMediaFiles.push(mediaWithInfo)
-            
-            console.log(`[DisasterPointBrowseModal.mediaFiles] 添加媒體 ${mediaIdx + 1}:`, {
-              media_id: media.media_id,
-              original_name: media.original_name,
-              storage_path: media.storage_path,
-              disaster_description: mediaWithInfo.disasterPointDescription,
-              disaster_time: mediaWithInfo.disasterPointTime
-            })
           }
         })
       })
-      
-      console.log('[DisasterPointBrowseModal.mediaFiles] ✅ 總共收集到照片:', allMediaFiles.length)
-      console.log('[DisasterPointBrowseModal.mediaFiles] ✅ 所有照片詳情:')
-      allMediaFiles.forEach((photo, idx) => {
-        console.log(`  照片 ${idx + 1}:`, {
-          media_id: photo.media_id,
-          description: photo.disasterPointDescription,
-          time: photo.disasterPointTime,
-          has_description: !!photo.disasterPointDescription,
-          has_time: !!photo.disasterPointTime
-        })
-      })
-      console.log('===== [DisasterPointBrowseModal.mediaFiles] 計算完成 =====')
       
       return allMediaFiles
     },
     // 獲取當前顯示的照片（根據索引）
     mainPhoto() {
-      console.log('===== [DisasterPointBrowseModal.mainPhoto] 開始計算 =====')
-      console.log('[DisasterPointBrowseModal.mainPhoto] mediaFiles 數量:', this.mediaFiles?.length)
-      console.log('[DisasterPointBrowseModal.mainPhoto] currentPhotoIndex:', this.currentPhotoIndex)
       
       if (!this.mediaFiles || this.mediaFiles.length === 0) {
-        console.log('[DisasterPointBrowseModal.mainPhoto] ❌ 沒有媒體文件可顯示')
         return null
       }
       
@@ -379,8 +332,6 @@ export default {
       const validIndex = Math.max(0, Math.min(this.currentPhotoIndex, this.mediaFiles.length - 1))
       const result = this.mediaFiles[validIndex] || null
       
-      console.log('[DisasterPointBrowseModal.mainPhoto] ✅ 最終結果:', result)
-      console.log('===== [DisasterPointBrowseModal.mainPhoto] 計算完成 =====')
       
       return result
     },
@@ -388,11 +339,6 @@ export default {
     // 獲取當前照片的災點描述（安全訪問）
     currentDisasterDescription() {
       const description = this.mainPhoto?.disasterPointDescription
-      console.log('[currentDisasterDescription]', {
-        mainPhoto: this.mainPhoto,
-        description: description,
-        has_description: !!description
-      })
       // 如果描述是 '無描述'，則不顯示
       if (!description || description === '無描述') {
         return ''
@@ -403,11 +349,6 @@ export default {
     // 獲取當前照片的災點時間（安全訪問）
     currentDisasterTime() {
       const time = this.mainPhoto?.disasterPointTime
-      console.log('[currentDisasterTime]', {
-        mainPhoto: this.mainPhoto,
-        time: time,
-        has_time: !!time
-      })
       return time || null
     },
     
@@ -547,7 +488,6 @@ export default {
     },
     
     getMediaUrl(media) {
-      console.log('[DisasterPointBrowseModal] getMediaUrl - media:', media)
       
       // 構建媒體文件的 URL
       if (media.storage_path) {
@@ -561,18 +501,15 @@ export default {
           url = media.storage_path
         }
         
-        console.log('[DisasterPointBrowseModal] 媒體 URL:', url)
         return url
       }
       
       // 如果有 thumbnail_path，使用縮圖
       if (media.thumbnail_path) {
-        console.log('[DisasterPointBrowseModal] 使用縮圖:', media.thumbnail_path)
         return media.thumbnail_path
       }
       
       // 如果沒有 storage_path，返回空字符串（前端會顯示錯誤處理）
-      console.log('[DisasterPointBrowseModal] 沒有有效的媒體路徑')
       return ''
     },
     

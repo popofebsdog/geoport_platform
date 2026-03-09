@@ -1,6 +1,27 @@
 version: '3.8'
 
 services:
+  # PostgreSQL 資料庫
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: ${DB_NAME:-geoport}
+      POSTGRES_USER: ${DB_USER:-geoport_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD must be set}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+    networks:
+      - geoport-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-geoport_user} -d ${DB_NAME:-geoport}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   # 後端服務
   backend:
     build:
@@ -11,11 +32,19 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=3001
-      - FRONTEND_URL=http://localhost:5173
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=${DB_NAME:-geoport}
+      - DB_USER=${DB_USER:-geoport_user}
+      - DB_PASSWORD=${DB_PASSWORD:?DB_PASSWORD must be set}
+      - JWT_SECRET=${JWT_SECRET:?JWT_SECRET must be set}
+      - FRONTEND_URL=http://frontend:5173
     volumes:
       - ./backend/uploads:/app/uploads
-      - ./backend/database.sqlite:/app/database.sqlite
       - ./data:/app/data
+    depends_on:
+      postgres:
+        condition: service_healthy
     restart: unless-stopped
     networks:
       - geoport-network
@@ -28,9 +57,21 @@ services:
     ports:
       - "5173:5173"
     environment:
-      - VITE_API_URL=http://localhost:3001/api
+      - VITE_API_URL=http://backend:3001
     depends_on:
       - backend
+    restart: unless-stopped
+    networks:
+      - geoport-network
+
+  # TiTiler COG 瓦片服務
+  titiler:
+    image: ghcr.io/developmentseed/titiler:latest
+    ports:
+      - "8000:8000"
+    environment:
+      - PORT=8000
+      - HOST=0.0.0.0
     restart: unless-stopped
     networks:
       - geoport-network
@@ -56,5 +97,5 @@ networks:
     driver: bridge
 
 volumes:
-  database:
+  postgres_data:
   uploads:

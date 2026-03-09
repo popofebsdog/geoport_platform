@@ -62,8 +62,6 @@ export default {
     const isDarkMode = inject('isDarkMode', false)
     
     // 調試：檢查 props
-    console.log('TemporalDataManager props:', props)
-    console.log('TemporalDataManager projectId:', props.projectId)
     
     // 響應式數據
     const temporalDataList = ref([])
@@ -100,7 +98,6 @@ export default {
     
     // 處理編輯
     const handleEdit = (temporalData) => {
-      console.log('編輯時序資料:', temporalData)
       // 發送編輯事件給父組件
       emit('edit', temporalData)
     }
@@ -120,16 +117,13 @@ export default {
     
     // 切換顯示/隱藏
     const handleToggleVisibility = (temporalId) => {
-      console.log('TemporalDataManager 接收到 temporalId:', temporalId, typeof temporalId)
       
       // 處理 temporalId 可能是物件的情況
       let actualTemporalId
       if (typeof temporalId === 'object' && temporalId.temporal_id) {
         actualTemporalId = temporalId.temporal_id
-        console.log('從物件中提取 temporal_id:', actualTemporalId)
       } else {
         actualTemporalId = String(temporalId)
-        console.log('直接使用 temporalId:', actualTemporalId)
       }
       
       // 如果沒有設定可見性，預設為 false（隱藏）
@@ -137,16 +131,9 @@ export default {
       const newVisibility = !currentVisibility
       temporalDataVisibility.value[actualTemporalId] = newVisibility
       
-      console.log('切換時序資料可見性:', {
-        actualTemporalId,
-        currentVisibility,
-        newVisibility
-      })
-      
       // 找到對應的時序資料
       const temporalData = temporalDataList.value.find(data => data.temporal_id === actualTemporalId)
       if (temporalData) {
-        console.log('找到時序資料:', temporalData.name)
         
         // 創建包含 isVisible 的完整資料
         const eventData = {
@@ -154,17 +141,9 @@ export default {
           isVisible: newVisibility
         }
         
-        console.log('準備發送的事件資料:', {
-          name: eventData.name,
-          isVisible: eventData.isVisible,
-          latitude: eventData.latitude,
-          longitude: eventData.longitude
-        })
-        
         emit('toggle-visibility', eventData)
       } else {
         console.error('找不到對應的時序資料:', actualTemporalId)
-        console.log('可用的時序資料 ID:', temporalDataList.value.map(data => data.temporal_id))
       }
     }
     

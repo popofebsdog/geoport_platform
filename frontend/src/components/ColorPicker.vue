@@ -88,11 +88,9 @@ export default {
       get() {
         // 優先使用 modelValue，向後兼容 value
         const currentValue = this.modelValue || this.value || '#3388ff'
-        console.log('ColorPicker computed selectedColor get:', currentValue)
         return currentValue
       },
       set(newColor) {
-        console.log('ColorPicker computed selectedColor set:', newColor)
         this.$emit('update:modelValue', newColor)
         this.$emit('change', newColor)
       }
@@ -103,14 +101,11 @@ export default {
   },
   methods: {
     selectColor(color) {
-      console.log('ColorPicker: 選擇顏色', color)
-      console.log('ColorPicker: 當前 selectedColor', this.selectedColor)
       
       // 直接發送事件，不通過 computed setter
       this.$emit('update:modelValue', color)
       this.$emit('change', color)
       
-      console.log('ColorPicker: 已發送事件，新顏色:', color)
     }
   }
 }

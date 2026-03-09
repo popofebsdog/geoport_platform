@@ -21,25 +21,26 @@ import {
   updateReportLink,
   deleteReportLink
 } from '../controllers/projectReportLinkController.js';
+import { authenticate } from '../middleware/auth.js';
 
 const router = express.Router();
 
 // 母專案 CRUD
 router.get('/', getAllParentProjects);
 router.get('/:id', getParentProjectById);
-router.post('/', createParentProject);
-router.put('/:id', updateParentProject);
-router.delete('/:id', deleteParentProject);
+router.post('/', authenticate, createParentProject);
+router.put('/:id', authenticate, updateParentProject);
+router.delete('/:id', authenticate, deleteParentProject);
 
 // 子專案管理（在母專案路由下）
 router.get('/:parentId/children', getChildProjectsByParent);
-router.post('/:parentId/children', createChildProject);
+router.post('/:parentId/children', authenticate, createChildProject);
 
 // 報告連結管理
 router.get('/:id/report-links', getReportLinks);
-router.post('/:id/report-links', createReportLink);
-router.put('/:id/report-links/:linkId', updateReportLink);
-router.delete('/:id/report-links/:linkId', deleteReportLink);
+router.post('/:id/report-links', authenticate, createReportLink);
+router.put('/:id/report-links/:linkId', authenticate, updateReportLink);
+router.delete('/:id/report-links/:linkId', authenticate, deleteReportLink);
 
 export default router;
 

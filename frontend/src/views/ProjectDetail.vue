@@ -2813,17 +2813,12 @@ export default {
       console.log(`開始載入 Feature ${featureId} 的關聯上傳數據...`)
       try {
         // 按需載入單個 feature 的上傳資料
-        const response = await fetch(`http://localhost:3001/api/data/feature/${fileId}/${featureId}`)
-          const result = await response.json()
-
-        console.log('API 回應:', result)
+        const result = await this.$api.get(`/data/feature/${fileId}/${featureId}`)
 
           if (result.success) {
             this.featureUploads[featureId] = result.data
-          console.log(`載入 Feature ${featureId} 上傳資料成功，載入了 ${result.data.length} 筆資料`)
         } else {
           this.featureUploads[featureId] = []
-          console.log(`Feature ${featureId} 沒有關聯上傳資料`)
           }
         } catch (error) {
           console.error('載入關聯上傳數據失敗:', error)
@@ -3385,8 +3380,7 @@ export default {
       // 如果是編輯模式，重新載入對應的 GeoJSON 圖層資料
       if (this.editingData && this.editingData.file_id) {
         try {
-          const response = await fetch(`http://localhost:3001/api/data/project/${this.project.projectId}/geojson?fileId=${this.editingData.file_id}`)
-          const result = await response.json()
+          const result = await this.$api.get(`/data/project/${this.project.projectId}/geojson?fileId=${this.editingData.file_id}`)
           
           if (result.success && result.data) {
             // 更新已載入的圖層資料
@@ -3396,8 +3390,6 @@ export default {
             if (this.activeGeojsonLayer === this.editingData.file_id) {
               this.geojsonData = result.data
             }
-            
-            console.log('已更新圖層資料:', result.data.file_name)
           }
         } catch (error) {
           console.error('重新載入圖層資料失敗:', error)
@@ -3437,12 +3429,10 @@ export default {
         }
 
         // 載入所有可用的 GeoJSON 圖層列表
-        const response = await fetch(`http://localhost:3001/api/data/project/${this.project.projectId}/geojson-list`)
-        const result = await response.json()
+        const result = await this.$api.get(`/data/project/${this.project.projectId}/geojson-list`)
 
         if (result.success && result.data && result.data.length > 0) {
           this.geojsonLayers = result.data
-          console.log('找到 GeoJSON 圖層:', this.geojsonLayers.length, '個')
           
           // 載入所有圖層數據
           await this.loadAllGeojsonLayers()
@@ -3454,7 +3444,6 @@ export default {
             await this.initAvailableFeatures()
           }
         } else {
-          console.log('沒有找到 GeoJSON 圖層:', result.message)
           this.geojsonLayers = []
           this.geojsonData = null
         }
@@ -3470,17 +3459,13 @@ export default {
         // 檢查圖層類型
         const layerInfo = this.geojsonLayers.find(layer => layer.file_id === fileId)
 
-        const response = await fetch(`http://localhost:3001/api/data/project/${this.project.projectId}/geojson?fileId=${fileId}`)
-        const result = await response.json()
+        const result = await this.$api.get(`/data/project/${this.project.projectId}/geojson?fileId=${fileId}`)
 
         if (result.success && result.data) {
           this.geojsonData = result.data
           this.loadedGeojsonLayers[fileId] = result.data
           this.activeGeojsonLayer = fileId
-          console.log('載入 GeoJSON 圖層:', result.data.file_name)
           await this.initAvailableFeatures()
-        } else {
-          console.log('載入特定 GeoJSON 圖層失敗:', result.message)
         }
       } catch (error) {
         console.error('載入特定 GeoJSON 圖層失敗:', error)
@@ -3490,14 +3475,10 @@ export default {
     async loadAllGeojsonLayers() {
       const loadPromises = this.geojsonLayers.map(async (layer) => {
         try {
-          const response = await fetch(`http://localhost:3001/api/data/project/${this.project.projectId}/geojson?fileId=${layer.file_id}`)
-          const result = await response.json()
+          const result = await this.$api.get(`/data/project/${this.project.projectId}/geojson?fileId=${layer.file_id}`)
 
           if (result.success && result.data) {
             this.loadedGeojsonLayers[layer.file_id] = result.data
-            console.log('載入圖層:', result.data.file_name, '成功')
-          } else {
-            console.log('載入圖層失敗:', layer.file_name, result.message)
           }
         } catch (error) {
           console.error('載入圖層錯誤:', layer.file_name, error)
@@ -3505,7 +3486,6 @@ export default {
       })
 
       await Promise.all(loadPromises)
-      console.log('所有圖層載入完成:', Object.keys(this.loadedGeojsonLayers))
       
       // 初始化圖層可見性（通知父組件設置為隱藏狀態）
       Object.keys(this.loadedGeojsonLayers).forEach(fileId => {
@@ -3552,12 +3532,10 @@ export default {
       // 如果圖層數據不存在，先載入
       if (!this.loadedGeojsonLayers[fileId]) {
         try {
-          const response = await fetch(`http://localhost:3001/api/data/project/${this.project.projectId}/geojson?fileId=${fileId}`)
-          const result = await response.json()
+          const result = await this.$api.get(`/data/project/${this.project.projectId}/geojson?fileId=${fileId}`)
           
           if (result.success && result.data) {
             this.loadedGeojsonLayers[fileId] = result.data
-            console.log('載入圖層數據:', result.data.file_name)
             
             // 等待下一個 tick 確保數據已經設置
             await this.$nextTick()
@@ -3582,8 +3560,7 @@ export default {
           return
         }
 
-        const response = await fetch(`http://localhost:3001/api/data/project/${this.project.projectId}`)
-        const result = await response.json()
+        const result = await this.$api.get(`/data/project/${this.project.projectId}`)
 
         if (result.success) {
           this.uploadedData = result.data
@@ -3670,8 +3647,7 @@ export default {
         
         const batchPromises = batch.map(async (feature) => {
           try {
-            const response = await fetch(`http://localhost:3001/api/data/feature/${this.geojsonData.file_id}/${feature.id}`)
-            const result = await response.json()
+            const result = await this.$api.get(`/data/feature/${this.geojsonData.file_id}/${feature.id}`)
             
             if (result.success && result.data) {
               this.featureUploads[feature.id] = result.data
@@ -4056,16 +4032,11 @@ export default {
         
         console.log(`載入 Feature ${featureId} 上傳資料，使用 fileId: ${targetFileId}`)
         
-        const response = await fetch(`http://localhost:3001/api/data/feature/${targetFileId}/${featureId}`)
-        const result = await response.json()
-
-        console.log(`Feature ${featureId} 載入結果:`, result)
+        const result = await this.$api.get(`/data/feature/${targetFileId}/${featureId}`)
 
         if (result.success) {
           this.featureUploads[featureId] = result.data
-          console.log(`Feature ${featureId} 上傳資料載入成功，共 ${result.data.length} 筆`)
         } else {
-          console.log(`Feature ${featureId} 沒有上傳資料`)
           this.featureUploads[featureId] = []
         }
       } catch (error) {
@@ -4108,11 +4079,7 @@ export default {
           return
         }
 
-        const response = await fetch(`http://localhost:3001/api/data/${data.file_id}`, {
-          method: 'DELETE'
-        })
-
-        const result = await response.json()
+        const result = await this.$api.delete(`/data/${data.file_id}`)
 
         if (result.success) {
           // 從已載入的圖層中移除
@@ -4183,8 +4150,7 @@ export default {
     
     async analyzePotentialData(data) {
       try {
-        const response = await fetch(`http://localhost:3001/api/data/project/${this.project.projectId}/geojson`)
-        const result = await response.json()
+        const result = await this.$api.get(`/data/project/${this.project.projectId}/geojson`)
         
         if (result.success && result.data) {
           const geojsonData = result.data.geojson
@@ -4368,12 +4334,7 @@ export default {
         formData.append('data_files_id', this.associateTargetData.file_id)
         formData.append('feature_id', feature.id)
 
-        const response = await fetch('http://localhost:3001/api/data/feature/upload', {
-          method: 'POST',
-          body: formData
-        })
-
-        const result = await response.json()
+        const result = await this.$api.post('/data/feature/upload', formData)
 
         if (result.success) {
           this.showAlert({
@@ -4418,11 +4379,7 @@ export default {
           return
         }
 
-        const response = await fetch(`http://localhost:3001/api/data/feature/${uploadId}`, {
-          method: 'DELETE'
-        })
-
-        const result = await response.json()
+        const result = await this.$api.delete(`/data/feature/${uploadId}`)
 
         if (result.success) {
           this.showAlert({
@@ -4601,8 +4558,11 @@ export default {
         return storagePath
       }
       
-      const baseUrl = 'http://localhost:3001'
-      return `${baseUrl}/${storagePath}`
+      // Static files (uploads/, data/) go through a dedicated Vite proxy
+      // rule that maps /uploads → localhost:3001/uploads directly.
+      // Do NOT prefix with VITE_API_URL (/api) or they become /api/uploads.
+      const cleanPath = storagePath.startsWith('/') ? storagePath : `/${storagePath}`
+      return cleanPath
     },
 
     // 輔助函數：獲取檔案類型顯示名稱
@@ -4733,10 +4693,12 @@ export default {
     // 定位 COG 正射影像
     async locateCOGBaseMap(baseMap) {
       try {
-        const imageUrl = `http://localhost:3001/${baseMap.storagePath.replace(/^\//, '')}`
+        const staticBase = import.meta.env.VITE_STATIC_URL || 'http://localhost:3001'
+        const tiTilerBase = import.meta.env.VITE_TITILER_URL || 'http://localhost:8000'
+        const imageUrl = `${staticBase}/${baseMap.storagePath.replace(/^\//, '')}`
         
         // 從 TiTiler 獲取邊界
-        const response = await fetch(`http://localhost:8000/cog/bounds?url=${encodeURIComponent(imageUrl)}`)
+        const response = await fetch(`${tiTilerBase}/cog/bounds?url=${encodeURIComponent(imageUrl)}`)
         const result = await response.json()
         
         if (result.success && result.bounds) {
@@ -4772,7 +4734,8 @@ export default {
     // 定位傳統 TIF 正射影像
     async locateTraditionalBaseMap(baseMap) {
       try {
-        const imageUrl = `http://localhost:3001/${baseMap.storagePath.replace(/^\//, '')}`
+        const staticBase = import.meta.env.VITE_STATIC_URL || 'http://localhost:3001'
+        const imageUrl = `${staticBase}/${baseMap.storagePath.replace(/^\//, '')}`
         
         // 使用 BaseMapService 計算邊界
         const boundsArray = await this.$refs.projectMap.baseMapService.calculateTifBounds(
@@ -4813,8 +4776,7 @@ export default {
         }
 
         console.log('開始載入底圖數據...')
-        const response = await fetch(`http://localhost:3001/api/data/project/${this.project.projectId}/basemaps`)
-        const result = await response.json()
+        const result = await this.$api.get(`/data/project/${this.project.projectId}/basemaps`)
         
         if (result.success && result.data && result.data.length > 0) {
           console.log('底圖數據載入成功:', result.data.length, '個底圖')
@@ -5509,12 +5471,7 @@ export default {
           
           this.uploadProgress.message = `正在上傳 ${file.name}...`
           
-          const response = await fetch(`http://localhost:3001/api/data/feature/upload`, {
-            method: 'POST',
-            body: formData
-          })
-          
-          const result = await response.json()
+          const result = await this.$api.post('/data/feature/upload', formData)
           
           if (!result.success) {
             throw new Error(result.message || '上傳失敗')
@@ -5560,12 +5517,10 @@ export default {
     // 重新載入 Feature 上傳數據
     async reloadFeatureUploads(featureId, fileId) {
       try {
-        const response = await fetch(`http://localhost:3001/api/data/feature/${fileId}/${featureId}`)
-        const result = await response.json()
+        const result = await this.$api.get(`/data/feature/${fileId}/${featureId}`)
         
         if (result.success) {
           this.featureUploads[featureId] = result.data
-          console.log(`重新載入 Feature ${featureId} 上傳資料成功，載入了 ${result.data.length} 筆資料`)
           
           // 同步更新模態框數據
           this.syncModalData(featureId)

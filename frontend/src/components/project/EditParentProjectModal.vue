@@ -254,6 +254,7 @@
 </template>
 
 <script>
+import api from '@/services/api.js'
 import { ref, computed, inject, watch } from 'vue'
 
 export default {
@@ -336,7 +337,6 @@ export default {
         formData.value.tags = ''
       }
       
-      console.log('填充的表單數據:', formData.value)
     }
     
     // 監聽 parentProject 變化
@@ -401,14 +401,11 @@ export default {
           tags: formData.value.tags ? formData.value.tags.split(',').map(t => t.trim()).filter(t => t) : []
         }
         
-        console.log('提交的更新資料:', submitData)
-        console.log('母專案 ID:', props.parentProject.project_id)
         
         // 調用更新 API
-        const response = await window.$api.put(`/parent-projects/${props.parentProject.project_id}`, submitData)
+        const response = await api.put(`/parent-projects/${props.parentProject.project_id}`, submitData)
         
         if (response.success) {
-          console.log('母專案更新成功:', response.data)
           emit('updated', response.data)
           closeModal()
         } else {

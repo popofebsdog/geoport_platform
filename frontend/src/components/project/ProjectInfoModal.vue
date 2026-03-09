@@ -225,10 +225,6 @@ export default {
   emits: ['close'],
   mounted() {
     // 調試：顯示專案物件結構
-    console.log('ProjectInfoModal - 專案物件結構:', this.project)
-    console.log('ProjectInfoModal - location:', this.project?.location)
-    console.log('ProjectInfoModal - latitude/longitude:', this.project?.latitude, this.project?.longitude)
-    console.log('ProjectInfoModal - locationGeometry:', this.project?.locationGeometry)
   },
   methods: {
     closeModal() {

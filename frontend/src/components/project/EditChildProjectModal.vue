@@ -224,6 +224,7 @@
 </template>
 
 <script>
+import api from '@/services/api.js'
 import { ref, computed, inject, watch, onMounted } from 'vue'
 
 export default {
@@ -368,14 +369,11 @@ export default {
           longitude: parseFloat(formData.value.longitude)
         }
         
-        console.log('提交的更新資料:', submitData)
-        console.log('子專案 ID:', props.childProject.project_id)
         
         // 調用更新 API
-        const response = await window.$api.put(`/child-projects/${props.childProject.project_id}`, submitData)
+        const response = await api.put(`/child-projects/${props.childProject.project_id}`, submitData)
         
         if (response.success) {
-          console.log('子專案更新成功:', response.data)
           emit('updated', response.data)
           closeModal()
         } else {

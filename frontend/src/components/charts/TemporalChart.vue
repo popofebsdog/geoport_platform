@@ -238,14 +238,7 @@ export default {
     
     // 過濾後的數據
     const filteredData = computed(() => {
-      console.log('filteredData 計算開始:', {
-        chartData: props.chartData,
-        chartDataArray: props.chartData?.chartData,
-        isArray: Array.isArray(props.chartData?.chartData)
-      })
-      
       if (!props.chartData?.chartData) {
-        console.log('沒有 chartData，返回空數組')
         return []
       }
       
@@ -256,7 +249,6 @@ export default {
         return []
       }
       
-      console.log('原始數據長度:', data.length)
       
       // 根據時間範圍過濾
       if (actualTimeRange.value.start && actualTimeRange.value.end) {
@@ -264,7 +256,6 @@ export default {
           const itemDate = new Date(item.time)
           return itemDate >= actualTimeRange.value.start && itemDate <= actualTimeRange.value.end
         })
-        console.log('時間過濾後數據長度:', data.length)
       }
       
       // 根據選擇的列過濾
@@ -275,10 +266,8 @@ export default {
             Object.entries(item.values).filter(([key]) => selectedColumns.value.includes(key))
           )
         }))
-        console.log('列過濾後數據長度:', data.length)
       }
       
-      console.log('最終過濾數據:', data)
       return data
     })
     
@@ -372,15 +361,7 @@ export default {
     }
     
     const updateChart = async () => {
-      console.log('updateChart 開始:', {
-        hasCanvas: !!chartCanvas.value,
-        filteredDataLength: filteredData.value?.length || 0,
-        filteredData: filteredData.value,
-        isArray: Array.isArray(filteredData.value)
-      })
-      
       if (!chartCanvas.value) {
-        console.log('沒有 canvas，跳過圖表更新')
         return
       }
       
@@ -390,7 +371,6 @@ export default {
       }
       
       if (filteredData.value.length === 0) {
-        console.log('沒有數據，跳過圖表更新')
         return
       }
       
@@ -407,9 +387,7 @@ export default {
         }
         
         // 準備數據
-        console.log('準備圖表數據，filteredData:', filteredData.value)
         const labels = filteredData.value.map(item => item.time)
-        console.log('labels:', labels)
         
         const datasets = selectedColumns.value.map((column, index) => {
           const colors = [

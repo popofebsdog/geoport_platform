@@ -40,7 +40,6 @@ export const getAllDataFiles = async (req, res) => {
     res.status(500).json({
       success: false,
       message: '獲取資料檔案列表失敗',
-      error: error.message
     });
   }
 };
@@ -58,7 +57,6 @@ export const getDataFileById = async (req, res) => {
     res.json({ success: true, data: { dataFile } });
   } catch (error) {
     console.error('獲取資料檔案錯誤:', error);
-    res.status(500).json({ success: false, message: '獲取資料檔案失敗', error: error.message });
   }
 };
 
@@ -95,7 +93,6 @@ export const createDataFile = async (req, res) => {
     res.status(500).json({ 
       success: false, 
       message: '創建資料檔案失敗', 
-      error: error.message 
     });
   }
 };
@@ -117,7 +114,6 @@ export const updateDataFile = async (req, res) => {
     res.json({ success: true, message: '資料檔案更新成功', data: { dataFile } });
   } catch (error) {
     console.error('更新資料檔案錯誤:', error);
-    res.status(500).json({ success: false, message: '更新資料檔案失敗', error: error.message });
   }
 };
 
@@ -136,7 +132,6 @@ export const deleteDataFile = async (req, res) => {
     res.json({ success: true, message: '資料檔案已移至垃圾桶' });
   } catch (error) {
     console.error('刪除資料檔案錯誤:', error);
-    res.status(500).json({ success: false, message: '刪除資料檔案失敗', error: error.message });
   }
 };
 
@@ -155,7 +150,6 @@ export const permanentDeleteDataFile = async (req, res) => {
     res.json({ success: true, message: '資料檔案已永久刪除' });
   } catch (error) {
     console.error('永久刪除資料檔案錯誤:', error);
-    res.status(500).json({ success: false, message: '永久刪除資料檔案失敗', error: error.message });
   }
 };
 
@@ -187,7 +181,6 @@ export const getDeletedDataFiles = async (req, res) => {
     res.status(500).json({
       success: false,
       message: '獲取已刪除資料檔案列表失敗',
-      error: error.message
     });
   }
 };
@@ -207,7 +200,6 @@ export const restoreDataFile = async (req, res) => {
     res.json({ success: true, message: '資料檔案已成功還原', data: { dataFile } });
   } catch (error) {
     console.error('還原資料檔案錯誤:', error);
-    res.status(500).json({ success: false, message: '還原資料檔案失敗', error: error.message });
   }
 };
 

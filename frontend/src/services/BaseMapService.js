@@ -34,7 +34,6 @@ export class BaseMapService {
       filePath.toLowerCase().endsWith('_cog.tif') ||
       filePath.toLowerCase().endsWith('_cog.tiff')
     )
-    console.log('COG 文件檢測:', { filePath, isCOG })
     return isCOG
   }
 
@@ -52,7 +51,6 @@ export class BaseMapService {
     // 構建 TiTiler 瓦片 URL (使用 WebMercatorQuad 瓦片矩陣集)
     const titilerUrl = `http://localhost:8000/cog/tiles/WebMercatorQuad/{z}/{x}/{y}?url=${encodeURIComponent(imageUrl)}`
     
-    console.log('創建 TiTiler 瓦片圖層:', titilerUrl)
     
     // 創建自定義瓦片圖層，實現全瓦片載入
     const layer = L.tileLayer(titilerUrl, {
@@ -82,16 +80,13 @@ export class BaseMapService {
 
     // 添加地圖事件監聽，確保瓦片持續載入
     layer.on('add', () => {
-      console.log('COG 瓦片圖層已添加到地圖')
       
       // 監聽地圖移動和縮放事件，確保瓦片持續載入
       this.map.on('moveend', () => {
-        console.log('地圖移動結束，更新瓦片')
         layer.redraw()
       })
       
       this.map.on('zoomend', () => {
-        console.log('地圖縮放結束，更新瓦片')
         layer.redraw()
       })
     })
@@ -103,7 +98,6 @@ export class BaseMapService {
       
       // 為瓦片添加載入完成事件
       tile.onload = function() {
-        console.log(`瓦片載入完成: ${coords.z}/${coords.x}/${coords.y}`)
       }
       
       return tile
@@ -115,7 +109,6 @@ export class BaseMapService {
     })
 
     layer.on('tileload', () => {
-      console.log('TiTiler 瓦片載入成功')
     })
 
     // 添加 CSS 樣式來隱藏藍色瓦片（只針對錯誤瓦片）
@@ -216,7 +209,6 @@ export class BaseMapService {
    * 清除快取（釋放記憶體）
    */
   clearCache() {
-    console.log('清除所有圖層快取')
     this.cogLayers.clear()
   }
 
@@ -231,14 +223,7 @@ export class BaseMapService {
    * @returns {Promise<Object>} GeoRasterLayer 實例
    */
   async loadGeoTIFF(imageUrl, baseMap) {
-    // 檢查是否為 COG 文件
-    console.log('檢查 COG 文件:', { 
-      storagePath: baseMap.storagePath, 
-      originalName: baseMap.originalName,
-      name: baseMap.name 
-    })
     if (this.isCOGFile(baseMap.storagePath || baseMap.originalName)) {
-      console.log('檢測到 COG 文件，使用 TiTiler 服務:', baseMap.name)
       
       // 檢查 TiTiler 服務器是否可用
       const healthCheck = await fetch('http://localhost:8000/health', { 
@@ -250,20 +235,16 @@ export class BaseMapService {
         throw new Error('TiTiler 服務器不可用，請確保服務器正在運行')
       }
       
-      console.log('TiTiler 服務器正常，創建瓦片圖層')
       const layer = this.createTiTilerLayer(imageUrl, baseMap)
-      console.log('TiTiler 圖層創建成功:', baseMap.name)
       return layer
     }
 
     // 對於非 COG 文件，直接載入（不再使用暫存）
-    console.log('載入傳統 TIF 文件:', baseMap.name)
     return this._loadGeoTIFFInternal(imageUrl, baseMap)
   }
 
   async _loadGeoTIFFInternal(imageUrl, baseMap) {
     try {
-      console.log('開始載入 GeoTIFF 檔案:', imageUrl)
       
       // 動態導入 georaster 和 georaster-layer-for-leaflet
       const georasterModule = await import('georaster')
@@ -276,10 +257,8 @@ export class BaseMapService {
         throw new Error(`HTTP error! status: ${response.status}`)
       }
       const arrayBuffer = await response.arrayBuffer()
-      console.log('TIF 檔案載入完成，檔案大小:', arrayBuffer.byteLength, 'bytes')
       
       // 解析 GeoTIFF（可能會出現一些警告，但不影響最終結果）
-      console.log('開始解析 GeoTIFF（可能會出現一些解析警告，這是正常的）...')
       
       // 暫時抑制 console.error 來避免顯示 georaster 的內部警告
       const originalConsoleError = console.error
@@ -299,7 +278,6 @@ export class BaseMapService {
         console.error = originalConsoleError
       }
       
-      console.log('GeoTIFF 解析完成，創建圖層...')
       
       // 創建 GeoRasterLayer（優化參數）
       const layer = new GeoRasterLayer({
@@ -326,9 +304,7 @@ export class BaseMapService {
         }
       })
       
-      console.log('GeoRasterLayer 創建成功')
       
-      console.log(`TIF 檔案載入完成: ${baseMap.name}`)
       return layer
       
     } catch (error) {
@@ -383,7 +359,6 @@ export class BaseMapService {
               [result.bounds.minLat, result.bounds.minLon], // 西南角
               [result.bounds.maxLat, result.bounds.maxLon]  // 東北角
             ]
-            console.log('從 TiTiler 獲取的邊界:', bounds)
             return bounds
           }
         } catch (error) {
@@ -442,7 +417,6 @@ export class BaseMapService {
    */
   async switchToCustomBaseMap(baseMap, onLoadingStart, onLoadingEnd) {
     if (!this.map) {
-      console.log('地圖未初始化，無法切換底圖')
       return
     }
     
@@ -452,7 +426,6 @@ export class BaseMapService {
       return
     }
     
-    console.log('切換到自定義底圖:', baseMap)
     
     try {
       // 移除現有的自定義底圖
@@ -461,8 +434,8 @@ export class BaseMapService {
       }
       
       // 創建新的底圖圖層
-      const baseMapUrl = `http://localhost:3001/${baseMap.storagePath.replace(/^\//, '')}`
-      console.log('底圖 URL:', baseMapUrl)
+      const staticBase = import.meta.env.VITE_STATIC_URL || 'http://localhost:3001'
+      const baseMapUrl = `${staticBase}/${baseMap.storagePath.replace(/^\//, '')}`
       
       // 根據檔案類型創建不同的圖層
       if (baseMap.fileType === 'orthophoto' || baseMap.originalName?.toLowerCase().endsWith('.tif')) {
@@ -473,7 +446,6 @@ export class BaseMapService {
       }
       
       this.isCustomBaseMapActive = true
-      console.log('自定義底圖切換成功')
       
     } catch (error) {
       console.error('切換自定義底圖失敗:', error)
@@ -492,8 +464,6 @@ export class BaseMapService {
    * @returns {Promise<void>}
    */
   async createTifBaseMapLayer(imageUrl, baseMap, onLoadingStart, onLoadingEnd) {
-    console.log('開始創建 TIF 底圖圖層:', baseMap)
-    console.log('圖片 URL:', imageUrl)
     
     // 開始載入
     if (onLoadingStart) {
@@ -535,19 +505,11 @@ export class BaseMapService {
         const bounds = this.customBaseMapLayer.getBounds()
         this.fitMapToBounds(bounds)
       } else {
-        // 對於 TiTiler 圖層，使用計算的邊界
-        console.log('開始計算 TIF 邊界，參數:', { 
-          filename: baseMap.originalName || baseMap.name, 
-          imageUrl: imageUrl 
-        })
         const boundsArray = await this.calculateTifBounds(baseMap.originalName || baseMap.name, imageUrl)
-        console.log('計算得到的邊界:', boundsArray)
         const bounds = L.latLngBounds(boundsArray)
-        console.log('Leaflet 邊界對象:', bounds)
         this.fitMapToBounds(bounds)
       }
       
-      console.log('TIF 底圖圖層創建成功')
       
       // 載入完成
       if (onLoadingEnd) {
@@ -556,7 +518,6 @@ export class BaseMapService {
       
     } catch (error) {
       console.error('創建 TIF 底圖圖層失敗:', error)
-      console.log('嘗試使用備用方案...')
       
       // 備用方案：使用計算的邊界創建簡單的圖片覆蓋層
       try {
@@ -582,7 +543,6 @@ export class BaseMapService {
         // 調整地圖視圖到計算的邊界
         this.fitMapToBounds(bounds)
         
-        console.log('備用方案成功：使用 imageOverlay 創建底圖')
         
         // 載入完成
         if (onLoadingEnd) {
@@ -620,12 +580,10 @@ export class BaseMapService {
    */
   switchToDefaultBaseMap() {
     try {
-      console.log('開始切換到預設底圖...')
       
       // 移除自定義底圖圖層
       if (this.customBaseMapLayer && this.map) {
         if (this.map.hasLayer && this.map.hasLayer(this.customBaseMapLayer)) {
-          console.log('移除自定義底圖圖層')
           this.map.removeLayer(this.customBaseMapLayer)
         }
         this.customBaseMapLayer = null
@@ -640,14 +598,12 @@ export class BaseMapService {
             layer.options.attribution && layer.options.attribution.includes('正射影像') ||
             layer._url && layer._url.includes('cog/tiles')
           )) {
-            console.log('發現並移除遺漏的底圖圖層')
             this.map.removeLayer(layer)
           }
         })
       }
       
       this.isCustomBaseMapActive = false
-      console.log('切換到預設底圖完成')
       
     } catch (error) {
       console.warn('切換到預設底圖時發生錯誤:', error)

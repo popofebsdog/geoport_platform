@@ -317,13 +317,6 @@ export default {
     
     // 處理刪除事件
     const handleDelete = async (child) => {
-      console.log('ChildProjectTimeline: handleDelete 被調用', child)
-      console.log('子專案詳情:', {
-        project_id: child.project_id,
-        name: child.name,
-        parent_project_id: child.parent_project_id
-      })
-      
       // 顯示確認對話框
       const confirmed = await confirm(
         `確定要刪除時期「${child.name}」嗎？`,
@@ -331,13 +324,10 @@ export default {
         props.isDarkMode
       )
       
-      console.log('確認結果:', confirmed)
       
       if (confirmed) {
-        console.log('發送 delete 事件', child)
         emit('delete', child)
       } else {
-        console.log('用戶取消了刪除操作')
       }
     }
     

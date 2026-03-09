@@ -271,50 +271,6 @@ export default {
       if (numValue >= 25 && numValue <= 80) return 'medium'; // 黄色 - 25~80gal
       return 'low'; // 绿色 - NO ALARM (<25gal)
     },
-    hourlyDistribution() {
-      const distribution = {};
-      const now = new Date();
-      const currentHour = now.getHours();
-      
-      // 初始化最近6小時
-      for (let i = 5; i >= 0; i--) {
-        const hour = (currentHour - i + 24) % 24;
-        distribution[hour] = 0;
-      }
-      
-      // 統計每個小時的最大加速度
-      this.timeSeries.forEach(item => {
-        const timeStr = item.time || item.timestamp || '';
-        const value = parseFloat(item.absAcceleration || item.acceleration || item.value || 0);
-        
-        try {
-          const match = timeStr.match(/(\d{2}):(\d{2})/);
-          if (match) {
-            const hour = parseInt(match[1], 10);
-            if (distribution.hasOwnProperty(hour)) {
-              distribution[hour] = Math.max(distribution[hour], value);
-            }
-          } else {
-            const date = new Date(timeStr);
-            if (!isNaN(date.getTime())) {
-              const hour = date.getHours();
-              if (distribution.hasOwnProperty(hour)) {
-                distribution[hour] = Math.max(distribution[hour], value);
-              }
-            }
-          }
-        } catch (e) {
-          // 忽略錯誤
-        }
-      });
-      
-      return distribution;
-    },
-    maxHourlyValue() {
-      const values = Object.values(this.hourlyDistribution);
-      if (values.length === 0) return 1;
-      return Math.max(...values, 1);
-    },
     status() {
       const pga = this.pga || this.maxAcceleration;
       if (pga === null || pga === undefined) return 'unknown';
@@ -336,20 +292,6 @@ export default {
       };
       return statusMap[this.status] || '未知';
     },
-    dataPointCount() {
-      if (!this.data) return 0;
-      if (Array.isArray(this.data.time_series)) return this.data.time_series.length;
-      if (Array.isArray(this.data.values)) return this.data.values.length;
-      return 0;
-    },
-    updateTime() {
-      if (!this.data) return null;
-      return this.data.timestamp || 
-             this.data.update_time || 
-             this.data.data_timestamp || 
-             this.data.collected_at ||
-             new Date().toISOString();
-    }
   },
   methods: {
     formatValue(value) {
@@ -393,12 +335,6 @@ export default {
       };
       return classMap[status] || classMap['unknown'];
     },
-    getBarColor(value) {
-      if (value === 0) return 'bg-gray-200 dark:bg-gray-600';
-      if (value >= 400) return 'bg-red-500 dark:bg-red-600';
-      if (value >= 200) return 'bg-yellow-500 dark:bg-yellow-600';
-      return 'bg-blue-500 dark:bg-blue-600';
-    }
   }
 };
 </script>

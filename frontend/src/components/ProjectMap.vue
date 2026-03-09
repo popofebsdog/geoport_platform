@@ -249,8 +249,6 @@ export default {
   },
   methods: {
     initMap() {
-      console.log('初始化地圖...')
-      console.log('地圖容器:', this.$refs.mapContainer)
       
       if (!this.$refs.mapContainer) {
         console.error('地圖容器未找到')
@@ -269,7 +267,6 @@ export default {
       // 添加圖層
       this.addTileLayer()
       
-      console.log('地圖初始化完成')
     },
 
     addTileLayer() {

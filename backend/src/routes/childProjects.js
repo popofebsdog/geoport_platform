@@ -10,14 +10,15 @@ import {
   updateChildProject,
   deleteChildProject
 } from '../controllers/childProjectController.js';
+import { authenticate } from '../middleware/auth.js';
 
 const router = express.Router();
 
 // 子專案 CRUD
 router.get('/', getAllChildProjects);
 router.get('/:id', getChildProjectById);
-router.put('/:id', updateChildProject);
-router.delete('/:id', deleteChildProject);
+router.put('/:id', authenticate, updateChildProject);
+router.delete('/:id', authenticate, deleteChildProject);
 
 export default router;
 

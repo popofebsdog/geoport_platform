@@ -367,24 +367,20 @@ export default {
     regionId: {
       immediate: true,
       handler(newVal, oldVal) {
-        console.log('[ChartDataPanel] regionId 變化:', { oldVal, newVal, regionCode: this.regionCode });
         
         // 當 regionId 改變時（包括從有到無），先清除舊數據和定時器
         if (oldVal !== newVal) {
-          console.log('[ChartDataPanel] 地區切換，清除舊數據');
           this.clearAllData();
         }
         
         // 只有當有新的 regionId 時才載入數據
         if (newVal) {
-          console.log('[ChartDataPanel] 載入新地區數據 (regionId):', newVal);
           // 使用 nextTick 確保清除操作完成後再載入新數據
           this.$nextTick(() => {
             this.loadChartData();
           });
         } else if (!this.regionCode) {
           // 如果沒有 regionId 也沒有 regionCode，確保清除所有數據
-          console.log('[ChartDataPanel] 無選中地區，保持清空狀態');
           this.clearAllData();
         }
         // 注意：如果 newVal 為空但有 regionCode，由 regionCode watcher 處理
@@ -394,29 +390,24 @@ export default {
     regionCode: {
       immediate: true,
       handler(newVal, oldVal) {
-        console.log('[ChartDataPanel] regionCode 變化:', { oldVal, newVal, regionId: this.regionId });
         
         // 如果有 regionId，則由 regionId 的 watcher 處理，這裡不重複處理
         if (this.regionId) {
-          console.log('[ChartDataPanel] 有 regionId，跳過 regionCode watcher');
           return;
         }
         
         // 當 regionCode 改變時，先清除舊數據和定時器
         if (oldVal !== newVal) {
-          console.log('[ChartDataPanel] 地區代碼切換（兼容模式），清除舊數據');
           this.clearAllData();
         }
         
         // 只有當有新的 regionCode 時才載入數據
         if (newVal) {
-          console.log('[ChartDataPanel] 載入新地區數據（兼容模式）:', newVal);
           // 使用 nextTick 確保清除操作完成後再載入新數據
           this.$nextTick(() => {
             this.loadChartData();
           });
         } else {
-          console.log('[ChartDataPanel] 無選中地區，保持清空狀態');
           this.clearAllData();
         }
       }
@@ -436,7 +427,6 @@ export default {
       
       // 生成新的請求 ID，用於識別這次加載請求
       const requestId = ++this.currentLoadRequestId;
-      console.log('[ChartDataPanel] 開始加載數據，請求ID:', requestId);
       
       try {
         this.loading = true;
@@ -473,11 +463,9 @@ export default {
         
         // 檢查這是否還是最新的請求（防止異步競態）
         if (requestId !== this.currentLoadRequestId) {
-          console.log('[ChartDataPanel] 請求已過期，忽略結果:', { requestId, currentId: this.currentLoadRequestId });
           return;
         }
         
-        console.log('[ChartDataPanel] 處理數據，請求ID:', requestId);
         
         // 處理返回的數據
         // 如果從外部API獲取，data是對象；如果從數據庫獲取，data是數組
@@ -488,18 +476,11 @@ export default {
             // 對於外部API，只要 dataDensity !== 'none'，就認為API調用成功
             // 即使當天沒有記錄（records為空），也應該顯示空圖表
             if (data && data.dataDensity !== 'none') {
-              console.log('[ChartDataPanel] chart1 外部API數據:', {
-                dataDensity: data.dataDensity,
-                hasCatalog: !!data.catalog,
-                recordsCount: data.catalog?.records?.length || 0,
-                timeSeriesCount: data.time_series?.length || 0
-              });
               this.chartData.chart1 = data;
               // 根據數據密度設置自動刷新（微地動更新較慢，預設10分鐘）
               this.setupAutoRefresh('chart1', data?.updateInterval || 600);
             } else {
               // 只有當 dataDensity === 'none' 時才認為沒有數據
-              console.log('[ChartDataPanel] chart1 返回 dataDensity=none，設置為 null');
               this.chartData.chart1 = null;
             }
           } else if (Array.isArray(chart1Res.data.data) && chart1Res.data.data.length > 0) {
@@ -521,7 +502,6 @@ export default {
               // 雨量更新較慢，預設10分鐘
               this.setupAutoRefresh('chart2', data?.updateInterval || 600);
             } else {
-              console.log('[ChartDataPanel] chart2 返回空數據或無效數據');
               this.chartData.chart2 = null;
             }
           } else if (Array.isArray(chart2Res.data.data) && chart2Res.data.data.length > 0) {
@@ -544,7 +524,6 @@ export default {
                 // 強地動更新較快，預設2分鐘
                 this.setupAutoRefresh('chart3', data?.updateInterval || 120);
               } else {
-                console.log('[ChartDataPanel] chart3 返回空數據或無效數據');
                 this.chartData.chart3 = null;
               }
             } else if (Array.isArray(chart3Res.data.data) && chart3Res.data.data.length > 0) {
@@ -579,7 +558,6 @@ export default {
           this.loadSingleChartData(chartKey);
         }, intervalSeconds * 1000);
         
-        console.log(`${chartKey} 自動刷新設置: 每 ${intervalSeconds} 秒更新一次`);
       }
     },
     // 載入單個圖表的數據
@@ -626,7 +604,6 @@ export default {
     },
     // 清除所有數據和定時器
     clearAllData() {
-      console.log('[ChartDataPanel] clearAllData 開始清除數據...');
       
       // 強制清除所有圖表數據（使用 Vue.set 確保響應式更新）
       this.chartData = {
@@ -646,7 +623,6 @@ export default {
       // 清除載入狀態
       this.loading = false;
       
-      console.log('[ChartDataPanel] ✅ 已清除所有圖表數據和定時器');
     },
     // 提供給父組件調用的刷新方法
     refresh() {
@@ -662,11 +638,6 @@ export default {
         this.expanded[chartKey] = true;
       }
     },
-    // 切換顯示模式（圖卡/圖表）
-    toggleViewMode(chartKey) {
-      // 在 'card' 和 'chart' 之間切換
-      this.viewMode[chartKey] = this.viewMode[chartKey] === 'card' ? 'chart' : 'card';
-    }
   },
   beforeUnmount() {
     // 清除所有自動刷新定時器

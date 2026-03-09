@@ -72,6 +72,10 @@ export default {
     regionCode: {
       type: String,
       default: ''
+    },
+    regionId: {
+      type: String,
+      default: null
     }
   },
   data() {
@@ -117,21 +121,15 @@ export default {
     }
   },
   mounted() {
-    console.log('[RainfallChart] mounted - regionCode:', this.regionCode, 'selectedDate:', this.selectedDate);
-    console.log('[RainfallChart] mounted - props.data存在:', !!this.data);
     if (this.data) {
-      console.log('[RainfallChart] mounted - props.data.time_series數量:', this.data.time_series?.length || 0);
       const hasRain = this.data.time_series?.some(item => (parseFloat(item.hourly) || 0) > 0);
-      console.log('[RainfallChart] mounted - props.data是否包含雨量:', hasRain);
     }
     
     // 如果沒有regionCode，使用props傳入的data
     // 如果有regionCode，載入今天的數據
     if (this.regionCode) {
-      console.log('[RainfallChart] 使用regionCode模式，載入日期:', this.selectedDate);
       this.loadDataForDate(this.selectedDate);
     } else if (this.data && !this.loading) {
-      console.log('[RainfallChart] 使用props.data模式，創建圖表');
       this.createChart();
     } else {
       console.warn('[RainfallChart] 沒有regionCode也沒有data，無法顯示圖表');
@@ -225,7 +223,6 @@ export default {
       this.loadingData = true;
       try {
         const axios = (await import('axios')).default;
-        console.log('載入雨量數據，日期:', dateStr, 'regionCode:', this.regionCode);
         const response = await axios.get(`/api/warning-regions/${this.regionCode}/data`, {
           params: { 
             dataType: 'chart2', 
@@ -234,11 +231,9 @@ export default {
           }
         });
         
-        console.log('雨量API響應:', response.data);
         
         if (response.data.success && response.data.source === 'external_api') {
           this.chartData = response.data.data;
-          console.log('雨量數據已載入，time_series數量:', this.chartData?.time_series?.length || 0);
           this.$nextTick(() => {
             this.updateChart();
           });
@@ -330,7 +325,6 @@ export default {
       // 檢查是否有數據（優先使用chartData，其次使用data）
       const hasData = this.chartData || this.data;
       if (!this.$refs.chartCanvas || !hasData) {
-        console.log('無法創建圖表 - canvas:', !!this.$refs.chartCanvas, 'data:', !!hasData);
         return;
       }
       
@@ -350,7 +344,6 @@ export default {
         
         const chartData = this.prepareChartData();
         const suggestedMaxValue = chartData.suggestedMax || 1;
-        console.log('創建圖表，Y軸最大值:', suggestedMaxValue);
         
         this.chart = new Chart(this.$refs.chartCanvas, {
           type: 'bar',
@@ -474,22 +467,13 @@ export default {
       // 優先使用本地載入的數據（chartData），其次使用props傳入的數據（data）
       const dataSource = this.chartData || this.data;
       
-      console.log('\n========== 準備雨量圖表數據 ==========');
-      console.log('數據來源:', this.chartData ? 'this.chartData (本地載入)' : 'this.data (props)');
-      console.log('選擇的日期:', this.selectedDate, '是否為今天:', this.isToday);
-      console.log('原始數據存在:', !!dataSource);
       if (dataSource) {
-        console.log('time_series數量:', dataSource.time_series?.length || 0);
-        console.log('timeSeries數量:', dataSource.timeSeries?.length || 0);
         if (dataSource.time_series) {
           const rainData = dataSource.time_series.filter(item => (parseFloat(item.hourly) || 0) > 0);
-          console.log('包含hourly>0的記錄數:', rainData.length);
           if (rainData.length > 0) {
-            console.log('前3條有雨記錄:', rainData.slice(0, 3));
           }
         }
       }
-      console.log('=====================================\n');
       
       // 根據選擇的日期生成標籤
       const labels = this.generateTimeLabels();
@@ -534,17 +518,12 @@ export default {
       
       // 情況1: 時間序列數組（優先使用時雨量顯示）
       if (Array.isArray(dataSource.time_series) && dataSource.time_series.length > 0) {
-        console.log('使用time_series數據，數量:', dataSource.time_series.length);
-        console.log('前3條time_series數據:', dataSource.time_series.slice(0, 3));
         
         // 過濾出選定日期的數據
         const filteredTimeSeries = dataSource.time_series.filter(item => {
           return this.isDataInSelectedDate(item);
         });
         
-        console.log(`選定日期(${this.selectedDate})的數據數量:`, filteredTimeSeries.length);
-        console.log('過濾後前5條數據:', filteredTimeSeries.slice(0, 5));
-        console.log('過濾後包含hourly>0的數據:', filteredTimeSeries.filter(item => (parseFloat(item.hourly) || 0) > 0));
         
         filteredTimeSeries.forEach((item, idx) => {
           // 優先使用datetime字段（ISO格式），其次使用time字段
@@ -558,19 +537,16 @@ export default {
           
           // 如果有雨量，输出详细调试信息
           if (hourlyValue > 0 || accumulatedValue > 0) {
-            console.log(`🌧️ [${idx}] 發現雨量數據: timeStr=${timeStr}, hourIndex=${hourIndex}, hourly=${hourlyValue}, accumulated=${accumulatedValue}, maxHour=${maxHour}, isToday=${this.isToday}`);
           }
           
           // 如果是今天，只處理到當前小時
           if (this.isToday && hourIndex > maxHour) {
-            console.log(`⏭️ 跳過未來時段 [${idx}]: hourIndex=${hourIndex} > maxHour=${maxHour}`);
             return;
           }
           
           if (hourIndex >= 0 && hourIndex <= maxHour) {
             // 時雨量取該小時內的最大值（因為hourly字段代表該時刻的小時雨量）
             if (hourlyValue > hourlyValues[hourIndex]) {
-              console.log(`✅ 更新hourlyValues[${hourIndex}]: ${hourlyValues[hourIndex]} -> ${hourlyValue}`);
               hourlyValues[hourIndex] = hourlyValue;
             }
             // 累積雨量取該小時內的最大值（最新值）
@@ -578,7 +554,6 @@ export default {
               accumulatedValues[hourIndex] = accumulatedValue;
             }
             if (idx < 10 || hourlyValue > 0) {
-              console.log(`處理第${idx}條: timeStr=${timeStr}, hourIndex=${hourIndex}, hourly=${hourlyValue}, accumulated=${accumulatedValue}`);
             }
           } else {
             if (hourlyValue > 0 || idx < 5) {
@@ -589,7 +564,6 @@ export default {
       }
       // 情況1b: 如果有hourly_values數組（時雨量專用）
       else if (Array.isArray(dataSource.hourly_values) && dataSource.hourly_values.length > 0) {
-        console.log('使用hourly_values數據，數量:', dataSource.hourly_values.length);
         // 如果hourly_values是按順序對應00:00-23:59
         dataSource.hourly_values.forEach((val, index) => {
           if (index <= maxHour) {
@@ -599,7 +573,6 @@ export default {
       }
       // 情況2: 分離的labels和values數組
       else if (Array.isArray(dataSource.labels) && Array.isArray(dataSource.values)) {
-        console.log('使用labels和values數據');
         dataSource.labels.forEach((label, index) => {
           const hourIndex = this.getHourIndex(label);
           if (hourIndex >= 0 && hourIndex <= maxHour && index < dataSource.values.length) {
@@ -613,7 +586,6 @@ export default {
       }
       // 情況3: 只有values數組（按順序對應00:00-23:59）
       else if (Array.isArray(dataSource.values)) {
-        console.log('使用values數組，數量:', dataSource.values.length);
         dataSource.values.forEach((val, index) => {
           if (index <= maxHour) {
             hourlyValues[index] = parseFloat(val || 0);
@@ -622,7 +594,6 @@ export default {
       }
       // 情況4: 單一數值，顯示在當前小時
       else if (dataSource.rainfall !== undefined || dataSource.value !== undefined || dataSource.hourly !== undefined) {
-        console.log('使用單一數值');
         const hourlyValue = parseFloat(dataSource.hourly || dataSource.rainfall || dataSource.value || 0);
         const now = new Date();
         const currentHour = now.getHours();
@@ -632,7 +603,6 @@ export default {
       }
       // 情況5: 嘗試從data_content中解析
       else if (typeof dataSource === 'object') {
-        console.log('嘗試從對象中查找時間序列數據');
         const findTimeSeries = (obj) => {
           for (const key in obj) {
             if (Array.isArray(obj[key]) && obj[key].length > 0) {
@@ -647,7 +617,6 @@ export default {
         
         const timeSeries = findTimeSeries(dataSource);
         if (timeSeries) {
-          console.log('找到時間序列數據，數量:', timeSeries.length);
           timeSeries.forEach(item => {
             const timeStr = item.time || item.timestamp || item.date;
             const hourIndex = this.getHourIndex(timeStr);
@@ -668,19 +637,12 @@ export default {
       
       // 重新计算累积雨量，确保与时雨量一致
       // 累积雨量 = 从00:00到当前小时的时雨量总和
-      console.log('從時雨量重新計算累積雨量，確保數據一致性');
       let currentAccumulated = 0;
       for (let i = 0; i <= maxHour; i++) {
         currentAccumulated += hourlyValues[i];
         accumulatedValues[i] = currentAccumulated;
       }
       
-      console.log('=== 最終圖表數據 ===');
-      console.log('標籤數量:', labels.length);
-      console.log('時雨量數組 (hourlyValues):', hourlyValues);
-      console.log('累積雨量數組 (accumulatedValues):', accumulatedValues);
-      console.log('時雨量總和:', hourlyValues.reduce((sum, v) => sum + v, 0).toFixed(2), 'mm');
-      console.log('累積雨量最大值:', Math.max(...accumulatedValues).toFixed(2), 'mm');
       
       // 找出有雨的小時
       const rainyHours = [];
@@ -689,13 +651,11 @@ export default {
           rainyHours.push(`${String(idx).padStart(2, '0')}:00 -> ${val.toFixed(2)}mm (累積: ${accumulatedValues[idx].toFixed(2)}mm)`);
         }
       });
-      console.log('有雨的小時:', rainyHours.length > 0 ? rainyHours.join(', ') : '無');
       
       if (rainyHours.length === 0 && Math.max(...accumulatedValues) === 0) {
         console.warn('⚠️ 警告：沒有檢測到任何雨量數據！');
         console.warn('請檢查API數據和日期過濾邏輯');
       }
-      console.log('==================');
       
       // 计算Y轴的合理范围
       const maxHourly = Math.max(...hourlyValues, 0);
@@ -704,12 +664,9 @@ export default {
       
       // 如果最大值很小，设置一个合理的显示范围
       let suggestedMax = maxValue > 0 ? Math.max(maxValue * 1.5, 1) : 1;
-      console.log(`Y轴范围: 0 - ${suggestedMax.toFixed(2)}mm (数据最大值: ${maxValue.toFixed(2)}mm)`);
       
       // 将时雨量中的0值替换为null，这样不会显示柱子
       const hourlyValuesForDisplay = hourlyValues.map(v => v > 0 ? v : null);
-      console.log('显示的时雨量数据（0替换为null）:', hourlyValuesForDisplay);
-      console.log('显示的累积雨量数据:', accumulatedValues);
       
       return {
         labels: labels,

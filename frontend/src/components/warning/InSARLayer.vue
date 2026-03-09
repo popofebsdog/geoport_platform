@@ -155,14 +155,12 @@ export default {
       if (!this.map || this.insarLayer) return
       
       try {
-        console.log('[InSAR] 開始加載 InSAR 數據...', this.dataPath)
         const response = await fetch(this.dataPath)
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`)
         }
         
         this.insarData = await response.json()
-        console.log('[InSAR] 數據加載成功，特徵數量:', this.insarData.features?.length)
         
         this.renderLayer()
       } catch (error) {
@@ -176,7 +174,6 @@ export default {
       const L = window.L
       if (!L) return
       
-      console.log('[InSAR] 開始渲染 InSAR 圖層...')
       
       // 创建圖層組
       this.insarLayer = L.layerGroup().addTo(this.map)
@@ -223,11 +220,9 @@ export default {
         marker.addTo(this.insarLayer)
       })
       
-      console.log('[InSAR] InSAR 圖層渲染完成')
     },
     
     showTimeSeries(properties) {
-      console.log('[InSAR] 顯示時間序列圖表:', properties.CODE)
       this.selectedPoint = properties
       this.showTimeSeriesChart = true
       
@@ -378,7 +373,6 @@ export default {
       // 按時間排序
       timeSeriesData.sort((a, b) => a.timestamp - b.timestamp)
       
-      console.log('[InSAR] 提取到時間序列數據點數:', timeSeriesData.length)
       return timeSeriesData
     },
     
@@ -407,7 +401,6 @@ export default {
       const m = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX)
       const b = (sumY - m * sumX) / n
       
-      console.log('[InSAR] 回歸線參數: m =', m.toFixed(4), ', b =', b.toFixed(4))
       
       // 生成回歸線數據點
       const regressionData = timeSeriesData.map((point, index) => {
@@ -428,7 +421,6 @@ export default {
     
     removeLayer() {
       if (this.insarLayer && this.map) {
-        console.log('[InSAR] 移除 InSAR 圖層')
         this.map.removeLayer(this.insarLayer)
         this.insarLayer = null
       }

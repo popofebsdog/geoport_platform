@@ -164,6 +164,7 @@
 import DateInput from '@/components/DateInput.vue'
 import FullScreenLoader from '@/components/FullScreenLoader.vue'
 import { useAlert } from '@/composables/useAlert'
+import { dataFileAPI } from '@/services/api.js'
 
 export default {
   name: 'BaseMapUploadModal',
@@ -229,10 +230,8 @@ export default {
     },
 
     handleDateInput(value) {
-      console.log('BaseMapUploadModal handleDateInput received:', value, typeof value)
       // 確保 value 是字符串，而不是 Event 對象
       const dateValue = typeof value === 'string' ? value : value.target?.value || ''
-      console.log('BaseMapUploadModal setting date to:', dateValue)
       this.form.date = dateValue
     },
 
@@ -262,7 +261,6 @@ export default {
 
     // 解析檔案名稱，提取道路編號、里程範圍和時間
     parseFileName(filename) {
-      console.log('開始解析檔案名稱:', filename)
       
       try {
         // 檔案名稱格式: 560.T7_0049k+550-0050k+200_ortho_20241107.tif
@@ -299,7 +297,6 @@ export default {
           this.form.date = date
         }
         
-        console.log('解析結果:', this.parsedInfo)
         
       } catch (error) {
         console.error('解析檔案名稱失敗:', error)
@@ -357,15 +354,10 @@ export default {
         this.uploadStatus = '正在上傳到伺服器...'
         this.uploadProgress = 20
 
-        const response = await fetch('http://localhost:3001/api/data/upload', {
-          method: 'POST',
-          body: formData
-        })
+        const result = await dataFileAPI.upload(formData)
 
         this.uploadStatus = '正在處理檔案...'
         this.uploadProgress = 70
-
-        const result = await response.json()
 
         clearInterval(progressInterval)
         this.uploadProgress = 100

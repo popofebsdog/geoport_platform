@@ -317,10 +317,8 @@ export default {
             this.analysisData = newData.metadata.analysis_data
             this.selectedNumericField = this.analysisData.numericFields?.[0] || null
             this.intervals = this.analysisData.intervals || {}
-            console.log('載入潛勢評估編輯數據:', this.analysisData)
           }
           
-          console.log('預填充編輯數據:', newData)
         }
       },
       immediate: true
@@ -359,23 +357,17 @@ export default {
     },
 
     handleDateInput(value) {
-      console.log('LayerUploadModal handleDateInput received:', value, typeof value)
       // 確保 value 是字符串，而不是 Event 對象
       const dateValue = typeof value === 'string' ? value : value.target?.value || ''
-      console.log('LayerUploadModal setting date to:', dateValue)
       this.form.date = dateValue
     },
 
     onColorChange(newColor) {
-      console.log('LayerUploadModal: 顏色變更事件', newColor)
-      console.log('LayerUploadModal: 變更前 form.color', this.form.color)
       // 手動更新 form.color 以確保響應式
       this.form.color = newColor
-      console.log('LayerUploadModal: 變更後 form.color', this.form.color)
       
       // 如果是編輯模式且不是潛勢評估類型，立即更新地圖上的圖層顏色
       if (this.isEditMode && this.editingData && this.form.dataType !== 'potential_analysis') {
-        console.log('LayerUploadModal: 發送顏色更新事件到地圖組件')
         this.$emit('color-changed', {
           fileId: this.editingData.file_id,
           newColor: newColor
@@ -384,23 +376,13 @@ export default {
     },
 
     async handleFileSelect(event) {
-      console.log('文件選擇事件:', event)
-      console.log('event.target.files:', event.target.files)
       
       const file = event.target.files[0]
-      console.log('選擇的文件:', file)
       
       if (file) {
         // 檢查檔案類型
         const allowedTypes = ['.geojson', '.csv', '.json', '.shp', '.kml', '.gpx']
         const fileExtension = '.' + file.name.split('.').pop().toLowerCase()
-        
-        console.log('文件信息:', {
-          name: file.name,
-          size: file.size,
-          type: file.type,
-          extension: fileExtension
-        })
         
         if (!allowedTypes.includes(fileExtension)) {
           this.showAlert({
@@ -413,7 +395,6 @@ export default {
         }
         
         this.form.file = file
-        console.log('設置 form.file:', this.form.file)
         
         // 如果是潛勢評估類型且是 GeoJSON 檔案，自動分析
         if (this.form.dataType === 'potential_analysis' && file.type === 'application/geo+json') {
@@ -442,12 +423,6 @@ export default {
     },
 
     async handleUpload() {
-      console.log('上傳模式檢查:', {
-        isEditMode: this.isEditMode,
-        editingData: this.editingData,
-        form: this.form
-      })
-      
       // 編輯模式下的驗證（不需要檔案）
       if (this.isEditMode) {
         if (!this.form.name || !this.form.date) {
@@ -532,19 +507,6 @@ export default {
           
           formData.append('file', this.form.file)
           formData.append('project_id', this.projectId)
-          
-          // 調試信息
-          console.log('上傳參數:', {
-            data_name: this.form.name,
-            data_description: this.form.description,
-            data_date: this.form.date,
-            data_type: this.form.dataType,
-            project_id: this.projectId,
-            file: this.form.file,
-            file_name: this.form.file?.name,
-            file_size: this.form.file?.size,
-            file_type: this.form.file?.type
-          })
           
           // 檢查文件是否存在
           if (!this.form.file) {

@@ -82,11 +82,7 @@ export const getAllProjects = async (req, res) => {
     });
   } catch (error) {
     console.error('獲取項目列表錯誤:', error);
-    res.status(500).json({
-      success: false,
-      message: '獲取項目列表失敗',
-      error: error.message
-    });
+    res.status(500).json({ success: false, message: '獲取項目列表失敗' });
   }
 };
 
@@ -119,18 +115,23 @@ export const getProjectById = async (req, res) => {
     });
   } catch (error) {
     console.error('獲取項目錯誤:', error);
-    res.status(500).json({
-      success: false,
-      message: '獲取項目失敗',
-      error: error.message
-    });
+    res.status(500).json({ success: false, message: '獲取項目失敗' });
   }
 };
 
 // 創建新項目
 export const createProject = async (req, res) => {
   try {
-    const projectData = req.body;
+    const {
+      name, description, startDate, endDate,
+      roadType, roadNumber, latitude, longitude,
+      status, locationGeometry
+    } = req.body;
+    const projectData = {
+      name, description, startDate, endDate,
+      roadType, roadNumber, latitude, longitude,
+      status, locationGeometry
+    };
 
     // 驗證必填字段
     const requiredFields = ['name', 'description', 'startDate', 'endDate'];
@@ -169,11 +170,7 @@ export const createProject = async (req, res) => {
     });
   } catch (error) {
     console.error('創建項目錯誤:', error);
-    res.status(500).json({
-      success: false,
-      message: '創建項目失敗',
-      error: error.message
-    });
+    res.status(500).json({ success: false, message: '創建項目失敗' });
   }
 };
 
@@ -181,7 +178,15 @@ export const createProject = async (req, res) => {
 export const updateProject = async (req, res) => {
   try {
     const { id } = req.params;
-    const updateData = req.body;
+    const {
+      name, description, startDate, endDate,
+      roadType, roadNumber, latitude, longitude,
+      status, locationGeometry
+    } = req.body;
+    const updateData = Object.fromEntries(
+      Object.entries({ name, description, startDate, endDate, roadType, roadNumber, latitude, longitude, status, locationGeometry })
+        .filter(([, v]) => v !== undefined)
+    );
 
     const project = await Project.findByPk(id);
     if (!project) {
@@ -219,11 +224,7 @@ export const updateProject = async (req, res) => {
     });
   } catch (error) {
     console.error('更新項目錯誤:', error);
-    res.status(500).json({
-      success: false,
-      message: '更新項目失敗',
-      error: error.message
-    });
+    res.status(500).json({ success: false, message: '更新項目失敗' });
   }
 };
 
@@ -248,11 +249,7 @@ export const deleteProject = async (req, res) => {
     });
   } catch (error) {
     console.error('刪除項目錯誤:', error);
-    res.status(500).json({
-      success: false,
-      message: '刪除項目失敗',
-      error: error.message
-    });
+    res.status(500).json({ success: false, message: '刪除項目失敗' });
   }
 };
 
@@ -279,11 +276,7 @@ export const toggleBookmark = async (req, res) => {
     });
   } catch (error) {
     console.error('切換書籤錯誤:', error);
-    res.status(500).json({
-      success: false,
-      message: '切換書籤失敗',
-      error: error.message
-    });
+    res.status(500).json({ success: false, message: '切換書籤失敗' });
   }
 };
 
@@ -306,11 +299,7 @@ export const getDeletedProjects = async (req, res) => {
     });
   } catch (error) {
     console.error('獲取已刪除項目錯誤:', error);
-    res.status(500).json({
-      success: false,
-      message: '獲取已刪除項目失敗',
-      error: error.message
-    });
+    res.status(500).json({ success: false, message: '獲取已刪除項目失敗' });
   }
 };
 
@@ -343,10 +332,6 @@ export const restoreProject = async (req, res) => {
     });
   } catch (error) {
     console.error('還原項目錯誤:', error);
-    res.status(500).json({
-      success: false,
-      message: '還原項目失敗',
-      error: error.message
-    });
+    res.status(500).json({ success: false, message: '還原項目失敗' });
   }
 };

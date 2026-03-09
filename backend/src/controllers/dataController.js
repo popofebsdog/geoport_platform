@@ -6,6 +6,7 @@ import proj4 from 'proj4';
 import { pool } from '../config/database.js';
 import { exec } from 'child_process';
 import { promisify } from 'util';
+import { validateUUID } from '../utils/validators.js';
 
 const execAsync = promisify(exec);
 
@@ -612,7 +613,6 @@ export const uploadData = async (req, res) => {
     res.status(500).json({
       success: false,
       message: '上傳失敗',
-      error: error.message,
       stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
@@ -622,6 +622,7 @@ export const uploadData = async (req, res) => {
 export const getProjectData = async (req, res) => {
   try {
     const { projectId } = req.params;
+    if (!validateUUID(projectId, res, '專案 ID')) return;
     
     const result = await pool.query(`
       SELECT 
@@ -647,7 +648,6 @@ export const getProjectData = async (req, res) => {
     res.status(500).json({
       success: false,
       message: '獲取資料失敗',
-      error: error.message
     });
   }
 };
@@ -656,6 +656,7 @@ export const getProjectData = async (req, res) => {
 export const getDataById = async (req, res) => {
   try {
     const { id } = req.params;
+    if (!validateUUID(id, res, '檔案 ID')) return;
     
     const result = await pool.query(`
       SELECT 
@@ -682,7 +683,6 @@ export const getDataById = async (req, res) => {
     res.status(500).json({
       success: false,
       message: '獲取資料失敗',
-      error: error.message
     });
   }
 };
@@ -691,6 +691,7 @@ export const getDataById = async (req, res) => {
 export const updateData = async (req, res) => {
   try {
     const { id } = req.params;
+    if (!validateUUID(id, res, '檔案 ID')) return;
     const { data_name, data_description, data_date, layer_color } = req.body;
     
     // 首先獲取現有的 metadata
@@ -750,7 +751,6 @@ export const updateData = async (req, res) => {
     res.status(500).json({
       success: false,
       message: '更新資料失敗',
-      error: error.message
     });
   }
 };
@@ -759,6 +759,7 @@ export const updateData = async (req, res) => {
 export const getProjectBaseMaps = async (req, res) => {
   try {
     const { projectId } = req.params;
+    if (!validateUUID(projectId, res, '專案 ID')) return;
     
     const result = await pool.query(`
       SELECT 
@@ -800,7 +801,6 @@ export const getProjectBaseMaps = async (req, res) => {
     res.status(500).json({
       success: false,
       message: '獲取底圖列表失敗',
-      error: error.message
     });
   }
 };
@@ -810,6 +810,7 @@ export const deleteData = async (req, res) => {
   const client = await pool.connect();
   try {
     const { id } = req.params;
+    if (!validateUUID(id, res, '檔案 ID')) return;
     
     await client.query('BEGIN');
 
@@ -888,7 +889,6 @@ export const deleteData = async (req, res) => {
     res.status(500).json({
       success: false,
       message: '刪除資料失敗',
-      error: error.message
     });
   } finally {
     client.release();
@@ -933,7 +933,6 @@ export const downloadFile = async (req, res) => {
     res.status(500).json({
       success: false,
       message: '下載檔案失敗',
-      error: error.message
     });
   }
 };
@@ -942,6 +941,7 @@ export const downloadFile = async (req, res) => {
 export const getProjectGeoJSONList = async (req, res) => {
   try {
     const { projectId } = req.params;
+    if (!validateUUID(projectId, res, '專案 ID')) return;
     
     // 透過 spatial_layers 表查詢，關聯到 data_files 表
     const result = await pool.query(`
@@ -1030,6 +1030,7 @@ export const getProjectGeoJSONList = async (req, res) => {
 export const getProjectGeoJSON = async (req, res) => {
   try {
     const { projectId } = req.params;
+    if (!validateUUID(projectId, res, '專案 ID')) return;
     const { fileId } = req.query; // 支持指定特定的文件 ID
     
     let query, params;
@@ -1211,7 +1212,6 @@ export const getProjectGeoJSON = async (req, res) => {
     res.status(500).json({
       success: false,
       message: '獲取 GeoJSON 資料失敗',
-      error: error.message
     });
   }
 };
@@ -1296,7 +1296,6 @@ export const uploadToFeature = async (req, res) => {
     res.status(500).json({
       success: false,
       message: '關聯上傳失敗',
-      error: error.message
     });
   }
 };
@@ -1328,7 +1327,6 @@ export const getFeatureUploads = async (req, res) => {
     res.status(500).json({
       success: false,
       message: '獲取關聯上傳資料失敗',
-      error: error.message
     });
   }
 };
@@ -1369,7 +1367,6 @@ export const deleteFeatureUpload = async (req, res) => {
     res.status(500).json({
       success: false,
       message: '刪除關聯上傳資料失敗',
-      error: error.message
     });
   }
 };

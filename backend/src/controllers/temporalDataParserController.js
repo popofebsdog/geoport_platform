@@ -91,7 +91,6 @@ const parseCSVForCharting = async (req, res) => {
     res.status(500).json({
       success: false,
       message: '解析時序資料失敗',
-      error: error.message
     });
   }
 };
@@ -395,7 +394,6 @@ const getAvailableColumns = async (req, res) => {
     res.status(500).json({
       success: false,
       message: '獲取可用欄位失敗',
-      error: error.message
     });
   }
 };

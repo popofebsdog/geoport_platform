@@ -4,6 +4,7 @@
  */
 
 import { pool } from '../config/database.js';
+import { validateUUID } from '../utils/validators.js';
 
 /**
  * 取得專案的所有報告連結
@@ -12,6 +13,7 @@ import { pool } from '../config/database.js';
 export const getReportLinks = async (req, res) => {
   try {
     const { id } = req.params;
+    if (!validateUUID(id, res, '母專案 ID')) return;
     const result = await pool.query(
       `SELECT id, project_id, title, url, created_at
        FROM project_report_links
@@ -22,7 +24,6 @@ export const getReportLinks = async (req, res) => {
     res.json({ success: true, data: result.rows });
   } catch (error) {
     console.error('取得報告連結失敗:', error);
-    res.status(500).json({ success: false, message: '取得報告連結失敗', error: error.message });
   }
 };
 
@@ -33,6 +34,7 @@ export const getReportLinks = async (req, res) => {
 export const createReportLink = async (req, res) => {
   try {
     const { id } = req.params;
+    if (!validateUUID(id, res, '母專案 ID')) return;
     const { title, url } = req.body;
 
     if (!title || !url) {
@@ -58,7 +60,6 @@ export const createReportLink = async (req, res) => {
     res.status(201).json({ success: true, data: result.rows[0], message: '報告連結新增成功' });
   } catch (error) {
     console.error('新增報告連結失敗:', error);
-    res.status(500).json({ success: false, message: '新增報告連結失敗', error: error.message });
   }
 };
 
@@ -69,6 +70,8 @@ export const createReportLink = async (req, res) => {
 export const updateReportLink = async (req, res) => {
   try {
     const { id, linkId } = req.params;
+    if (!validateUUID(id, res, '母專案 ID')) return;
+    if (!validateUUID(linkId, res, '連結 ID')) return;
     const { title, url } = req.body;
 
     if (!title || !url) {
@@ -90,7 +93,6 @@ export const updateReportLink = async (req, res) => {
     res.json({ success: true, data: result.rows[0], message: '報告連結已更新' });
   } catch (error) {
     console.error('更新報告連結失敗:', error);
-    res.status(500).json({ success: false, message: '更新報告連結失敗', error: error.message });
   }
 };
 
@@ -101,6 +103,8 @@ export const updateReportLink = async (req, res) => {
 export const deleteReportLink = async (req, res) => {
   try {
     const { id, linkId } = req.params;
+    if (!validateUUID(id, res, '母專案 ID')) return;
+    if (!validateUUID(linkId, res, '連結 ID')) return;
     const result = await pool.query(
       `DELETE FROM project_report_links
        WHERE id = $1 AND project_id = $2
@@ -115,6 +119,5 @@ export const deleteReportLink = async (req, res) => {
     res.json({ success: true, message: '報告連結已刪除' });
   } catch (error) {
     console.error('刪除報告連結失敗:', error);
-    res.status(500).json({ success: false, message: '刪除報告連結失敗', error: error.message });
   }
 };

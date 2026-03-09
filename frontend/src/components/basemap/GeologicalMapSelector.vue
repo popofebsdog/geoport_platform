@@ -126,7 +126,6 @@ export default {
           selectedLayers: selectedLayers.value
         })
         
-        console.log('地質圖層切換:', isActive.value ? '啟用' : '停用')
       } catch (err) {
         console.error('地質圖層切換錯誤:', err)
         error.value = '切換地質圖層失敗'

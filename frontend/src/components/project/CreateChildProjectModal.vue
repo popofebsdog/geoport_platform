@@ -224,6 +224,7 @@
 </template>
 
 <script>
+import api from '@/services/api.js'
 import { ref, computed, inject } from 'vue'
 
 export default {
@@ -308,17 +309,12 @@ export default {
           tags: null // 不使用標籤
         }
         
-        console.log('提交的事件日期時間:', eventDateTime)
-        console.log('提交的座標:', submitData.locationGeometry)
         
-        console.log('提交子專案資料:', submitData)
-        console.log('母專案 ID:', props.parentProject.project_id)
         
         // 調用 API
-        const response = await window.$api.post(`/parent-projects/${props.parentProject.project_id}/children`, submitData)
+        const response = await api.post(`/parent-projects/${props.parentProject.project_id}/children`, submitData)
         
         if (response.success) {
-          console.log('子專案創建成功:', response.data)
           emit('created', response.data)
           closeModal()
         } else {

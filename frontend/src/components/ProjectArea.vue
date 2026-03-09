@@ -221,7 +221,6 @@ export default {
   methods: {
     // 處理專案點擊事件
     handleProjectClick(project) {
-      console.log('ProjectArea: 專案被點擊:', project)
       this.$emit('project-clicked', project)
     },
     

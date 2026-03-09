@@ -3,6 +3,7 @@ import XLSX from 'xlsx';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs/promises';
+import { validateUUID } from '../utils/validators.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -104,7 +105,6 @@ async function getWarningRegions(req, res) {
     res.status(500).json({
       success: false,
       message: '獲取預警地區列表失敗',
-      error: error.message
     });
   }
 }
@@ -152,7 +152,6 @@ async function getWarningRegionByCode(req, res) {
     res.status(500).json({
       success: false,
       message: '獲取預警地區資訊失敗',
-      error: error.message
     });
   }
 }
@@ -249,7 +248,6 @@ async function getWarningRegionData(req, res) {
     res.status(500).json({
       success: false,
       message: '獲取預警地區數據失敗',
-      error: error.message
     });
   }
 }
@@ -751,7 +749,6 @@ async function getExternalApiData(regionCode, dataType, apiConfig, req, res) {
     const emptyResult = {
       dataType: dataType,
       timestamp: new Date().toISOString(),
-      error: error.message
     };
     
     // 根據數據類型返回對應的空結構
@@ -841,7 +838,6 @@ async function upsertWarningRegionData(req, res) {
     res.status(500).json({
       success: false,
       message: '儲存預警地區數據失敗',
-      error: error.message
     });
   }
 }
@@ -991,7 +987,6 @@ async function createRegionProject(req, res) {
     res.status(500).json({
       success: false,
       message: '建立地區專案失敗',
-      error: error.message
     });
   }
 }
@@ -1002,9 +997,8 @@ async function createRegionProject(req, res) {
 async function updateRegionProject(req, res) {
   try {
     const { regionId } = req.params;
+    if (!validateUUID(regionId, res, '地區 ID')) return;
     const { regionName, description, latitude, longitude, apiConfig } = req.body;
-    
-    // region_id 是 UUID 類型，直接使用字符串
     
     // 驗證必填欄位
     if (!regionName) {
@@ -1121,7 +1115,6 @@ async function updateRegionProject(req, res) {
     res.status(500).json({
       success: false,
       message: '更新地區專案失敗',
-      error: error.message
     });
   }
 }
@@ -1176,7 +1169,6 @@ async function getPointColors(req, res) {
     res.status(500).json({
       success: false,
       message: '獲取點位顏色配置失敗',
-      error: error.message
     });
   }
 }
@@ -1259,7 +1251,6 @@ async function upsertPointColor(req, res) {
     res.status(500).json({
       success: false,
       message: '更新點位顏色配置失敗',
-      error: error.message
     });
   }
 }
@@ -1270,12 +1261,9 @@ async function upsertPointColor(req, res) {
 async function importInspectionRecordFromExcel(req, res) {
   try {
     const { regionCode } = req.params;
-    const { filePath } = req.body; // 從請求中獲取文件路徑，或使用默認路徑
     
-    // 默認文件路徑（台8臨37線）
-    // 從 backend/src/controllers 到項目根目錄需要向上三級
-    const defaultFilePath = path.join(__dirname, '../../../data/projects/taiwan837/T8L37_17-22.5K_SlopeCondition_After0403.xlsx');
-    const excelPath = filePath || defaultFilePath;
+    // 使用伺服器端固定路徑，不接受 client 端指定路徑
+    const excelPath = path.join(__dirname, '../../../data/projects/taiwan837/T8L37_17-22.5K_SlopeCondition_After0403.xlsx');
     
     // 讀取 Excel 文件
     const workbook = XLSX.readFile(excelPath);
@@ -1509,7 +1497,6 @@ async function importInspectionRecordFromExcel(req, res) {
                 row: rowIndex,
                 mileage: cleanMileage,
                 type: 'routine',
-                error: error.message
               });
             }
           }
@@ -1572,7 +1559,6 @@ async function importInspectionRecordFromExcel(req, res) {
                 row: rowIndex,
                 mileage: cleanMileage,
                 type: 'special',
-                error: error.message
               });
             }
           }
@@ -1605,7 +1591,6 @@ async function importInspectionRecordFromExcel(req, res) {
     res.status(500).json({
       success: false,
       message: '導入巡查紀錄失敗',
-      error: error.message
     });
   }
 }
@@ -1664,7 +1649,6 @@ async function getInspectionRecords(req, res) {
     res.status(500).json({
       success: false,
       message: '獲取巡查紀錄失敗',
-      error: error.message
     });
   }
 }
@@ -1768,7 +1752,6 @@ async function createInspectionRecord(req, res) {
     res.status(500).json({
       success: false,
       message: '創建巡查紀錄失敗',
-      error: error.message
     });
   }
 }
@@ -1840,7 +1823,6 @@ async function updateInspectionRecord(req, res) {
     res.status(500).json({
       success: false,
       message: '更新巡查紀錄失敗',
-      error: error.message
     });
   }
 }
@@ -1851,6 +1833,7 @@ async function updateInspectionRecord(req, res) {
 async function deleteRegionProject(req, res) {
   try {
     const { regionId } = req.params;
+    if (!validateUUID(regionId, res, '地區 ID')) return;
     
     // 檢查地區是否存在（使用 region_id）
     const checkQuery = `
@@ -1890,7 +1873,6 @@ async function deleteRegionProject(req, res) {
     res.status(500).json({
       success: false,
       message: '刪除監測地區專案失敗',
-      error: error.message
     });
   }
 }
@@ -1932,7 +1914,6 @@ async function getDisasterCountsByMileage(req, res) {
     res.status(500).json({
       success: false,
       message: '獲取災害數量統計失敗',
-      error: error.message
     });
   }
 }
@@ -1976,7 +1957,6 @@ async function getAlertLights(req, res) {
     res.status(500).json({
       success: false,
       message: '獲取告警燈號位置失敗',
-      error: error.message
     });
   }
 }
@@ -2074,7 +2054,6 @@ async function createAlertLight(req, res) {
     res.status(500).json({
       success: false,
       message: '創建告警燈號位置失敗',
-      error: error.message
     });
   }
 }
@@ -2112,7 +2091,45 @@ async function deleteAlertLight(req, res) {
     res.status(500).json({
       success: false,
       message: '刪除告警燈號位置失敗',
-      error: error.message
+    });
+  }
+}
+
+/**
+ * 刪除告警燈號位置（使用 region_id）
+ */
+async function deleteAlertLightById(req, res) {
+  try {
+    const { regionId, lightId } = req.params;
+    if (!validateUUID(regionId, res, '地區 ID')) return;
+    if (!validateUUID(lightId, res, '燈號 ID')) return;
+
+    const query = `
+      UPDATE warning_region_alert_lights
+      SET deleted_at = CURRENT_TIMESTAMP
+      WHERE light_id = $1 AND region_id = $2 AND deleted_at IS NULL
+      RETURNING *
+    `;
+
+    const result = await pool.query(query, [lightId, regionId]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: '找不到指定的告警燈號位置'
+      });
+    }
+
+    res.json({
+      success: true,
+      message: '告警燈號位置已刪除',
+      data: result.rows[0]
+    });
+  } catch (error) {
+    console.error('刪除告警燈號位置失敗 (by region_id):', error);
+    res.status(500).json({
+      success: false,
+      message: '刪除告警燈號位置失敗',
     });
   }
 }
@@ -2123,9 +2140,9 @@ async function deleteAlertLight(req, res) {
 async function getWarningRegionDataById(req, res) {
   try {
     const { regionId } = req.params;
+    if (!validateUUID(regionId, res, '地區 ID')) return;
     const { dataType, limit = 100, useExternalApi = 'false' } = req.query;
     
-    // region_id 是 UUID 類型，直接使用字符串
     console.log(`[getWarningRegionDataById] 查詢 region_id=${regionId}`);
     
     // 先獲取地區資訊和API配置（使用 region_id）
@@ -2211,7 +2228,6 @@ async function getWarningRegionDataById(req, res) {
     res.status(500).json({
       success: false,
       message: '獲取預警地區數據失敗',
-      error: error.message
     });
   }
 }
@@ -2222,8 +2238,8 @@ async function getWarningRegionDataById(req, res) {
 async function getPointColorsById(req, res) {
   try {
     const { regionId } = req.params;
+    if (!validateUUID(regionId, res, '地區 ID')) return;
     
-    // region_id 是 UUID 類型，直接使用字符串
     console.log(`[getPointColorsById] 查詢 region_id=${regionId} 的點位顏色配置`);
     
     // 獲取所有點位顏色配置（直接使用 region_id）
@@ -2255,7 +2271,6 @@ async function getPointColorsById(req, res) {
     res.status(500).json({
       success: false,
       message: '獲取點位顏色配置失敗',
-      error: error.message
     });
   }
 }
@@ -2266,6 +2281,7 @@ async function getPointColorsById(req, res) {
 async function upsertPointColorById(req, res) {
   try {
     const { regionId } = req.params;
+    if (!validateUUID(regionId, res, '地區 ID')) return;
     const { longitude, latitude, mileage, roadSection, pointColor } = req.body;
     
     console.log(`[upsertPointColorById] 開始更新點位顏色`, {
@@ -2341,7 +2357,6 @@ async function upsertPointColorById(req, res) {
     });
   } catch (error) {
     console.error('[upsertPointColorById] 更新點位顏色配置失敗:', {
-      error: error.message,
       stack: error.stack,
       regionId: req.params.regionId,
       body: req.body
@@ -2349,7 +2364,6 @@ async function upsertPointColorById(req, res) {
     res.status(500).json({
       success: false,
       message: '更新點位顏色配置失敗',
-      error: error.message
     });
   }
 }
@@ -2360,8 +2374,7 @@ async function upsertPointColorById(req, res) {
 async function getInspectionRecordsById(req, res) {
   try {
     const { regionId } = req.params;
-    
-    // region_id 是 UUID 類型，直接使用字符串
+    if (!validateUUID(regionId, res, '地區 ID')) return;
     
     // 先獲取 region_code（用於查詢）
     const regionQuery = `
@@ -2428,7 +2441,6 @@ async function getInspectionRecordsById(req, res) {
     res.status(500).json({
       success: false,
       message: '獲取巡查紀錄失敗',
-      error: error.message
     });
   }
 }
@@ -2439,8 +2451,7 @@ async function getInspectionRecordsById(req, res) {
 async function getAlertLightsById(req, res) {
   try {
     const { regionId } = req.params;
-    
-    // region_id 是 UUID 類型，直接使用字符串
+    if (!validateUUID(regionId, res, '地區 ID')) return;
     
     // 先獲取 region_code（用於查詢）
     const regionQuery = `
@@ -2489,7 +2500,6 @@ async function getAlertLightsById(req, res) {
     res.status(500).json({
       success: false,
       message: '獲取告警燈號位置失敗',
-      error: error.message
     });
   }
 }
@@ -2500,8 +2510,8 @@ async function getAlertLightsById(req, res) {
 async function getDisasterCountsByMileageById(req, res) {
   try {
     const { regionId } = req.params;
+    if (!validateUUID(regionId, res, '地區 ID')) return;
     
-    // region_id 是 UUID 類型，直接使用字符串
     console.log(`[getDisasterCountsByMileageById] 查詢 region_id=${regionId} 的災害統計`);
     
     // 統計每個里程點的災害數量（使用 region_id）
@@ -2536,8 +2546,33 @@ async function getDisasterCountsByMileageById(req, res) {
     res.status(500).json({
       success: false,
       message: '獲取災害數量統計失敗',
-      error: error.message
     });
+  }
+}
+
+async function deleteInspectionRecord(req, res) {
+  try {
+    const { regionCode, recordId } = req.params;
+
+    const checkResult = await pool.query(
+      `SELECT record_id FROM inspection_records
+       WHERE record_id = $1 AND region_code = $2 AND deleted_at IS NULL`,
+      [recordId, regionCode]
+    );
+
+    if (checkResult.rows.length === 0) {
+      return res.status(404).json({ success: false, message: '找不到指定的巡查紀錄' });
+    }
+
+    await pool.query(
+      `UPDATE inspection_records SET deleted_at = CURRENT_TIMESTAMP WHERE record_id = $1`,
+      [recordId]
+    );
+
+    res.json({ success: true, message: '巡查紀錄已刪除' });
+  } catch (error) {
+    console.error('刪除巡查紀錄失敗:', error);
+    res.status(500).json({ success: false, message: '刪除巡查紀錄失敗' });
   }
 }
 
@@ -2558,11 +2593,13 @@ export {
   getInspectionRecordsById,
   createInspectionRecord,
   updateInspectionRecord,
+  deleteInspectionRecord,
   deleteRegionProject,
   getAlertLights,
   getAlertLightsById,
   createAlertLight,
   deleteAlertLight,
+  deleteAlertLightById,
   getDisasterCountsByMileage,
   getDisasterCountsByMileageById
 };

@@ -25,8 +25,6 @@ api.interceptors.request.use(
 // 響應攔截器
 api.interceptors.response.use(
   (response) => {
-    console.log('API 響應攔截器 - 原始響應:', response);
-    console.log('API 響應攔截器 - 返回數據:', response.data);
     return response.data;
   },
   (error) => {
@@ -34,8 +32,8 @@ api.interceptors.response.use(
     if (error.response?.status === 401) {
       // 清除過期的令牌
       localStorage.removeItem('authToken');
-      // 重定向到登入頁面
-      window.location.href = '/login';
+      // 重定向到登入頁面，保留目前路徑供登入後返回
+      window.location.href = `/login?redirect=${encodeURIComponent(window.location.pathname)}`;
     }
     // 保持完整的錯誤對象，包含 response 信息
     return Promise.reject(error);
@@ -146,20 +144,14 @@ export const reportAPI = {
 };
 
 export const authAPI = {
-  // 登入
   login: (credentials) => api.post('/auth/login', credentials),
-  
-  // 註冊
   register: (userData) => api.post('/auth/register', userData),
-  
-  // 登出
   logout: () => api.post('/auth/logout'),
-  
-  // 獲取用戶資料
   getProfile: () => api.get('/auth/profile'),
-  
-  // 更新用戶資料
-  updateProfile: (data) => api.put('/auth/profile', data)
+  updateProfile: (data) => api.put('/auth/profile', data),
+  // User management (admin)
+  getUsers: () => api.get('/auth/users'),
+  updateUser: (id, data) => api.put(`/auth/users/${id}`, data)
 };
 
 export default api;

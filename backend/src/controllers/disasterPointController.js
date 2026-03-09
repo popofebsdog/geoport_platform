@@ -11,8 +11,13 @@ import fs from 'fs/promises';
 // 配置 multer 用於上傳媒體文件
 const storage = multer.diskStorage({
   destination: async (req, file, cb) => {
-    // 使用 uploads/data/disaster-points 作為基礎目錄
-    const uploadDir = path.join(process.cwd(), 'uploads', 'data', 'disaster-points', req.body.project_id || 'default');
+    // 驗證 project_id 格式（UUID），防止 path traversal
+    const rawProjectId = req.body.project_id || 'default';
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const safeProjectId = (rawProjectId === 'default' || uuidRegex.test(rawProjectId))
+      ? rawProjectId
+      : 'default';
+    const uploadDir = path.join(process.cwd(), 'uploads', 'data', 'disaster-points', path.basename(safeProjectId));
     try {
       await fs.mkdir(uploadDir, { recursive: true });
       cb(null, uploadDir);
@@ -130,7 +135,6 @@ export const getDisasterPointsByProject = async (req, res) => {
     res.status(500).json({
       success: false,
       message: '獲取災點紀錄失敗',
-      error: error.message
     });
   }
 };
@@ -212,7 +216,6 @@ export const getDisasterPointById = async (req, res) => {
     res.status(500).json({
       success: false,
       message: '獲取災點紀錄失敗',
-      error: error.message
     });
   }
 };
@@ -414,7 +417,6 @@ export const createDisasterPoint = async (req, res) => {
     res.status(500).json({
       success: false,
       message: '創建災點紀錄失敗',
-      error: error.message
     });
   }
 };
@@ -676,7 +678,6 @@ export const updateDisasterPoint = async (req, res) => {
     res.status(500).json({
       success: false,
       message: '更新災點紀錄失敗',
-      error: error.message || '未知錯誤'
     });
   }
 };
@@ -783,7 +784,6 @@ export const deleteDisasterPoint = async (req, res) => {
     res.status(500).json({
       success: false,
       message: '刪除災點紀錄失敗',
-      error: error.message
     });
   }
 };
@@ -870,7 +870,6 @@ export const deleteDisasterPointMedia = async (req, res) => {
     res.status(500).json({
       success: false,
       message: '刪除媒體文件失敗',
-      error: error.message
     });
   }
 };

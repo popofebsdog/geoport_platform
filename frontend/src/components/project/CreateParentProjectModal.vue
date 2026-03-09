@@ -253,6 +253,7 @@
 </template>
 
 <script>
+import api from '@/services/api.js'
 import { ref, computed, inject } from 'vue'
 
 export default {
@@ -348,13 +349,11 @@ export default {
           tags: formData.value.tags ? formData.value.tags.split(',').map(t => t.trim()).filter(t => t) : []
         }
         
-        console.log('提交母專案資料:', submitData)
         
         // 調用 API
-        const response = await window.$api.post('/parent-projects', submitData)
+        const response = await api.post('/parent-projects', submitData)
         
         if (response.success) {
-          console.log('母專案創建成功:', response.data)
           emit('created', response.data)
           closeModal()
         } else {

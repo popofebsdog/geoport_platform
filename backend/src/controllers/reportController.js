@@ -40,7 +40,6 @@ export const getAllReports = async (req, res) => {
     res.status(500).json({
       success: false,
       message: '獲取報告列表失敗',
-      error: error.message
     });
   }
 };
@@ -67,7 +66,6 @@ export const getReportById = async (req, res) => {
     res.status(500).json({
       success: false,
       message: '獲取報告失敗',
-      error: error.message
     });
   }
 };
@@ -120,7 +118,6 @@ export const createReport = async (req, res) => {
     res.status(500).json({
       success: false,
       message: '創建報告失敗',
-      error: error.message
     });
   }
 };
@@ -152,7 +149,6 @@ export const updateReport = async (req, res) => {
     res.status(500).json({
       success: false,
       message: '更新報告失敗',
-      error: error.message
     });
   }
 };
@@ -181,7 +177,6 @@ export const deleteReport = async (req, res) => {
     res.status(500).json({
       success: false,
       message: '刪除報告失敗',
-      error: error.message
     });
   }
 };
@@ -212,7 +207,6 @@ export const toggleBookmark = async (req, res) => {
     res.status(500).json({
       success: false,
       message: '切換書籤狀態失敗',
-      error: error.message
     });
   }
 };
@@ -239,7 +233,6 @@ export const getDeletedReports = async (req, res) => {
     res.status(500).json({
       success: false,
       message: '獲取已刪除報告失敗',
-      error: error.message
     });
   }
 };
@@ -272,7 +265,6 @@ export const restoreReport = async (req, res) => {
     res.status(500).json({
       success: false,
       message: '還原報告失敗',
-      error: error.message
     });
   }
 };

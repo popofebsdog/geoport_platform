@@ -35,6 +35,10 @@ export default {
     regionCode: {
       type: String,
       default: null
+    },
+    regionId: {
+      type: String,
+      default: null
     }
   },
   data() {
@@ -179,12 +183,6 @@ export default {
           const today = new Date();
           const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
           
-          console.log('🗓️ 日期檢查:', {
-            eventDate,
-            todayStr,
-            isToday: eventDate === todayStr
-          });
-          
           return eventDate === todayStr;
         }
       } catch (e) {
@@ -313,7 +311,6 @@ export default {
       }
     },
     prepareChartData() {
-      console.log('準備強地動圖表數據，原始數據:', this.data);
       
       if (!this.data) {
         console.warn('強地動數據為空');
@@ -364,12 +361,10 @@ export default {
             }]
           };
         }
-        console.log('⚡ 檢測到今日地震事件波形數據，使用事件模式渲染');
         return this.prepareEventChartData();
       }
       
       // 日常監測模式：按小時分組
-      console.log('📊 使用日常監測模式（按小時分組）');
       const labels = this.generateTimeLabels();
       const now = new Date();
       const currentHour = now.getHours();
@@ -377,7 +372,6 @@ export default {
       
       // 情況1: 時間序列數組
       if (Array.isArray(this.data.time_series) && this.data.time_series.length > 0) {
-        console.log('使用time_series數據，數量:', this.data.time_series.length);
         this.data.time_series.forEach(item => {
           const timeStr = item.time || item.timestamp || item.date;
           const hourIndex = this.getHourIndex(timeStr);
@@ -395,7 +389,6 @@ export default {
       }
       // 情況2: 分離的labels和values數組
       else if (Array.isArray(this.data.labels) && Array.isArray(this.data.values)) {
-        console.log('使用labels和values數據');
         this.data.labels.forEach((label, index) => {
           const hourIndex = this.getHourIndex(label);
           // 只处理到当前小时
@@ -409,7 +402,6 @@ export default {
       }
       // 情況3: 只有values數組（按順序對應00:00-23:59）
       else if (Array.isArray(this.data.values)) {
-        console.log('使用values數組，數量:', this.data.values.length);
         this.data.values.forEach((val, index) => {
           // 只处理到当前小时
           if (index <= currentHour) {
@@ -419,7 +411,6 @@ export default {
       }
       // 情況4: 單一數值，顯示在當前小時
       else if (this.data.pga !== undefined || this.data.acceleration !== undefined || this.data.value !== undefined || this.data.max_acceleration !== undefined) {
-        console.log('使用單一數值');
         const value = parseFloat(this.data.pga || this.data.acceleration || this.data.value || this.data.max_acceleration || 0);
         const now = new Date();
         const currentHour = now.getHours();
@@ -427,7 +418,6 @@ export default {
       }
       // 情況5: 嘗試從data_content中解析
       else if (typeof this.data === 'object') {
-        console.log('嘗試從對象中查找時間序列數據');
         const findTimeSeries = (obj) => {
           for (const key in obj) {
             if (Array.isArray(obj[key]) && obj[key].length > 0) {
@@ -442,7 +432,6 @@ export default {
         
         const timeSeries = findTimeSeries(this.data);
         if (timeSeries) {
-          console.log('找到時間序列數據，數量:', timeSeries.length);
           timeSeries.forEach(item => {
             const timeStr = item.time || item.timestamp || item.date;
             const hourIndex = this.getHourIndex(timeStr);
@@ -457,7 +446,6 @@ export default {
         }
       }
       
-      console.log('最終圖表數據 - 標籤數量:', labels.length, '數值數量:', values.length, '數值:', values);
       
       return {
         labels: labels,
@@ -479,17 +467,6 @@ export default {
       const metadata = this.data.parsed.metadata;
       const timeSeries = this.data.parsed.timeSeries;
       
-      console.log('地震事件詳情:', {
-        station: metadata.stationCode,
-        startTime: metadata.startTime,
-        recordLength: metadata.recordLength,
-        sampleRate: metadata.sampleRate,
-        dataPoints: timeSeries.length,
-        pgaU: metadata.amplitudeMaxU?.abs,
-        pgaN: metadata.amplitudeMaxN?.abs,
-        pgaE: metadata.amplitudeMaxE?.abs
-      });
-      
       // 降采样：从24000个点降到120个点（每秒1个点）
       const sampledData = [];
       const samplesPerSecond = metadata.sampleRate; // 200
@@ -506,9 +483,6 @@ export default {
         });
       }
       
-      console.log('降采样后数据点数量:', sampledData.length);
-      console.log('前5个采样点:', sampledData.slice(0, 5));
-      console.log('PGA值:', Math.max(...sampledData.map(d => d.value)));
       
       const labels = sampledData.map(d => `${d.time}s`);
       const values = sampledData.map(d => d.value);

@@ -141,6 +141,8 @@
 <script>
 import { ref, computed, onMounted, inject } from 'vue'
 import { useRouter } from 'vue-router'
+import api from '@/services/api.js'
+import { alert as showAlert, confirm as showConfirm, error as showError } from '@/utils/simpleAlertService.js'
 import ParentProjectCard from '@/components/project/ParentProjectCard.vue'
 import CreateParentProjectModal from '@/components/project/CreateParentProjectModal.vue'
 import EditParentProjectModal from '@/components/project/EditParentProjectModal.vue'
@@ -193,10 +195,9 @@ export default {
     const loadParentProjects = async () => {
       isLoading.value = true
       try {
-        const response = await window.$api.get('/parent-projects')
+        const response = await api.get('/parent-projects')
         if (response.success) {
           parentProjects.value = response.data
-          console.log('母專案列表載入成功:', response.data.length, '個')
           
           // 載入每個母專案的子專案
           for (const parent of parentProjects.value) {
@@ -205,7 +206,7 @@ export default {
         }
       } catch (error) {
         console.error('載入母專案列表失敗:', error)
-        alert('載入專案列表失敗')
+        showAlert('載入專案列表失敗', '錯誤', isDarkMode.value)
       } finally {
         isLoading.value = false
       }
@@ -214,10 +215,9 @@ export default {
     // 載入子專案列表
     const loadChildProjects = async (parentId) => {
       try {
-        const response = await window.$api.get(`/parent-projects/${parentId}/children`)
+        const response = await api.get(`/parent-projects/${parentId}/children`)
         if (response.success) {
           childProjectsMap.value[parentId] = response.data.children
-          console.log(`母專案 ${parentId} 的子專案:`, response.data.children.length, '個')
         }
       } catch (error) {
         console.error(`載入母專案 ${parentId} 的子專案失敗:`, error)
@@ -226,7 +226,6 @@ export default {
     
     // 處理母專案創建成功
     const handleParentCreated = async (parentProject) => {
-      console.log('母專案創建成功:', parentProject)
       await loadParentProjects()
     }
     
@@ -238,28 +237,23 @@ export default {
     
     // 處理子專案創建成功
     const handleChildCreated = async (childProject) => {
-      console.log('子專案創建成功:', childProject)
       // 重新載入該母專案的子專案列表
       await loadChildProjects(childProject.parent_project_id)
     }
     
     // 處理定位母專案
     const handleLocateParent = (parentProject) => {
-      console.log('定位母專案:', parentProject)
-      // TODO: 實現地圖定位功能
-      alert(`定位到: ${parentProject.name}\n座標: ${parentProject.latitude}, ${parentProject.longitude}`)
+      showAlert(`座標: ${parentProject.latitude}, ${parentProject.longitude}`, `定位到: ${parentProject.name}`, isDarkMode.value)
     }
     
     // 處理編輯母專案
     const handleEditParent = (parentProject) => {
-      console.log('編輯母專案:', parentProject)
       selectedParentForEdit.value = parentProject
       showEditParentModal.value = true
     }
     
     // 處理母專案更新成功
     const handleParentUpdated = async (updatedParent) => {
-      console.log('母專案更新成功:', updatedParent)
       // 重新載入母專案列表
       await loadParentProjects()
       // 關閉模態框
@@ -269,25 +263,22 @@ export default {
     
     // 處理刪除母專案
     const handleDeleteParent = async (parentProject) => {
-      if (!confirm(`確定要刪除地點「${parentProject.name}」嗎？\n\n此操作將同時刪除所有相關的時期專案！`)) {
-        return
-      }
+      const confirmed = await showConfirm(`確定要刪除地點「${parentProject.name}」嗎？此操作將同時刪除所有相關的時期專案！`, '確認刪除', isDarkMode.value)
+      if (!confirmed) return
       
       try {
-        const response = await window.$api.delete(`/parent-projects/${parentProject.project_id}`)
+        const response = await api.delete(`/parent-projects/${parentProject.project_id}`)
         if (response.success) {
-          console.log('母專案刪除成功')
           await loadParentProjects()
         }
       } catch (error) {
         console.error('刪除母專案失敗:', error)
-        alert(`刪除失敗: ${error.response?.data?.message || error.message}`)
+        showError('刪除地點失敗，請稍後再試', '刪除失敗', isDarkMode.value)
       }
     }
     
     // 處理開啟子專案
     const handleOpenChild = (childProject) => {
-      console.log('開啟子專案:', childProject)
       // 導航到專案詳情頁面
       router.push({
         name: 'project-detail',
@@ -295,29 +286,25 @@ export default {
       })
     }
     
-    // 處理編輯子專案
+    // 處理編輯子專案（由 EditChildProjectModal 負責）
     const handleEditChild = (childProject) => {
-      console.log('編輯子專案:', childProject)
-      // TODO: 實現編輯功能
-      alert('編輯子專案功能開發中')
+      selectedParentProject.value = childProject
+      showCreateChildModal.value = true
     }
     
     // 處理刪除子專案
     const handleDeleteChild = async (childProject) => {
-      if (!confirm(`確定要刪除時期「${childProject.name}」嗎？`)) {
-        return
-      }
+      const confirmed = await showConfirm(`確定要刪除時期「${childProject.name}」嗎？`, '確認刪除', isDarkMode.value)
+      if (!confirmed) return
       
       try {
-        const response = await window.$api.delete(`/child-projects/${childProject.project_id}`)
+        const response = await api.delete(`/child-projects/${childProject.project_id}`)
         if (response.success) {
-          console.log('子專案刪除成功')
-          // 重新載入該母專案的子專案列表
           await loadChildProjects(childProject.parent_project_id)
         }
       } catch (error) {
         console.error('刪除子專案失敗:', error)
-        alert(`刪除失敗: ${error.response?.data?.message || error.message}`)
+        showError('刪除時期專案失敗，請稍後再試', '刪除失敗', isDarkMode.value)
       }
     }
     

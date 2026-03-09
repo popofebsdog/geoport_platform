@@ -208,19 +208,6 @@ export default {
           if (data.source === 'external_api') {
             const apiData = data.data || {};
             
-            console.log(`檢查${apiName} API數據:`, {
-              hasTimeSeries: !!apiData.time_series,
-              timeSeriesLength: apiData.time_series?.length || 0,
-              hasValues: !!apiData.values,
-              valuesLength: apiData.values?.length || 0,
-              hasPga: apiData.pga !== null && apiData.pga !== undefined,
-              hasAcceleration: apiData.acceleration !== null && apiData.acceleration !== undefined,
-              hasMaxAcceleration: apiData.max_acceleration !== null && apiData.max_acceleration !== undefined,
-              hasLatestValue: apiData.latest_value !== null && apiData.latest_value !== undefined,
-              warning: apiData.warning,
-              error: apiData.error
-            });
-            
             // 檢查是否有數據（對於強地動，也要檢查PGA和加速度值）
             if (apiData.time_series && Array.isArray(apiData.time_series) && apiData.time_series.length > 0) {
               dataCount = apiData.time_series.length;

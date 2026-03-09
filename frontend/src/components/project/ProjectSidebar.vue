@@ -410,8 +410,6 @@ export default {
     allLayers() {
       const layers = []
       
-      console.log('=== allLayers 計算開始 ===')
-      console.log('uploadedData 順序:', this.uploadedData.map(d => d.file_name))
       
       // 添加所有上傳的資料（包括 GeoJSON 和其他類型）
       this.uploadedData.forEach(data => {
@@ -433,32 +431,24 @@ export default {
         })
       })
       
-      console.log('創建的 layers:', layers.map(l => `${l.name} (${l.id})`))
       
       // 檢查是否有新圖層需要添加到 layerOrder 中
       const currentLayerIds = layers.map(l => l.id)
       const newLayerIds = currentLayerIds.filter(id => !this.layerOrder.includes(id))
       
       if (newLayerIds.length > 0) {
-        console.log('發現新圖層，添加到 layerOrder:', newLayerIds)
         // 將新圖層添加到 layerOrder 的開頭（最上面）
         this.layerOrder = [...newLayerIds, ...this.layerOrder]
-        console.log('更新後的 layerOrder:', [...this.layerOrder])
       }
       
       // 清理 layerOrder 中不存在的圖層
       const validLayerIds = this.layerOrder.filter(id => currentLayerIds.includes(id))
       if (validLayerIds.length !== this.layerOrder.length) {
-        console.log('清理 layerOrder 中不存在的圖層')
         this.layerOrder = validLayerIds
-        console.log('清理後的 layerOrder:', [...this.layerOrder])
       }
       
       // 如果有自定義順序，按照自定義順序排序
       if (this.layerOrder.length > 0) {
-        console.log('=== allLayers 計算屬性 ===')
-        console.log('當前 layerOrder:', [...this.layerOrder])
-        console.log('排序前的 layers:', layers.map(l => l.name))
         
         const sortedLayers = layers.sort((a, b) => {
           const indexA = this.layerOrder.indexOf(a.id)
@@ -475,8 +465,6 @@ export default {
           return 0
         })
         
-        console.log('排序後的 layers:', sortedLayers.map(l => l.name))
-        console.log('=== allLayers 計算結束 ===')
         return sortedLayers
       }
       
@@ -497,27 +485,23 @@ export default {
         return new Date(b.data.upload_date) - new Date(a.data.upload_date)
       })
       
-      console.log('沒有自定義順序，按新圖層優先排序:', sortedLayers.map(l => l.name))
       return sortedLayers
     }
   },
   watch: {
     baseMapService: {
       handler(newVal) {
-        console.log('ProjectSidebar baseMapService 變化:', !!newVal)
       },
       immediate: true
     },
     layerVisibility: {
       handler(newVal) {
-        console.log('ProjectSidebar layerVisibility 變化:', newVal)
       },
       deep: true,
       immediate: true
     },
     layerOrder: {
       handler(newVal) {
-        console.log('ProjectSidebar layerOrder 變化:', newVal)
       },
       deep: true,
       immediate: true
@@ -588,7 +572,6 @@ export default {
     // 獲取圖層可見性狀態
     getLayerVisibility(layerId) {
       const visibility = this.layerVisibility[layerId]
-      console.log(`getLayerVisibility(${layerId}):`, visibility, 'layerVisibility:', this.layerVisibility)
       // 明確處理 undefined 的情況，默認返回 false（隱藏狀態）
       return visibility === undefined ? false : visibility
     },
@@ -621,32 +604,26 @@ export default {
     
     // 底圖選擇事件處理
     onBaseMapSelected(baseMap) {
-      console.log('底圖被選擇:', baseMap)
       this.$emit('base-map-selected', baseMap)
     },
     
     onBaseMapChanged(baseMap) {
-      console.log('底圖變更:', baseMap)
       this.$emit('base-map-changed', baseMap)
     },
     
     onBaseMapLocated(baseMap) {
-      console.log('定位正射影像:', baseMap)
       this.$emit('base-map-located', baseMap)
     },
     
     onBaseMapEdited(baseMap) {
-      console.log('編輯正射影像:', baseMap)
       this.$emit('base-map-edited', baseMap)
     },
     
     onBaseMapDeleted(baseMap) {
-      console.log('正射影像已刪除:', baseMap)
       this.$emit('base-map-deleted', baseMap)
     },
     
     onBaseMapDeleteRequest(baseMap) {
-      console.log('請求刪除正射影像:', baseMap.name)
       
       // 設置待刪除的底圖和確認訊息
       this.pendingDeleteBaseMap = baseMap
@@ -659,7 +636,6 @@ export default {
       if (!this.pendingDeleteBaseMap) return
       
       const baseMap = this.pendingDeleteBaseMap
-      console.log('確認刪除正射影像:', baseMap.name)
       
       try {
         const response = await fetch(`http://localhost:3001/api/data/${baseMap.id}`, {
@@ -669,7 +645,6 @@ export default {
         const result = await response.json()
         
         if (result.success) {
-          console.log('正射影像刪除成功')
           this.$emit('base-map-deleted', baseMap)
           // 通知 BaseMapSelector 重新載入底圖列表
           if (this.$refs.baseMapSelector) {
@@ -696,7 +671,6 @@ export default {
     
     // 取消刪除
     cancelDelete() {
-      console.log('取消刪除正射影像')
       this.showDeleteConfirm = false
       this.pendingDeleteBaseMap = null
       this.deleteConfirmMessage = ''
@@ -706,13 +680,10 @@ export default {
 
     // 拖拽排序相關方法
     handleDragStart(event, layer) {
-      console.log('=== handleDragStart 被調用 ===')
-      console.log('開始拖拽圖層:', layer.name, layer.id)
       
       // 如果沒有自定義順序，基於當前視覺順序初始化
       if (this.layerOrder.length === 0) {
         this.layerOrder = this.allLayers.map(layer => layer.id)
-        console.log('初始化圖層順序（基於當前視覺順序）:', this.layerOrder)
       }
       
       this.draggedLayer = layer
@@ -724,15 +695,12 @@ export default {
     },
 
     handleDragEnd(event) {
-      console.log('=== handleDragEnd 被調用 ===')
-      console.log('拖拽結束，當前 draggedLayer:', this.draggedLayer?.name)
       event.target.style.opacity = '1'
       
       // 延遲清除拖拽狀態，給 drop 事件一些時間
       setTimeout(() => {
         this.draggedOverLayer = null
         this.draggedLayer = null
-        console.log('拖拽狀態已清除')
       }, 100)
     },
 
@@ -760,12 +728,8 @@ export default {
       event.preventDefault()
       event.stopPropagation()
       
-      console.log('=== handleDrop 被調用 ===')
-      console.log('拖拽的圖層:', this.draggedLayer?.name, this.draggedLayer?.id)
-      console.log('目標圖層:', targetLayer.name, targetLayer.id)
       
       if (!this.draggedLayer || this.draggedLayer.id === targetLayer.id) {
-        console.log('拖拽條件不滿足，取消操作')
         return
       }
 
@@ -781,24 +745,16 @@ export default {
 
     // 使用插入方式更新圖層順序（支持跳層拖拽）
     updateLayerOrderWithInsertion(draggedLayer, targetLayer, insertAfter) {
-      console.log('=== 開始更新圖層順序（插入方式） ===')
-      console.log('拖拽的圖層:', draggedLayer.name, draggedLayer.id)
-      console.log('目標圖層:', targetLayer.name, targetLayer.id)
-      console.log('插入到後面:', insertAfter)
       
       // 找到拖拽圖層和目標圖層的索引
       const draggedIndex = this.layerOrder.indexOf(draggedLayer.id)
       const targetIndex = this.layerOrder.indexOf(targetLayer.id)
       
-      console.log('拖拽圖層索引:', draggedIndex)
-      console.log('目標圖層索引:', targetIndex)
 
       if (draggedIndex === -1 || targetIndex === -1) {
-        console.log('找不到圖層索引，取消操作')
         return
       }
 
-      console.log('插入前順序:', [...this.layerOrder])
       
       // 移除拖拽的圖層
       this.layerOrder.splice(draggedIndex, 1)
@@ -817,41 +773,29 @@ export default {
       // 插入到新位置
       this.layerOrder.splice(newTargetIndex, 0, draggedLayer.id)
       
-      console.log('插入後順序:', [...this.layerOrder])
-      console.log('跳層拖拽完成：', this.getLayerOrderDescription())
       
       // 觸發更新
       this.triggerLayerOrderUpdate()
     },
 
     updateLayerOrder(draggedLayer, targetLayer) {
-      console.log('=== 開始更新圖層順序（交換方式） ===')
-      console.log('拖拽的圖層:', draggedLayer.name, draggedLayer.id)
-      console.log('目標圖層:', targetLayer.name, targetLayer.id)
       
       // 找到拖拽圖層和目標圖層的索引
       const draggedIndex = this.layerOrder.indexOf(draggedLayer.id)
       const targetIndex = this.layerOrder.indexOf(targetLayer.id)
       
-      console.log('拖拽圖層索引:', draggedIndex)
-      console.log('目標圖層索引:', targetIndex)
 
       if (draggedIndex === -1 || targetIndex === -1) {
-        console.log('找不到圖層索引，取消操作')
         return
       }
 
       // 簡單交換位置
-      console.log('交換前順序:', [...this.layerOrder])
-      console.log(`交換 ${draggedLayer.name} (索引 ${draggedIndex}) 和 ${targetLayer.name} (索引 ${targetIndex})`)
       
       // 交換兩個圖層的位置
       const temp = this.layerOrder[draggedIndex]
       this.layerOrder[draggedIndex] = this.layerOrder[targetIndex]
       this.layerOrder[targetIndex] = temp
       
-      console.log('交換後順序:', [...this.layerOrder])
-      console.log('替換順序完成：', this.getLayerOrderDescription())
       
       // 觸發更新
       this.triggerLayerOrderUpdate()
@@ -895,7 +839,6 @@ export default {
       if (this.layerOrder.length > 0) {
         const key = `layerOrder_${this.projectId}`
         localStorage.setItem(key, JSON.stringify(this.layerOrder))
-        console.log('圖層順序已保存到 localStorage:', this.layerOrder)
       }
     },
 
@@ -906,7 +849,6 @@ export default {
       if (saved) {
         try {
           this.layerOrder = JSON.parse(saved)
-          console.log('從 localStorage 載入圖層順序:', this.layerOrder)
         } catch (error) {
           console.error('載入圖層順序失敗:', error)
           this.layerOrder = []
@@ -916,7 +858,6 @@ export default {
 
     // 刷新底圖列表（供父組件調用）
     refreshBaseMaps() {
-      console.log('刷新底圖列表')
       // 這裡可以觸發 BaseMapSelector 組件重新載入底圖列表
       // 由於 BaseMapSelector 是子組件，我們需要通過事件通知它
       this.$refs.baseMapSelector?.refreshBaseMaps?.()
@@ -924,7 +865,6 @@ export default {
     
     // 時序資料相關方法
     onToggleTemporalDataVisibility(temporalData) {
-      console.log('ProjectSidebar 接收到 toggle-visibility 事件:', temporalData)
       this.$emit('toggle-temporal-data-visibility', temporalData)
     },
     
@@ -933,7 +873,6 @@ export default {
     },
     
     onEditTemporalData(temporalData) {
-      console.log('ProjectSidebar 接收到編輯事件:', temporalData)
       this.$emit('edit-temporal-data', temporalData)
     },
     
@@ -960,7 +899,6 @@ export default {
   
   mounted() {
     // 調試：檢查 projectId
-    console.log('ProjectSidebar projectId:', this.projectId)
     
     // 組件掛載時載入保存的圖層順序
     this.loadLayerOrder()

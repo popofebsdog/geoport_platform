@@ -294,7 +294,6 @@ export default {
         
         // 暫時使用模擬數據
         this.mediaList = []
-        console.log('載入影像紀錄列表（模擬）')
       } catch (error) {
         console.error('載入影像紀錄失敗:', error)
       } finally {
@@ -394,7 +393,6 @@ export default {
         }
 
         this.mediaList.unshift(mockMedia)
-        console.log('上傳成功（模擬）:', file.name)
 
         // 移除上傳中的文件
         const index = this.uploadingFiles.findIndex(item => item.id === fileId)
@@ -440,7 +438,6 @@ export default {
           }
         }
 
-        console.log('刪除成功（模擬）:', media.name)
       } catch (error) {
         console.error('刪除失敗:', error)
         alert('刪除失敗，請稍後再試')

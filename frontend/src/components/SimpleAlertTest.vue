@@ -20,10 +20,8 @@ export default {
   methods: {
     async testAlert() {
       try {
-        console.log('開始測試alert...')
         await alert('這是一個測試', '測試標題', false)
         this.message = 'Alert 測試成功！'
-        console.log('Alert 測試完成')
       } catch (error) {
         this.message = 'Alert 測試失敗: ' + error.message
         console.error('Alert 測試失敗:', error)

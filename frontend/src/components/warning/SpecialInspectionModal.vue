@@ -250,7 +250,6 @@ export default {
       if (newVal) {
         if (this.editingRecord) {
           // 編輯模式：填充現有數據
-          console.log('編輯模式 - editingRecord:', this.editingRecord)
           // 確保 inspection_data 已解析
           let data = this.editingRecord.inspection_data || {}
           if (typeof data === 'string') {
@@ -261,7 +260,6 @@ export default {
               data = {}
             }
           }
-          console.log('解析後的 data:', data)
           let day = null
           if (this.editingRecord.inspection_date) {
             const date = new Date(this.editingRecord.inspection_date)
@@ -279,7 +277,6 @@ export default {
             description: description,
             isDisaster: this.editingRecord.is_disaster || false
           }
-          console.log('填充後的 formData:', this.formData)
         } else {
           // 新增模式：重置表單，預設為當前年份
           this.formData = {
@@ -296,7 +293,6 @@ export default {
     editingRecord(newVal) {
       if (newVal && this.isVisible) {
         // 編輯模式：填充現有數據
-        console.log('editingRecord 變化 - newVal:', newVal)
         // 確保 inspection_data 已解析
         let data = newVal.inspection_data || {}
         if (typeof data === 'string') {
@@ -307,7 +303,6 @@ export default {
             data = {}
           }
         }
-        console.log('解析後的 data:', data)
         let day = null
         if (newVal.inspection_date) {
           const date = new Date(newVal.inspection_date)
@@ -325,7 +320,6 @@ export default {
           description: description,
           isDisaster: newVal.is_disaster || false
         }
-        console.log('填充後的 formData:', this.formData)
       }
     },
     'formData.month'() {

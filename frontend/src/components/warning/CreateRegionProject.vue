@@ -485,7 +485,6 @@ export default {
           label: roadName
         }));
         
-        console.log('已載入路線選項:', this.availableRoads);
       } catch (error) {
         console.error('載入路線選項失敗:', error);
         // 如果載入失敗，使用預設選項
@@ -537,7 +536,6 @@ export default {
         // 轉換為數組
         this.availableWorkSections = Array.from(sectionSet).sort();
         
-        console.log(`路線 ${roadSection} 的工務段選項:`, this.availableWorkSections);
       } catch (error) {
         console.error('載入工務段選項失敗:', error);
         this.availableWorkSections = [];
@@ -597,23 +595,6 @@ export default {
           }
         };
       }
-    },
-    getRoadSectionName() {
-      const names = {
-        taiwan7: '台7線',
-        taiwan8: '台8線',
-        taiwan9: '台9線',
-        taiwan10: '台10線',
-        taiwan11: '台11線',
-        taiwan14: '台14線',
-        taiwan20: '台20線',
-        taiwan21: '台21線',
-        taiwan24: '台24線',
-        national1: '國道1號',
-        national3: '國道3號',
-        national5: '國道5號'
-      };
-      return names[this.formData.roadSection] || '';
     },
     async submitForm() {
       try {

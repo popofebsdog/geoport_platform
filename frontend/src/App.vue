@@ -57,7 +57,7 @@
               <button 
                 @click="toggleControlPanel"
                 class="p-2 rounded-md transition-all duration-200 hover:bg-opacity-80 cursor-pointer"
-                :class="isDarkMode ? 'bg-slate-700/50 hover:bg-slate-600/70' : 'bg-gray-100 hover:bg-gray-200'"
+                :class="isDarkMode ? 'bg-slate-700/50 hover:bg-slate-600/70' : 'bg-surface-100 hover:bg-surface-200'"
                 title="控制面板"
               >
                 <svg class="w-5 h-5 transition-colors duration-300" 
@@ -70,8 +70,11 @@
               
               <!-- 可縮放控制面板 -->
               <div v-if="showControlPanel" class="absolute top-full right-0 mt-2 z-[1100] transition-all duration-200 ease-in-out opacity-100 scale-100">
-              <div class="rounded-lg shadow-lg border p-4 min-w-64 transition-colors duration-300"
-                   :class="isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'">
+              <div class="rounded-lg shadow-lg border min-w-64 transition-colors duration-300 overflow-hidden"
+                   :class="isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-surface-200'">
+                <!-- Brand accent strip -->
+                <div class="h-1" style="background:linear-gradient(90deg,#1e5c8a,#3378b5)"></div>
+                <div class="p-4">
                 <!-- 面板標題 -->
                 <div class="flex items-center justify-between mb-4">
                   <h3 class="text-sm font-semibold transition-colors duration-300"
@@ -79,7 +82,7 @@
                   <button 
                     @click="toggleControlPanel"
                     class="p-1 rounded-lg transition-colors duration-200"
-                    :class="isDarkMode ? 'hover:bg-slate-700' : 'hover:bg-gray-100'"
+                    :class="isDarkMode ? 'hover:bg-slate-700' : 'hover:bg-surface-100'"
                   >
                     <svg class="w-4 h-4 transition-colors duration-300" 
                          :class="isDarkMode ? 'text-gray-400' : 'text-gray-500'" 
@@ -98,7 +101,7 @@
                     <button 
                       @click="toggleTheme"
                       class="flex items-center space-x-2 px-3 py-1.5 rounded-lg transition-all duration-300 hover:scale-105"
-                      :class="isDarkMode ? 'bg-slate-700 hover:bg-slate-600' : 'bg-gray-200 hover:bg-gray-300'"
+                      :class="isDarkMode ? 'bg-slate-700 hover:bg-slate-600' : 'bg-surface-100 hover:bg-surface-200'"
                     >
                       <svg v-if="isDarkMode" class="w-4 h-4 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path>
@@ -121,8 +124,9 @@
                         @click="setFontSize('small')"
                         class="px-2 py-1 text-xs rounded transition-all duration-300 hover:scale-105"
                         :class="fontSize === 'small' ? 
-                          'bg-blue-500 text-white' : 
-                          (isDarkMode ? 'bg-slate-700 text-gray-300 hover:bg-slate-600' : 'bg-gray-200 text-gray-600 hover:bg-gray-300')"
+                          'text-white' : 
+                          (isDarkMode ? 'bg-slate-700 text-gray-300 hover:bg-slate-600' : 'bg-surface-200 text-gray-600 hover:bg-surface-300')"
+                        :style="fontSize === 'small' ? { backgroundColor: '#1e5c8a' } : {}"
                         title="小字體"
                       >
                         A
@@ -131,8 +135,9 @@
                         @click="setFontSize('medium')"
                         class="px-2 py-1 text-sm rounded transition-all duration-300 hover:scale-105"
                         :class="fontSize === 'medium' ? 
-                          'bg-blue-500 text-white' : 
-                          (isDarkMode ? 'bg-slate-700 text-gray-300 hover:bg-slate-600' : 'bg-gray-200 text-gray-600 hover:bg-gray-300')"
+                          'text-white' : 
+                          (isDarkMode ? 'bg-slate-700 text-gray-300 hover:bg-slate-600' : 'bg-surface-200 text-gray-600 hover:bg-surface-300')"
+                        :style="fontSize === 'medium' ? { backgroundColor: '#1e5c8a' } : {}"
                         title="中字體"
                       >
                         A
@@ -141,8 +146,9 @@
                         @click="setFontSize('large')"
                         class="px-2 py-1 text-base rounded transition-all duration-300 hover:scale-105"
                         :class="fontSize === 'large' ? 
-                          'bg-blue-500 text-white' : 
-                          (isDarkMode ? 'bg-slate-700 text-gray-300 hover:bg-slate-600' : 'bg-gray-200 text-gray-600 hover:bg-gray-300')"
+                          'text-white' : 
+                          (isDarkMode ? 'bg-slate-700 text-gray-300 hover:bg-slate-600' : 'bg-surface-200 text-gray-600 hover:bg-surface-300')"
+                        :style="fontSize === 'large' ? { backgroundColor: '#1e5c8a' } : {}"
                         title="大字體"
                       >
                         A
@@ -153,13 +159,16 @@
                   <!-- 登入狀態 -->
                   <div class="flex items-center justify-between">
                     <span class="text-sm transition-colors duration-300"
-                          :class="isDarkMode ? 'text-gray-300' : 'text-gray-700'">登入狀態</span>
+                          :class="isDarkMode ? 'text-gray-300' : 'text-gray-700'">
+                      {{ isLoggedIn ? (currentUser?.displayName || currentUser?.username || '已登入') : '未登入' }}
+                    </span>
                     <button 
-                      @click="toggleLogin"
+                      @click="isLoggedIn ? handleLogout() : $router.push('/login')"
                       class="flex items-center space-x-2 px-3 py-1.5 rounded-lg transition-all duration-300 hover:scale-105"
                       :class="isLoggedIn ? 
-                        (isDarkMode ? 'bg-green-900' : 'bg-green-100') : 
-                        (isDarkMode ? 'bg-slate-700' : 'bg-gray-200')"
+                        (isDarkMode ? 'bg-green-900/60 hover:bg-red-900/60' : 'bg-green-50 hover:bg-red-50 border border-green-200 hover:border-red-200') : 
+                        (isDarkMode ? 'bg-slate-700 hover:bg-slate-600' : 'hover:bg-brand-light border border-surface-200')"
+                      :style="!isLoggedIn && !isDarkMode ? { color: '#1e5c8a' } : {}"
                     >
                       <svg v-if="!isLoggedIn" class="w-4 h-4 transition-colors duration-300" 
                            :class="isDarkMode ? 'text-gray-400' : 'text-gray-600'" 
@@ -169,17 +178,31 @@
                       <svg v-else class="w-4 h-4 transition-colors duration-300" 
                            :class="isDarkMode ? 'text-green-400' : 'text-green-600'" 
                            fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
                       </svg>
                       <span class="text-xs font-medium transition-colors duration-300" 
                             :class="isLoggedIn ? 
                               (isDarkMode ? 'text-green-300' : 'text-green-700') : 
                               (isDarkMode ? 'text-gray-400' : 'text-gray-600')">
-                        {{ isLoggedIn ? '已登入' : '未登入' }}
+                        {{ isLoggedIn ? '登出' : '登入' }}
                       </span>
                     </button>
                   </div>
+                  
+                  <!-- 使用者管理（管理員才顯示） -->
+                  <div v-if="isAdmin" class="pt-2 border-t transition-colors duration-300"
+                       :class="isDarkMode ? 'border-slate-700' : 'border-gray-200'">
+                    <button @click="$router.push('/users'); showControlPanel = false"
+                            class="w-full flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-all duration-200"
+                            :class="isDarkMode ? 'text-slate-300 hover:bg-slate-700' : 'text-brand hover:bg-brand-light'">
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/>
+                      </svg>
+                      使用者管理
+                    </button>
+                  </div>
                 </div>
+                </div><!-- /p-4 wrapper -->
               </div>
               </div>
             </div>
@@ -213,7 +236,8 @@ export default {
     return {
       isDarkMode: false,
       fontSize: 'medium',
-      isLoggedIn: false,
+      isLoggedIn: !!localStorage.getItem('authToken'),
+      currentUser: JSON.parse(localStorage.getItem('authUser') || 'null'),
       showControlPanel: false,
       currentTime: '',
       timeUpdateInterval: null,
@@ -298,10 +322,17 @@ export default {
       }
       this.updateFontSizeClass()
     },
-    toggleLogin() {
-      this.isLoggedIn = !this.isLoggedIn
-      // 這裡可以添加實際的登入/登出邏輯
-      console.log(this.isLoggedIn ? '用戶已登入' : '用戶已登出')
+    syncAuthState() {
+      this.isLoggedIn = !!localStorage.getItem('authToken')
+      this.currentUser = JSON.parse(localStorage.getItem('authUser') || 'null')
+    },
+    handleLogout() {
+      localStorage.removeItem('authToken')
+      localStorage.removeItem('authUser')
+      this.isLoggedIn = false
+      this.currentUser = null
+      this.showControlPanel = false
+      this.$router.push('/login')
     },
     toggleControlPanel() {
       this.showControlPanel = !this.showControlPanel
@@ -311,6 +342,11 @@ export default {
       if (this.showControlPanel && !event.target.closest('.control-panel-container')) {
         this.showControlPanel = false
       }
+    }
+  },
+  computed: {
+    isAdmin() {
+      return this.currentUser?.role === 'admin'
     }
   },
   provide() {
@@ -345,6 +381,14 @@ export default {
     
     // 監聽點擊外部關閉控制面板
     document.addEventListener('click', this.handleClickOutside)
+
+    // Sync login state when localStorage changes (e.g. after login redirect)
+    window.addEventListener('storage', this.syncAuthState)
+    // Also sync on route change (login page sets token then redirects)
+    this.$router.afterEach(() => {
+      this.isLoggedIn = !!localStorage.getItem('authToken')
+      this.currentUser = JSON.parse(localStorage.getItem('authUser') || 'null')
+    })
   },
   beforeUnmount() {
     // 清理定時器
@@ -354,6 +398,7 @@ export default {
     
     // 移除事件監聽器
     document.removeEventListener('click', this.handleClickOutside)
+    window.removeEventListener('storage', this.syncAuthState)
   }
 }
 </script>

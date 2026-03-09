@@ -253,7 +253,6 @@ export default {
         const photosArrays = await Promise.all(photoPromises)
         this.allPhotos = photosArrays.flat()
         
-        console.log(`總共載入了 ${this.allPhotos.length} 張照片`)
       } catch (error) {
         console.error('載入照片失敗:', error)
       } finally {

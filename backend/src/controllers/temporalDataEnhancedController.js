@@ -10,6 +10,14 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+const BACKEND_ROOT = path.resolve(path.join(__dirname, '../../'));
+
+function resolveStoragePath(storagePath) {
+  if (!storagePath) return null;
+  if (path.isAbsolute(storagePath)) return storagePath;
+  return path.join(BACKEND_ROOT, storagePath);
+}
+
 /**
  * 增強版時序資料控制器
  * 功能：
@@ -99,7 +107,7 @@ const uploadTemporalData = async (req, res) => {
       fileExtension,
       fileType,
       file.size,
-      file.path,
+      path.relative(BACKEND_ROOT, file.path), // store as relative path
       'local',
       hasSpatialData,
       new Date(),
@@ -108,7 +116,7 @@ const uploadTemporalData = async (req, res) => {
     ]);
     
     // 2. 解析 CSV 檔案獲取可用欄位
-    const availableColumns = await getCSVColumns(file.path);
+    const availableColumns = await getCSVColumns(file.path); // use absolute path for immediate read
     
     // 3. 創建空間點
     const spatialExtent = `POINT(${longitude} ${latitude})`;
@@ -206,7 +214,6 @@ const uploadTemporalData = async (req, res) => {
     res.status(500).json({
       success: false,
       message: '上傳時序資料失敗',
-      error: error.message
     });
   } finally {
     client.release();
@@ -243,7 +250,6 @@ const getTemporalDataList = async (req, res) => {
     res.status(500).json({
       success: false,
       message: '獲取時序資料列表失敗',
-      error: error.message
     });
   }
 };
@@ -286,7 +292,6 @@ const getTemporalDataById = async (req, res) => {
     res.status(500).json({
       success: false,
       message: '獲取時序資料詳情失敗',
-      error: error.message
     });
   }
 };
@@ -343,7 +348,6 @@ const updateTemporalData = async (req, res) => {
     res.status(500).json({
       success: false,
       message: '更新時序資料失敗',
-      error: error.message
     });
   } finally {
     client.release();
@@ -389,7 +393,6 @@ const deleteTemporalData = async (req, res) => {
     res.status(500).json({
       success: false,
       message: '刪除時序資料失敗',
-      error: error.message
     });
   } finally {
     client.release();
@@ -421,7 +424,7 @@ const parseAndGenerateChart = async (req, res) => {
     }
 
     const temporalData = temporalResult.rows[0];
-    const filePath = temporalData.storage_path;
+    const filePath = resolveStoragePath(temporalData.storage_path);
 
     // 檢查檔案是否存在
     if (!fs.existsSync(filePath)) {
@@ -480,7 +483,6 @@ const parseAndGenerateChart = async (req, res) => {
     res.status(500).json({
       success: false,
       message: '解析時序資料失敗',
-      error: error.message
     });
   }
 };
@@ -884,7 +886,6 @@ const downloadTemporalDataJson = async (req, res) => {
     res.status(500).json({
       success: false,
       message: '下載 JSON 檔案失敗',
-      error: error.message
     });
   }
 };
@@ -919,6 +920,7 @@ const getChartData = async (req, res) => {
     }
 
     const temporalData = result.rows[0];
+    const resolvedFilePath = resolveStoragePath(temporalData.storage_path);
     console.log('時序資料:', {
       temporal_id: temporalData.temporal_id,
       name: temporalData.name,
@@ -955,8 +957,8 @@ const getChartData = async (req, res) => {
       });
     }
 
-    if (!fs.existsSync(temporalData.storage_path)) {
-      console.log('CSV 文件不存在於文件系統:', temporalData.storage_path);
+    if (!fs.existsSync(resolvedFilePath)) {
+      console.log('CSV 文件不存在於文件系統:', resolvedFilePath);
       return res.status(404).json({
         success: false,
         message: `CSV 文件不存在: ${temporalData.storage_path}`
@@ -964,9 +966,8 @@ const getChartData = async (req, res) => {
     }
 
     console.log('開始解析 CSV 文件...');
-    // 讀取 CSV 文件並解析
     const csvData = await parseCSVForCharting(
-      temporalData.storage_path,
+      resolvedFilePath,
       temporalData.x_axis_columns,
       temporalData.y_axis_columns,
       temporalData.time_format || 'auto'
@@ -994,7 +995,6 @@ const getChartData = async (req, res) => {
     res.status(500).json({
       success: false,
       message: '獲取圖表數據失敗',
-      error: error.message
     });
   }
 };

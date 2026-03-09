@@ -142,7 +142,6 @@ export default {
     
     // 切換顯示/隱藏
     const toggleVisibility = () => {
-      console.log('TemporalDataLayerCard 發送 toggle-visibility 事件:', props.temporalData.temporal_id)
       emit('toggle-visibility', props.temporalData.temporal_id)
     }
     

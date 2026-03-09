@@ -589,7 +589,6 @@ export default {
             featureCount: geojsonData.features.length
           }
           
-          console.log(`成功載入 shapefile 資料: ${geojsonData.features.length} 個要素`)
           
         } catch (error) {
           console.error('載入 shapefile 資料失敗:', error)
@@ -777,7 +776,6 @@ export default {
           bounds: bounds
         }
         
-        console.log(`成功载入 InSAR 数据: ${insarPoints.length} 个测点`)
         
       } catch (error) {
         console.error('载入 InSAR 数据失败:', error)
@@ -906,7 +904,6 @@ export default {
           bounds: this.calculateBounds(mileagePoints)
         }
         
-        console.log(`成功載入里程樁號數據: ${mileagePoints.length} 個樁號`)
         
       } catch (error) {
         console.error('載入里程樁號數據失敗:', error)
@@ -1016,7 +1013,6 @@ export default {
             featureCount: geojsonData.features.length
           }
           
-          console.log(`成功載入數值模擬資料: ${geojsonData.features.length} 個要素`)
           
         } catch (error) {
           console.error('載入數值模擬資料失敗:', error)

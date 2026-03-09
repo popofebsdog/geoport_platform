@@ -22,7 +22,4 @@ app.config.globalProperties.$api = {
   delete: api.delete
 }
 
-// 同時設置到 window 對象（某些組件可能需要）
-window.$api = app.config.globalProperties.$api
-
 app.use(router).mount('#app') 

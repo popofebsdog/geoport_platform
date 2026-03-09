@@ -51,20 +51,17 @@ export default {
     value: {
       immediate: true,
       handler(newValue) {
-        console.log('DateInput value changed:', newValue)
       }
     }
   },
   methods: {
     handleInput(event) {
       const value = event.target.value
-      console.log('DateInput handleInput:', value, typeof value)
       this.$emit('input', value)
     },
     
     handleChange(event) {
       const value = event.target.value
-      console.log('DateInput handleChange:', value, typeof value)
       this.$emit('input', value) // 統一使用 input 事件
     }
   }

@@ -50,8 +50,9 @@ app.get('/cog/tiles/:tileMatrixSetId/:z/:x/:y', async (req, res) => {
     console.log('圖片 URL:', imageUrl);
     
     // 檢查文件是否存在
+    // __dirname = backend/, uploads are at backend/uploads/
     const filePath = imageUrl.replace('http://localhost:3001/', '');
-    const fullPath = path.join(process.cwd(), filePath);
+    const fullPath = path.join(__dirname, filePath);
     
     if (!fs.existsSync(fullPath)) {
       console.error('文件不存在:', fullPath);
@@ -177,7 +178,7 @@ app.get('/cog/bounds', async (req, res) => {
     
     // 檢查文件是否存在
     const filePath = imageUrl.replace('http://localhost:3001/', '');
-    const fullPath = path.join(process.cwd(), filePath);
+    const fullPath = path.join(__dirname, filePath);
     
     if (!fs.existsSync(fullPath)) {
       console.error('文件不存在:', fullPath);
