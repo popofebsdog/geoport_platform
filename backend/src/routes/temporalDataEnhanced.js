@@ -14,6 +14,70 @@ import {
 const router = express.Router();
 
 /**
+ * @swagger
+ * /api/temporal-data-enhanced/{projectId}:
+ *   get:
+ *     tags: [TemporalData]
+ *     summary: Get enhanced temporal data
+ *     description: Get enhanced temporal data list for project.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: projectId
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200: { description: Data returned }
+ *       401: { description: Unauthorized }
+ *       500: { description: Server error }
+ * /api/temporal-data-enhanced/{projectId}/upload:
+ *   post:
+ *     tags: [TemporalData]
+ *     summary: Upload enhanced temporal data
+ *     description: Upload enhanced temporal data file.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: projectId
+ *         required: true
+ *         schema: { type: string }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required: [file]
+ *             properties:
+ *               file:
+ *                 type: string
+ *                 format: binary
+ *     responses:
+ *       201: { description: Uploaded }
+ *       400: { description: Invalid payload }
+ *       401: { description: Unauthorized }
+ *       500: { description: Server error }
+ * /api/temporal-data-enhanced/{projectId}/chart:
+ *   get:
+ *     tags: [TemporalData]
+ *     summary: Get chart for enhanced data
+ *     description: Get chart for enhanced temporal data.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: projectId
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200: { description: Chart data returned }
+ *       401: { description: Unauthorized }
+ *       500: { description: Server error }
+ */
+
+/**
  * 增強版時序資料路由
  * 用於管理 CSV 時序資料的完整生命週期
  */

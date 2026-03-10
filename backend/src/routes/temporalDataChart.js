@@ -7,6 +7,28 @@ import {
 const router = express.Router();
 
 /**
+ * @swagger
+ * /api/temporal-data/chart:
+ *   post:
+ *     tags: [TemporalData]
+ *     summary: Generate chart from temporal data
+ *     description: Generate chart data/config from temporal data input.
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *     responses:
+ *       200: { description: Chart generated }
+ *       400: { description: Invalid payload }
+ *       401: { description: Unauthorized }
+ *       500: { description: Server error }
+ */
+
+/**
  * 時序資料圖表生成路由
  * 用於生成 ApexCharts 配置
  */

@@ -20,6 +20,68 @@ import {
 
 const router = express.Router();
 
+/**
+ * @swagger
+ * /api/data/projects/{projectId}/data:
+ *   get:
+ *     tags: [Data]
+ *     summary: Get project data
+ *     description: Get data entries for a project.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: projectId
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200: { description: Data list returned }
+ *       401: { description: Unauthorized }
+ *       500: { description: Server error }
+ * /api/data/upload:
+ *   post:
+ *     tags: [Data]
+ *     summary: Upload data file
+ *     description: Upload a data file using multipart/form-data.
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required: [file]
+ *             properties:
+ *               file:
+ *                 type: string
+ *                 format: binary
+ *               projectId:
+ *                 type: string
+ *     responses:
+ *       201: { description: Uploaded }
+ *       400: { description: Invalid payload }
+ *       401: { description: Unauthorized }
+ *       500: { description: Server error }
+ * /api/data/{id}:
+ *   delete:
+ *     tags: [Data]
+ *     summary: Delete data
+ *     description: Delete data by ID.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200: { description: Deleted }
+ *       401: { description: Unauthorized }
+ *       404: { description: Not found }
+ *       500: { description: Server error }
+ */
+
 // 上傳資料 (需要檔案上傳)
 router.post('/upload', authenticate, upload.single('file'), uploadData);
 

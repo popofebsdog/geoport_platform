@@ -17,6 +17,100 @@ import { authenticate } from '../middleware/auth.js';
 
 const router = express.Router();
 
+/**
+ * @swagger
+ * /api/disaster-points:
+ *   get:
+ *     tags: [DisasterPoints]
+ *     summary: List disaster points
+ *     description: List disaster points.
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200: { description: Disaster points returned }
+ *       401: { description: Unauthorized }
+ *       500: { description: Server error }
+ *   post:
+ *     tags: [DisasterPoints]
+ *     summary: Create disaster point
+ *     description: Create disaster point with optional media upload.
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               media_files:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                   format: binary
+ *     responses:
+ *       201: { description: Created }
+ *       400: { description: Invalid payload }
+ *       401: { description: Unauthorized }
+ *       500: { description: Server error }
+ * /api/disaster-points/{id}:
+ *   get:
+ *     tags: [DisasterPoints]
+ *     summary: Get disaster point
+ *     description: Get disaster point by ID.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200: { description: Disaster point returned }
+ *       401: { description: Unauthorized }
+ *       404: { description: Not found }
+ *       500: { description: Server error }
+ *   put:
+ *     tags: [DisasterPoints]
+ *     summary: Update disaster point
+ *     description: Update disaster point by ID.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *     responses:
+ *       200: { description: Updated }
+ *       400: { description: Invalid payload }
+ *       401: { description: Unauthorized }
+ *       404: { description: Not found }
+ *       500: { description: Server error }
+ *   delete:
+ *     tags: [DisasterPoints]
+ *     summary: Delete disaster point
+ *     description: Delete disaster point by ID.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200: { description: Deleted }
+ *       401: { description: Unauthorized }
+ *       404: { description: Not found }
+ *       500: { description: Server error }
+ */
+
 // 獲取專案的所有災點紀錄
 router.get('/project/:projectId', getDisasterPointsByProject);
 
@@ -36,4 +130,3 @@ router.delete('/:id', authenticate, deleteDisasterPoint);
 router.delete('/:disasterPointId/media/:mediaId', authenticate, deleteDisasterPointMedia);
 
 export default router;
-

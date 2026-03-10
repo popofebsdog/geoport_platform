@@ -6,6 +6,51 @@ import { authenticate } from '../middleware/auth.js';
 
 const router = express.Router();
 
+/**
+ * @swagger
+ * /api/auth/register:
+ *   post:
+ *     tags: [Auth]
+ *     summary: Register new user
+ *     description: Create a new user account and return JWT token.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [username, email, password]
+ *             properties:
+ *               username: { type: string }
+ *               email: { type: string, format: email }
+ *               password: { type: string, format: password }
+ *               display_name: { type: string }
+ *     responses:
+ *       201: { description: Registered }
+ *       400: { description: Invalid payload }
+ *       500: { description: Server error }
+ * /api/auth/login:
+ *   post:
+ *     tags: [Auth]
+ *     summary: User login
+ *     description: Login with username/email and password to get JWT token.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [username, password]
+ *             properties:
+ *               username: { type: string }
+ *               password: { type: string, format: password }
+ *     responses:
+ *       200: { description: Login success }
+ *       400: { description: Invalid payload }
+ *       401: { description: Unauthorized }
+ *       500: { description: Server error }
+ */
+
 const JWT_SECRET = process.env.JWT_SECRET;
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '24h';
 
