@@ -31,6 +31,117 @@ import {
 
 const router = express.Router();
 
+/**
+ * @swagger
+ * /api/warning-regions:
+ *   get:
+ *     tags: [WarningRegions]
+ *     summary: List warning regions
+ *     description: List warning regions.
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200: { description: Warning regions returned }
+ *       401: { description: Unauthorized }
+ *       500: { description: Server error }
+ *   post:
+ *     tags: [WarningRegions]
+ *     summary: Create warning region
+ *     description: Create warning region.
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *     responses:
+ *       201: { description: Created }
+ *       400: { description: Invalid payload }
+ *       401: { description: Unauthorized }
+ *       500: { description: Server error }
+ * /api/warning-regions/{id}:
+ *   get:
+ *     tags: [WarningRegions]
+ *     summary: Get warning region
+ *     description: Get warning region by ID.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200: { description: Warning region returned }
+ *       401: { description: Unauthorized }
+ *       404: { description: Not found }
+ *       500: { description: Server error }
+ *   put:
+ *     tags: [WarningRegions]
+ *     summary: Update warning region
+ *     description: Update warning region by ID.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *     responses:
+ *       200: { description: Updated }
+ *       400: { description: Invalid payload }
+ *       401: { description: Unauthorized }
+ *       404: { description: Not found }
+ *       500: { description: Server error }
+ *   delete:
+ *     tags: [WarningRegions]
+ *     summary: Delete warning region
+ *     description: Delete warning region by ID.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200: { description: Deleted }
+ *       401: { description: Unauthorized }
+ *       404: { description: Not found }
+ *       500: { description: Server error }
+ * /api/warning-regions/import:
+ *   post:
+ *     tags: [WarningRegions]
+ *     summary: Import warning regions from XLSX
+ *     description: Import warning regions data from XLSX file.
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required: [file]
+ *             properties:
+ *               file:
+ *                 type: string
+ *                 format: binary
+ *     responses:
+ *       200: { description: Imported }
+ *       400: { description: Invalid payload }
+ *       401: { description: Unauthorized }
+ *       500: { description: Server error }
+ */
+
 // 獲取所有預警地區列表
 router.get('/', getWarningRegions);
 
@@ -47,7 +158,22 @@ router.get('/id/:regionId/data', getWarningRegionDataById);
 router.post('/:regionCode/data', authenticate, upsertWarningRegionData);
 
 // 建立地區專案（包含上傳檔案）
-const upload = multer({ dest: 'uploads/warning-regions/' });
+const upload = multer({
+  dest: 'uploads/warning-regions/',
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB — XLSX/file uploads for warning regions
+    files: 10 // Maximum 10 files per request
+  },
+  fileFilter: (req, file, cb) => {
+    const allowedExtensions = ['.xlsx', '.xls', '.csv', '.json', '.geojson', '.zip', '.pdf', '.jpg', '.jpeg', '.png', '.tif', '.tiff'];
+    const ext = file.originalname.toLowerCase().substring(file.originalname.lastIndexOf('.'));
+    if (allowedExtensions.includes(ext)) {
+      cb(null, true);
+    } else {
+      cb(new Error('不支援的檔案類型'), false);
+    }
+  }
+});
 router.post('/create-project', authenticate, upload.array('files'), createRegionProject);
 
 // 更新地區專案（使用 region_id）
@@ -108,4 +234,3 @@ router.get('/id/:regionId/disaster-counts', getDisasterCountsByMileageById);
 router.get('/:regionCode/disaster-counts', getDisasterCountsByMileage);
 
 export default router;
-

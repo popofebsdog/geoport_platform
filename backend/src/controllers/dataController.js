@@ -63,6 +63,9 @@ const featureUploadStorage = multer.diskStorage({
 
 const upload = multer({ 
   storage: storage,
+  limits: {
+    fileSize: 50 * 1024 * 1024 // 50MB — GIS data files (TIF, GeoJSON, shapefiles) can be large
+  },
   fileFilter: (req, file, cb) => {
     console.log('Multer fileFilter - 文件信息:', {
       fieldname: file.fieldname,
@@ -113,6 +116,9 @@ const upload = multer({
 // 關聯上傳的 multer 配置（主要用於圖片）
 const featureUpload = multer({
   storage: featureUploadStorage,
+  limits: {
+    fileSize: 10 * 1024 * 1024 // 10MB — feature uploads are primarily images/PDFs
+  },
   fileFilter: (req, file, cb) => {
     // 關聯上傳主要支援圖片類型
     const allowedTypes = [
@@ -1464,7 +1470,7 @@ const createPotentialAnalysisSnapshot = async (originalFileId, projectId, dataNa
     // 創建 GeoJSON 快照（合併所有 features）
     const mergedGeojson = {
       type: 'FeatureCollection',
-      features: [mergedFeature]
+      features: geojsonData.features
     }
     
     // 保存 GeoJSON 快照檔案
