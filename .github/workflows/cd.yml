@@ -1,0 +1,57 @@
+name: CD
+
+on:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: cd-main-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # Optional: require GitHub Environment approval before deploy.
+    # environment:
+    #   name: production
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Required secrets:
+      # - EC2_HOST: EC2 public IP / hostname
+      # - EC2_USER: SSH username (e.g. ec2-user or ubuntu)
+      # - EC2_SSH_KEY: SSH private key content
+      # - DEPLOY_PATH: Path on EC2 (defaults to /opt/geoport_platform if empty)
+      - name: Deploy to EC2 via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script_stop: true
+          script: |
+            set -euo pipefail
+            DEPLOY_PATH="${{ secrets.DEPLOY_PATH }}"
+            if [ -z "$DEPLOY_PATH" ]; then DEPLOY_PATH="/opt/geoport_platform"; fi
+
+            cd "$DEPLOY_PATH"
+            git pull origin main
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml build
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+            curl -f http://localhost/api/health || exit 1
+
+            # Rollback hint (manual):
+            # git reset --hard <previous-known-good-commit>
+            # docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+
+      - name: Deployment failed annotation
+        if: failure()
+        run: |
+          echo "::error title=Deployment failed::EC2 deployment failed. Check SSH logs, docker compose output, and health check."
+
+      # Deployment status badge (replace OWNER/REPO):
+      # ![CD](https://github.com/OWNER/REPO/actions/workflows/cd.yml/badge.svg)
