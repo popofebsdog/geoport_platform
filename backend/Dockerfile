@@ -23,9 +23,9 @@ USER node
 # 暴露端口
 EXPOSE 3001
 
-# 健康檢查
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:3001/api/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"
+# 健康檢查 - 使用 /ready 端點檢查 DB 連接
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+  CMD curl -f http://localhost:3001/api/health/ready || exit 1
 
 # 啟動應用
 CMD ["npm", "start"]
