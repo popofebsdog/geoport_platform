@@ -11,7 +11,7 @@
     "seed:reset": "node backend/database/seed_admin.js --reset",
     "build": "npm run build:frontend && npm run build:backend",
     "build:frontend": "cd frontend && npm run build",
-    "build:backend": "cd backend && npm install --production",
+    "build:backend": "cd backend && npm ls --omit=dev 2>&1 | tail -1",
     "start": "concurrently \"npm run start:backend\" \"npm run start:frontend\" \"npm run start:titiler\"",
     "start:backend": "cd backend && npm start",
     "start:frontend": "cd frontend && npm run preview",
@@ -24,6 +24,12 @@
     "test": "npm run test:backend && npm run test:frontend",
     "test:backend": "cd backend && npm test",
     "test:frontend": "cd frontend && npm test",
+    "lint": "npm run lint:backend && npm run lint:frontend",
+    "lint:backend": "cd backend && npm run lint",
+    "lint:frontend": "cd frontend && npm run lint",
+    "lint:fix": "npm run lint:fix:backend && npm run lint:fix:frontend",
+    "lint:fix:backend": "cd backend && npm run lint:fix",
+    "lint:fix:frontend": "cd frontend && npm run lint:fix",
     "clean": "rm -rf node_modules backend/node_modules frontend/node_modules backend/database.sqlite"
   },
   "devDependencies": {
