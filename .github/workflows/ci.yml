@@ -3,13 +3,10 @@ name: CI
 on:
   push:
     branches:
-      - main
       - develop
-      - ssdlc-hardening
   pull_request:
     branches:
       - main
-      - develop
 
 jobs:
   lint:
@@ -69,12 +66,12 @@ jobs:
         run: npm ci
 
       - name: Install backend dependencies
-        run: cd backend && npm ci
+        working-directory: backend
+        run: npm ci
 
       - name: Run backend tests
-        env:
-          NODE_OPTIONS: --experimental-vm-modules
-        run: npm run test:backend
+        working-directory: backend
+        run: node --experimental-vm-modules node_modules/.bin/jest
 
   test-frontend:
     runs-on: ubuntu-latest
@@ -102,10 +99,12 @@ jobs:
         run: npm ci
 
       - name: Install frontend dependencies
-        run: cd frontend && npm ci
+        working-directory: frontend
+        run: npm ci
 
       - name: Run frontend tests
-        run: npm run test:frontend
+        working-directory: frontend
+        run: npx vitest run
 
   build:
     runs-on: ubuntu-latest
@@ -138,6 +137,7 @@ jobs:
 
   docker-validate:
     runs-on: ubuntu-latest
+    needs: [build]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -147,3 +147,72 @@ jobs:
           DB_PASSWORD: validation-placeholder
           JWT_SECRET: validation-placeholder
         run: docker compose config --quiet
+
+  create-release-pr:
+    name: Auto-create release PR (develop -> main)
+    runs-on: ubuntu-latest
+    needs: [lint, test-backend, test-frontend, build, docker-validate]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Create PR if missing
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const base = 'main';
+            const head = 'develop';
+
+            const existing = await github.rest.pulls.list({
+              owner,
+              repo,
+              state: 'open',
+              base,
+              head: `${owner}:${head}`,
+              per_page: 1,
+            });
+
+            if (existing.data.length > 0) {
+              core.info(`Open PR already exists: #${existing.data[0].number}`);
+              return;
+            }
+
+            const compare = await github.rest.repos.compareCommitsWithBasehead({
+              owner,
+              repo,
+              basehead: `${base}...${head}`,
+            });
+
+            const commits = compare.data.commits || [];
+            const commitLines = commits.length
+              ? commits.map((c) => {
+                  const subject = c.commit.message.split('\n')[0];
+                  const shortSha = c.sha.slice(0, 7);
+                  const author = c.commit.author?.name || 'unknown';
+                  return `- ${subject} (${shortSha}) — ${author}`;
+                }).join('\n')
+              : '- No new commits found.';
+
+            const body = [
+              '## Summary',
+              '',
+              'Automated release PR from `develop` into `main` after CI checks passed.',
+              '',
+              '## Commits included',
+              commitLines,
+            ].join('\n');
+
+            const pr = await github.rest.pulls.create({
+              owner,
+              repo,
+              title: 'Release: merge develop into main',
+              body,
+              base,
+              head,
+            });
+
+            core.info(`Created PR #${pr.data.number}: ${pr.data.html_url}`);
