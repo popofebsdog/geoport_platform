@@ -66,3 +66,8 @@ backend/uploads/
 # Database
 *.sqlite
 *.db
+
+# Agent artifacts
+.sisyphus/
+scripts/opencode_storage_guard.sh
+scripts/tests/
