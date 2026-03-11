@@ -14,7 +14,10 @@ RUN npm ci --only=production
 COPY . .
 
 # 創建必要的目錄
-RUN mkdir -p uploads/projects uploads/reports uploads/data
+RUN mkdir -p uploads/projects uploads/reports uploads/data \
+    uploads/warning-regions uploads/temporal uploads/features \
+    uploads/data/disaster-points uploads/data/geojson uploads/data/kml \
+    uploads/data/basemaps uploads/data/others uploads/data/snapshots/geojson
 
 # 設置權限
 RUN chown -R node:node /app
