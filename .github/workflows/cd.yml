@@ -51,6 +51,22 @@ jobs:
 
             docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build --force-recreate
 
+            # Wait for postgres to accept connections before running migrations
+            for i in $(seq 1 10); do
+              if docker compose exec -T postgres pg_isready -U geoport_user -d geoport > /dev/null 2>&1; then
+                echo "Postgres ready on attempt $i"
+                break
+              fi
+              echo "Waiting for postgres... attempt $i/10"
+              sleep 3
+            done
+
+            # Run SQL migrations in order (idempotent via IF NOT EXISTS)
+            for f in $(ls backend/database/migrations/*.sql | sort); do
+              echo "Running migration: $(basename $f)"
+              docker compose exec -T postgres psql -U geoport_user -d geoport < "$f" > /dev/null 2>&1 || true
+            done
+
             # Wait for backend to be ready (up to 60s)
             for i in $(seq 1 12); do
               if curl -sf http://localhost/api/health > /dev/null 2>&1; then

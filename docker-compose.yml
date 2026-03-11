@@ -3,7 +3,7 @@ version: '3.8'
 services:
   # PostgreSQL 資料庫
   postgres:
-    image: postgres:15-alpine
+    image: postgis/postgis:15-3.4-alpine
     environment:
       POSTGRES_DB: ${DB_NAME:-geoport}
       POSTGRES_USER: ${DB_USER:-geoport_user}
