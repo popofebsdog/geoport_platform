@@ -41,7 +41,19 @@ jobs:
             git pull origin main
             docker compose -f docker-compose.yml -f docker-compose.prod.yml build
             docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
-            curl -f http://localhost/api/health || exit 1
+
+            # Wait for backend to be ready (up to 60s)
+            for i in $(seq 1 12); do
+              if curl -sf http://localhost/api/health > /dev/null 2>&1; then
+                echo "Health check passed on attempt $i"
+                exit 0
+              fi
+              echo "Waiting for backend... attempt $i/12"
+              sleep 5
+            done
+            echo "Health check failed after 60s"
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml logs --tail=50
+            exit 1
 
             # Rollback hint (manual):
             # git reset --hard <previous-known-good-commit>
