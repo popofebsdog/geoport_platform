@@ -39,8 +39,14 @@ jobs:
 
             cd "$DEPLOY_PATH"
             git pull origin main
-            docker compose -f docker-compose.yml -f docker-compose.prod.yml build
-            docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+
+            # Ensure all upload directories exist on host (bind-mounted into backend container)
+            mkdir -p backend/uploads/projects backend/uploads/reports backend/uploads/data \
+              backend/uploads/warning-regions backend/uploads/temporal backend/uploads/features \
+              backend/uploads/data/disaster-points backend/uploads/data/geojson backend/uploads/data/kml \
+              backend/uploads/data/basemaps backend/uploads/data/others backend/uploads/data/snapshots/geojson
+
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build --force-recreate
 
             # Wait for backend to be ready (up to 60s)
             for i in $(seq 1 12); do
