@@ -41,10 +41,13 @@ jobs:
             git pull origin main
 
             # Ensure all upload directories exist on host (bind-mounted into backend container)
-            mkdir -p backend/uploads/projects backend/uploads/reports backend/uploads/data \
+            # Uses sudo because Docker may have created backend/uploads as root
+            sudo mkdir -p backend/uploads/projects backend/uploads/reports backend/uploads/data \
               backend/uploads/warning-regions backend/uploads/temporal backend/uploads/features \
               backend/uploads/data/disaster-points backend/uploads/data/geojson backend/uploads/data/kml \
               backend/uploads/data/basemaps backend/uploads/data/others backend/uploads/data/snapshots/geojson
+            # Backend runs as USER node (uid 1000) inside container; match ownership on host
+            sudo chown -R 1000:1000 backend/uploads
 
             docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build --force-recreate
 
