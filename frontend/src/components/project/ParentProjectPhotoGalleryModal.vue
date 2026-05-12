@@ -3,7 +3,7 @@
     <Transition name="modal">
       <div v-if="isVisible" class="fixed inset-0 z-50 flex items-center justify-center p-4"
            @click.self="handleClose">
-        <div class="relative w-full max-w-7xl max-h-[95vh] rounded-xl shadow-2xl overflow-hidden flex flex-col"
+        <div class="relative w-full max-w-7xl max-h-[95vh] rounded border overflow-hidden flex flex-col"
              :class="isDarkMode ? 'bg-slate-800' : 'bg-white'"
              @click.stop>
           

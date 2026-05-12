@@ -61,6 +61,11 @@ geoport/
    npm run docker:up
    ```
 
+   若只需要本機開發用的 Postgres + TiTiler，可使用：
+   ```bash
+   npm run docker:dev
+   ```
+
 2. **查看日誌**
    ```bash
    npm run docker:logs
@@ -70,6 +75,8 @@ geoport/
    ```bash
    npm run docker:down
    ```
+
+雲端部署建議使用 Docker Compose + Nginx 單一入口。公開網域只需要指向 Nginx，Nginx 會代理 `/api`、`/uploads`、`/data`、`/titiler` 與前端靜態頁面。部署前請參考 [docs/cloud-deployment.md](docs/cloud-deployment.md)，並在伺服器 `.env` 設定強密碼與正式網域。
 
 ## 📁 目錄結構
 
@@ -163,7 +170,8 @@ npm run test:backend        # 後端測試
 
 # Docker
 npm run docker:build        # 構建 Docker 鏡像
-npm run docker:up           # 啟動容器
+npm run docker:up           # 啟動 production profile 容器
+npm run docker:dev          # 啟動 dev profile 基礎服務
 npm run docker:down         # 停止容器
 npm run docker:logs         # 查看日誌
 ```

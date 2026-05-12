@@ -1,5 +1,5 @@
 import { pool } from '../config/database.js';
-import XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs/promises';
@@ -276,13 +276,6 @@ async function getExternalApiData(regionCode, dataType, apiConfig, req, res) {
     const isTaiwan7 = regionCode === '台7線' || regionCode === 'taiwan7';
     
     // 調試：輸出配置信息
-    console.log(`[${regionCode}] API配置檢查:`, {
-      isTaiwan7,
-      microseismicEndpoint: microseismicEndpoint || '(空)',
-      rainfallEndpoint: rainfallEndpoint || '(空)',
-      earthquakeEndpoint: earthquakeEndpoint || '(空)',
-      dataType
-    });
     
     // 根據數據類型確定要使用的 endpoint
     let endpointToUse = null;
@@ -301,7 +294,6 @@ async function getExternalApiData(regionCode, dataType, apiConfig, req, res) {
     
     // 如果不是台7線且沒有配置 endpoint，返回空數據
     if (!isTaiwan7 && !hasConfiguredEndpoint) {
-      console.log(`[${regionCode}] 非台7線項目且未配置 ${dataType} 的API端點，返回空數據`);
       
       // 根據數據類型返回空數據結構
       let emptyResult = {
@@ -350,7 +342,6 @@ async function getExternalApiData(regionCode, dataType, apiConfig, req, res) {
     const rainfallService = new RainfallEarthquakeApiService(finalRainfallEndpoint);
     const earthquakeService = new RainfallEarthquakeApiService(finalEarthquakeEndpoint);
     
-    console.log(`[${regionCode}] 使用API端點 - 微地動: ${finalMicroseismicEndpoint}, 雨量: ${finalRainfallEndpoint}, 強地動: ${finalEarthquakeEndpoint}${isTaiwan7 ? ' (台7線默認)' : ''}`);
     
     // 根據數據類型設置更新間隔（秒）
     // 微地動和雨量更新較慢，設置為10分鐘（600秒）
@@ -376,13 +367,8 @@ async function getExternalApiData(regionCode, dataType, apiConfig, req, res) {
         const catalog = await microseismicService.getDailyCatalog(now);
         
         // 調試：輸出微地動API原始內容
-        console.log('========== 微地動API原始內容 ==========');
-        console.log('警告標籤響應:', JSON.stringify(warningFlags, null, 2));
-        console.log('每日目錄響應:', JSON.stringify(catalog, null, 2));
         if (catalog.data && catalog.data.records && catalog.data.records.length > 0) {
-          console.log('前3條記錄:', JSON.stringify(catalog.data.records.slice(0, 3), null, 2));
         }
-        console.log('=====================================');
         
         // 構建返回數據（即使API失敗也返回空數據結構）
         const catalogData = catalog.data || { records: [], count: 0 };
@@ -487,23 +473,14 @@ async function getExternalApiData(regionCode, dataType, apiConfig, req, res) {
         const rainfallData = await rainfallService.getRainfallData(targetDate, 'txt');
         
         // 調試：輸出雨量API原始內容
-        console.log('========== 雨量API原始內容 ==========');
-        console.log('API響應狀態:', rainfallData.success);
         if (rainfallData.success && rainfallData.data) {
-          console.log('時間序列數量:', rainfallData.data.timeSeries?.length || 0);
           if (rainfallData.data.timeSeries && rainfallData.data.timeSeries.length > 0) {
-            console.log('前3條時間序列:', JSON.stringify(rainfallData.data.timeSeries.slice(0, 3), null, 2));
           }
-          console.log('統計數據:', JSON.stringify(rainfallData.data.statistics, null, 2));
-          console.log('最新數據:', JSON.stringify(rainfallData.data.latest, null, 2));
           // 輸出原始TXT數據的前500字符
           if (rainfallData.data.raw) {
-            console.log('原始TXT數據前500字符:', rainfallData.data.raw.substring(0, 500));
           }
         } else {
-          console.log('API錯誤:', rainfallData.error);
         }
-        console.log('=====================================');
         
         // 如果API調用失敗，返回空數據而不是拋出錯誤
         if (!rainfallData.success) {
@@ -538,14 +515,6 @@ async function getExternalApiData(regionCode, dataType, apiConfig, req, res) {
             dataDensity: (data.timeSeries?.length || 0) > 24 ? 'high' : (data.timeSeries?.length || 0) > 12 ? 'medium' : 'low'
           };
           
-          console.log('雨量數據處理結果:', {
-            timeSeriesCount: result.time_series.length,
-            accumulated: result.accumulated,
-            hourly: result.hourly,
-            firstTimeSeries: result.time_series[0],
-            labelsCount: result.labels.length,
-            valuesCount: result.values.length
-          });
         }
         break;
       }
@@ -555,57 +524,32 @@ async function getExternalApiData(regionCode, dataType, apiConfig, req, res) {
       case 'strong_motion': {
         // 獲取強地動數據
         // 注意：強地動數據只在觸發事件時才生成，所以需要回溯尋找最近的數據
-        console.log('========== 強地動API原始內容 ==========');
-        console.log('開始獲取強地動數據，當前時間:', now.toISOString());
         
         // 先嘗試當前時間
         let strongMotionData = await earthquakeService.getStrongMotionData(now, 0, 'DH3A.cwa.txt');
         
-        console.log('強地動API首次調用結果:', {
-          success: strongMotionData.success,
-          statusCode: strongMotionData.statusCode,
-          hasData: !!strongMotionData.data,
-          parsedTimeSeriesCount: strongMotionData.data?.parsed?.timeSeries?.length || 0
-        });
         
         if (strongMotionData.success && strongMotionData.data) {
-          console.log('原始數據長度:', strongMotionData.data.raw?.length || 0);
           if (strongMotionData.data.raw) {
-            console.log('原始TXT數據前500字符:', strongMotionData.data.raw.substring(0, 500));
           }
           if (strongMotionData.data.lines && strongMotionData.data.lines.length > 0) {
-            console.log('解析後行數:', strongMotionData.data.lines.length);
-            console.log('前5行數據:', strongMotionData.data.lines.slice(0, 5));
           }
           if (strongMotionData.data.parsed) {
-            console.log('解析結果:', JSON.stringify({
-              timeSeriesCount: strongMotionData.data.parsed.timeSeries?.length || 0,
-              pga: strongMotionData.data.parsed.pga,
-              maxAcceleration: strongMotionData.data.parsed.maxAcceleration,
-              acceleration: strongMotionData.data.parsed.acceleration,
-              firstTimeSeries: strongMotionData.data.parsed.timeSeries?.[0] || null
-            }, null, 2));
           }
         } else {
-          console.log('API錯誤:', strongMotionData.error);
-          console.log('狀態碼:', strongMotionData.statusCode);
         }
-        console.log('=====================================');
         
         // 如果當前時間的數據不存在，先嘗試獲取目錄列表找到最新的可用數據
         if (!strongMotionData.success && strongMotionData.statusCode === 404) {
-          console.log('當前時間數據不存在，嘗試獲取目錄列表...');
           
           // 嘗試獲取目錄列表
           const dirList = await earthquakeService.getStrongMotionDirectoryList();
           
           if (dirList.success && dirList.timestamps.length > 0) {
-            console.log(`找到 ${dirList.timestamps.length} 個可用的強地動目錄，嘗試最新的幾個...`);
             
             // 嘗試最新的5個時間戳
             for (let i = 0; i < Math.min(5, dirList.timestamps.length); i++) {
               const timestampStr = dirList.timestamps[i];
-              console.log(`嘗試時間戳: ${timestampStr}`);
               
               // 解析時間戳為Date對象
               // 格式：20250425015806.70 -> 2025-04-25 01:58:06.70
@@ -621,7 +565,6 @@ async function getExternalApiData(regionCode, dataType, apiConfig, req, res) {
               
               strongMotionData = await earthquakeService.getStrongMotionData(timestampDate, ss, 'DH3A.cwa.txt');
               if (strongMotionData.success) {
-                console.log(`成功獲取數據，使用時間戳: ${timestampStr}`);
                 break;
               }
             }
@@ -629,33 +572,27 @@ async function getExternalApiData(regionCode, dataType, apiConfig, req, res) {
           
           // 如果目錄列表方法失敗，嘗試回溯更長的時間（最多回溯7天）
           if (!strongMotionData.success) {
-            console.log('目錄列表方法失敗，嘗試回溯更長的時間（最多7天）...');
             
             // 先嘗試前30分鐘（每次1分鐘）
             for (let i = 1; i <= 30; i++) {
               const pastTime = new Date(now.getTime() - i * 60 * 1000);
               strongMotionData = await earthquakeService.getStrongMotionData(pastTime, 0, 'DH3A.cwa.txt');
               if (strongMotionData.success) {
-                console.log(`成功獲取 ${i} 分鐘前的數據`);
                 break;
               }
               if (i % 10 === 0) {
-                console.log(`已嘗試 ${i} 分鐘前的數據，繼續搜索...`);
               }
             }
             
             // 如果還是失敗，嘗試回溯到幾天前（每次1小時）
             if (!strongMotionData.success) {
-              console.log('嘗試回溯到幾天前（每次1小時）...');
               for (let hour = 1; hour <= 168; hour++) { // 7天 = 168小時
                 const pastTime = new Date(now.getTime() - hour * 60 * 60 * 1000);
                 strongMotionData = await earthquakeService.getStrongMotionData(pastTime, 0, 'DH3A.cwa.txt');
                 if (strongMotionData.success) {
-                  console.log(`成功獲取 ${hour} 小時前的數據`);
                   break;
                 }
                 if (hour % 24 === 0) {
-                  console.log(`已嘗試 ${hour} 小時（${hour / 24} 天）前的數據，繼續搜索...`);
                 }
               }
             }
@@ -683,19 +620,9 @@ async function getExternalApiData(regionCode, dataType, apiConfig, req, res) {
           const parsed = strongMotionData.data?.parsed || {};
           const timeSeries = parsed.timeSeries || [];
           
-          console.log('強地動數據處理結果:', {
-            timeSeriesCount: timeSeries.length,
-            pga: parsed.pga,
-            maxAcceleration: parsed.maxAcceleration,
-            acceleration: parsed.acceleration,
-            hasRawData: !!strongMotionData.data?.raw,
-            rawDataLength: strongMotionData.data?.raw?.length || 0,
-            linesCount: strongMotionData.data?.lines?.length || 0
-          });
           
           // 如果解析後沒有時間序列數據，但有PGA或加速度值，至少返回這些值
           if (timeSeries.length === 0 && (parsed.pga !== null || parsed.acceleration !== null)) {
-            console.log('沒有時間序列數據，但存在PGA或加速度值，使用單一數值');
             // 創建一個單一數據點的時間序列
             const singleValue = parsed.pga || parsed.acceleration || parsed.maxAcceleration || 0;
             const currentHour = now.getHours();
@@ -848,12 +775,6 @@ async function upsertWarningRegionData(req, res) {
 async function createRegionProject(req, res) {
   try {
     // 調試：輸出請求信息
-    console.log('建立地區專案請求:', {
-      body: req.body,
-      files: req.files ? req.files.length : 0,
-      bodyKeys: Object.keys(req.body || {}),
-      contentType: req.headers['content-type']
-    });
     
     // 從 req.body 中提取數據（multer 會將 FormData 的文本字段放在 req.body 中）
     const regionName = req.body.regionName;
@@ -969,7 +890,6 @@ async function createRegionProject(req, res) {
 
     const regionResult = await pool.query(insertRegionQuery, insertParams);
     const regionId = regionResult.rows[0].region_id;
-    console.log(`創建新地區專案: ${regionCode} (ID: ${regionId})`);
 
     // TODO: 處理上傳的檔案（風險判釋資料）
     // 這裡可以將檔案儲存到指定目錄，並在資料庫中記錄檔案資訊
@@ -1266,12 +1186,15 @@ async function importInspectionRecordFromExcel(req, res) {
     const excelPath = path.join(__dirname, '../../../data/projects/taiwan837/T8L37_17-22.5K_SlopeCondition_After0403.xlsx');
     
     // 讀取 Excel 文件
-    const workbook = XLSX.readFile(excelPath);
-    const sheetName = workbook.SheetNames[0];
-    const sheet = workbook.Sheets[sheetName];
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.readFile(excelPath);
+    const sheet = workbook.worksheets[0];
     
-    // 轉換為 JSON 格式（第一行作為表頭）
-    const data = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: null });
+    // 轉換為陣列格式（第一行作為表頭）
+    const data = [];
+    sheet.eachRow({ includeEmpty: true }, (row) => {
+      data.push(row.values.slice(1).map(value => value ?? null));
+    });
     
     if (data.length < 2) {
       return res.status(400).json({
@@ -1285,8 +1208,6 @@ async function importInspectionRecordFromExcel(req, res) {
     const firstRow = data[1];
     
     // 調試：輸出表頭和第一行數據
-    console.log('Excel 表頭:', headers);
-    console.log('第一行數據:', firstRow);
     
     // 找到各欄位索引
     let boardIndex = -1;
@@ -1335,7 +1256,6 @@ async function importInspectionRecordFromExcel(req, res) {
               year: year || new Date().getFullYear(),
               inspectionDate
             });
-            console.log(`找到例行巡查欄位: ${headerStr}, 月份: ${month}, 年份: ${year || '未指定'}`);
           }
         }
         
@@ -1372,7 +1292,6 @@ async function importInspectionRecordFromExcel(req, res) {
               month,
               inspectionDate
             });
-            console.log(`找到特別巡查欄位: ${headerStr}, 年份: ${year}, 日期: ${inspectionDate || '未指定'}`);
           }
         }
       }
@@ -1389,8 +1308,6 @@ async function importInspectionRecordFromExcel(req, res) {
       });
     }
     
-    console.log(`找到 ${routineColumns.length} 個例行巡查欄位, ${specialColumns.length} 個特別巡查欄位`);
-    console.log(`Excel 共有 ${data.length - 1} 筆數據行`);
     
     // 獲取地區 ID
     const regionQuery = `
@@ -1422,7 +1339,6 @@ async function importInspectionRecordFromExcel(req, res) {
       
       // 跳過沒有里程數的行
       if (!rowMileage || rowMileage === '' || rowMileage === null) {
-        console.log(`跳過第 ${rowIndex} 行：沒有里程數`);
         continue;
       }
       
@@ -1432,14 +1348,12 @@ async function importInspectionRecordFromExcel(req, res) {
       // 檢查是否為空行（所有欄位都為空）
       const isEmptyRow = row.every(cell => cell === null || cell === undefined || cell === '');
       if (isEmptyRow) {
-        console.log(`跳過第 ${rowIndex} 行：空行`);
         continue;
       }
       
       // 將里程數轉換為標準格式（例如：22.5K -> 022K+500, 22.0K -> 022K+000）
       cleanMileage = convertMileageToStandardFormat(cleanMileage);
       
-      console.log(`處理第 ${rowIndex} 行，原始里程數: ${rowMileage}, 轉換後: ${cleanMileage}, Board: ${rowBoard}`);
     
       // 處理該行的例行巡查（月巡）
       for (const col of routineColumns) {
@@ -2143,7 +2057,6 @@ async function getWarningRegionDataById(req, res) {
     if (!validateUUID(regionId, res, '地區 ID')) return;
     const { dataType, limit = 100, useExternalApi = 'false' } = req.query;
     
-    console.log(`[getWarningRegionDataById] 查詢 region_id=${regionId}`);
     
     // 先獲取地區資訊和API配置（使用 region_id）
     const regionQuery = `
@@ -2240,7 +2153,6 @@ async function getPointColorsById(req, res) {
     const { regionId } = req.params;
     if (!validateUUID(regionId, res, '地區 ID')) return;
     
-    console.log(`[getPointColorsById] 查詢 region_id=${regionId} 的點位顏色配置`);
     
     // 獲取所有點位顏色配置（直接使用 region_id）
     const query = `
@@ -2260,7 +2172,6 @@ async function getPointColorsById(req, res) {
     
     const result = await pool.query(query, [regionId]);
     
-    console.log(`[getPointColorsById] 查詢結果: ${result.rows.length} 個點位顏色配置`);
     
     res.json({
       success: true,
@@ -2284,15 +2195,6 @@ async function upsertPointColorById(req, res) {
     if (!validateUUID(regionId, res, '地區 ID')) return;
     const { longitude, latitude, mileage, roadSection, pointColor } = req.body;
     
-    console.log(`[upsertPointColorById] 開始更新點位顏色`, {
-      regionId,
-      regionIdType: typeof regionId,
-      longitude,
-      latitude,
-      mileage,
-      roadSection,
-      pointColor
-    });
     
     // region_id 是 UUID 類型，直接使用字符串
     
@@ -2342,13 +2244,9 @@ async function upsertPointColorById(req, res) {
       pointColor
     ];
     
-    console.log('[upsertPointColorById] 執行查詢:', {
-      params: queryParams
-    });
     
     const result = await pool.query(upsertQuery, queryParams);
     
-    console.log('[upsertPointColorById] 更新成功:', result.rows[0]);
     
     res.json({
       success: true,
@@ -2512,7 +2410,6 @@ async function getDisasterCountsByMileageById(req, res) {
     const { regionId } = req.params;
     if (!validateUUID(regionId, res, '地區 ID')) return;
     
-    console.log(`[getDisasterCountsByMileageById] 查詢 region_id=${regionId} 的災害統計`);
     
     // 統計每個里程點的災害數量（使用 region_id）
     const query = `
@@ -2529,7 +2426,6 @@ async function getDisasterCountsByMileageById(req, res) {
     
     const result = await pool.query(query, [regionId]);
     
-    console.log(`[getDisasterCountsByMileageById] 查詢結果: ${result.rows.length} 個里程點有災害記錄`);
     
     // 轉換為對象格式，方便前端查找
     const disasterCountMap = {};
@@ -2573,6 +2469,143 @@ async function deleteInspectionRecord(req, res) {
   } catch (error) {
     console.error('刪除巡查紀錄失敗:', error);
     res.status(500).json({ success: false, message: '刪除巡查紀錄失敗' });
+  }
+}
+
+// ─── 監測圖資 (warning_region_layers) ────────────────────────────────────────
+
+const BACKEND_ROOT = path.join(__dirname, '../..');
+const resolveMonitoringPath = (p) =>
+  path.isAbsolute(p) ? p : path.join(BACKEND_ROOT, p);
+
+// GET /api/warning-regions/id/:regionId/layers
+export async function getRegionLayersById(req, res) {
+  const { regionId } = req.params;
+  try {
+    const result = await pool.query(
+      `SELECT layer_id, region_id, region_code, layer_type, layer_name,
+              storage_path, display_config, is_active, created_at
+       FROM warning_region_layers
+       WHERE region_id = $1 AND is_active = TRUE
+       ORDER BY layer_type, created_at`,
+      [regionId]
+    );
+    res.json({ success: true, data: result.rows });
+  } catch (error) {
+    console.error('取得監測圖資失敗:', error);
+    res.status(500).json({ success: false, message: '取得監測圖資失敗' });
+  }
+}
+
+// GET /api/warning-regions/:regionCode/layers
+export async function getRegionLayers(req, res) {
+  const { regionCode } = req.params;
+  try {
+    const result = await pool.query(
+      `SELECT layer_id, region_id, region_code, layer_type, layer_name,
+              storage_path, display_config, is_active, created_at
+       FROM warning_region_layers
+       WHERE region_code = $1 AND is_active = TRUE
+       ORDER BY layer_type, created_at`,
+      [regionCode]
+    );
+    res.json({ success: true, data: result.rows });
+  } catch (error) {
+    console.error('取得監測圖資失敗:', error);
+    res.status(500).json({ success: false, message: '取得監測圖資失敗' });
+  }
+}
+
+// POST /api/warning-regions/:regionCode/layers
+// PUT  /api/warning-regions/:regionCode/layers/:layerId
+export async function upsertRegionLayer(req, res) {
+  const { regionCode, layerId } = req.params;
+  const { layer_type, layer_name, display_config } = req.body;
+
+  if (!layer_type || !layer_name) {
+    return res.status(400).json({ success: false, message: '缺少 layer_type 或 layer_name' });
+  }
+
+  try {
+    let storage_path;
+
+    // 有上傳檔案的情況
+    if (req.file) {
+      const relPath = path.relative(BACKEND_ROOT, req.file.path);
+      storage_path = relPath.replace(/\\/g, '/');
+    } else if (req.body.storage_path) {
+      storage_path = req.body.storage_path;
+    } else if (!layerId) {
+      return res.status(400).json({ success: false, message: '新增圖資需要提供檔案或 storage_path' });
+    }
+
+    if (layerId) {
+      // 更新
+      const fields = ['layer_type=$2', 'layer_name=$3', 'display_config=$4', 'updated_at=NOW()'];
+      const values = [layerId, layer_type, layer_name, display_config ? JSON.parse(display_config) : {}];
+      if (storage_path) { fields.push(`storage_path=$${values.length + 1}`); values.push(storage_path); }
+
+      const result = await pool.query(
+        `UPDATE warning_region_layers SET ${fields.join(',')} WHERE layer_id=$1 RETURNING *`,
+        values
+      );
+      if (result.rows.length === 0) return res.status(404).json({ success: false, message: '圖資不存在' });
+      return res.json({ success: true, data: result.rows[0] });
+    }
+
+    // 新增
+    const result = await pool.query(
+      `INSERT INTO warning_region_layers
+         (region_code, layer_type, layer_name, storage_path, display_config)
+       VALUES ($1,$2,$3,$4,$5) RETURNING *`,
+      [regionCode, layer_type, layer_name, storage_path,
+       display_config ? JSON.parse(display_config) : {}]
+    );
+    res.status(201).json({ success: true, data: result.rows[0] });
+  } catch (error) {
+    console.error('儲存監測圖資失敗:', error);
+    res.status(500).json({ success: false, message: '儲存監測圖資失敗' });
+  }
+}
+
+// DELETE /api/warning-regions/layers/:layerId
+export async function deleteRegionLayer(req, res) {
+  const { layerId } = req.params;
+  try {
+    const result = await pool.query(
+      `UPDATE warning_region_layers SET is_active=FALSE, updated_at=NOW()
+       WHERE layer_id=$1 RETURNING layer_id`,
+      [layerId]
+    );
+    if (result.rows.length === 0) return res.status(404).json({ success: false, message: '圖資不存在' });
+    res.json({ success: true, message: '圖資已停用' });
+  } catch (error) {
+    console.error('停用監測圖資失敗:', error);
+    res.status(500).json({ success: false, message: '停用監測圖資失敗' });
+  }
+}
+
+// GET /api/warning-regions/monitoring-file?path=uploads/monitoring/...
+// 代理服務：前端透過此 API 取得監測圖資的實際內容
+export async function serveMonitoringFile(req, res) {
+  const filePath = req.query.path;
+  if (!filePath) return res.status(400).json({ success: false, message: '缺少 path 參數' });
+
+  // 安全性：只允許 uploads/monitoring/ 底下的路徑
+  const normalized = path.normalize(filePath);
+  if (!normalized.startsWith('uploads/monitoring/')) {
+    return res.status(403).json({ success: false, message: '不允許存取此路徑' });
+  }
+
+  const absPath = resolveMonitoringPath(normalized);
+  try {
+    await fs.access(absPath);
+    const ext = path.extname(absPath).toLowerCase();
+    const mime = ext === '.tif' || ext === '.tiff' ? 'image/tiff' : 'application/json';
+    res.setHeader('Content-Type', mime);
+    res.sendFile(absPath);
+  } catch {
+    res.status(404).json({ success: false, message: '監測圖資檔案不存在' });
   }
 }
 

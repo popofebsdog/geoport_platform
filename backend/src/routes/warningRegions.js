@@ -1,6 +1,7 @@
 import express from 'express';
 import multer from 'multer';
 import { authenticate } from '../middleware/auth.js';
+import { createMulterFileFilter, createStoredFilename, maxUploadSize, sanitizeOriginalName } from '../config/uploadPolicy.js';
 import {
   getWarningRegions,
   getWarningRegionByCode,
@@ -26,13 +27,21 @@ import {
   deleteAlertLight,
   deleteAlertLightById,
   getDisasterCountsByMileage,
-  getDisasterCountsByMileageById
+  getDisasterCountsByMileageById,
+  getRegionLayers,
+  getRegionLayersById,
+  upsertRegionLayer,
+  deleteRegionLayer,
+  serveMonitoringFile
 } from '../controllers/warningRegionController.js';
 
 const router = express.Router();
 
 // 獲取所有預警地區列表
 router.get('/', getWarningRegions);
+
+// 代理服務：取得監測圖資實際內容（必須在 /:regionCode 之前，避免被攔截）
+router.get('/monitoring-file', serveMonitoringFile);
 
 // 根據地區代碼獲取地區資訊
 router.get('/:regionCode', getWarningRegionByCode);
@@ -47,7 +56,11 @@ router.get('/id/:regionId/data', getWarningRegionDataById);
 router.post('/:regionCode/data', authenticate, upsertWarningRegionData);
 
 // 建立地區專案（包含上傳檔案）
-const upload = multer({ dest: 'uploads/warning-regions/' });
+const upload = multer({
+  dest: 'uploads/warning-regions/',
+  limits: { fileSize: maxUploadSize('dataFile') },
+  fileFilter: createMulterFileFilter('dataFile')
+});
 router.post('/create-project', authenticate, upload.array('files'), createRegionProject);
 
 // 更新地區專案（使用 region_id）
@@ -107,5 +120,47 @@ router.get('/id/:regionId/disaster-counts', getDisasterCountsByMileageById);
 // 獲取指定地區的里程點災害數量統計（使用 region_code，向后兼容）
 router.get('/:regionCode/disaster-counts', getDisasterCountsByMileage);
 
-export default router;
+// ─── 監測圖資 ────────────────────────────────────────────────────────────────
 
+// multer：上傳監測圖資到 uploads/monitoring/{regionCode}/
+import path from 'path';
+import { fileURLToPath } from 'url';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const BACKEND_ROOT = path.join(__dirname, '../..');
+
+const monitoringStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const dir = path.join(BACKEND_ROOT, 'uploads/monitoring', req.params.regionCode);
+    import('fs').then(fs => {
+      fs.default.mkdirSync(dir, { recursive: true });
+      cb(null, dir);
+    });
+  },
+  filename: (req, file, cb) => {
+    const safeName = sanitizeOriginalName(file.originalname);
+    cb(null, createStoredFilename('monitoring', safeName));
+  }
+});
+const monitoringUpload = multer({
+  storage: monitoringStorage,
+  limits: { fileSize: maxUploadSize('monitoringLayer') },
+  fileFilter: createMulterFileFilter('monitoringLayer')
+});
+
+// 取得指定區域的所有監測圖資清單（使用 region_id）- 必須在 /:regionCode 之前
+router.get('/id/:regionId/layers', getRegionLayersById);
+
+// 取得指定區域的所有監測圖資清單（使用 region_code，向后兼容）
+router.get('/:regionCode/layers', getRegionLayers);
+
+// 新增 / 上傳監測圖資
+router.post('/:regionCode/layers', authenticate, monitoringUpload.single('file'), upsertRegionLayer);
+
+// 更新監測圖資設定
+router.put('/:regionCode/layers/:layerId', authenticate, upsertRegionLayer);
+
+// 停用監測圖資
+router.delete('/layers/:layerId', authenticate, deleteRegionLayer);
+
+export default router;

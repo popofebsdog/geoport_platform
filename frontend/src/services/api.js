@@ -1,9 +1,12 @@
 import axios from 'axios';
+import { logger } from '@/utils/logger.js';
+
+const log = logger.scoped('api');
 
 // 創建 axios 實例
 const api = axios.create({
   baseURL: '/api', // 使用相對路徑，讓 Vite 代理處理
-  timeout: 10000
+  timeout: 30000
   // 移除默認的 Content-Type，讓 axios 根據數據類型自動設置
 });
 
@@ -28,7 +31,12 @@ api.interceptors.response.use(
     return response.data;
   },
   (error) => {
-    console.error('API 響應攔截器 - 錯誤:', error);
+    log.error('API 響應錯誤', {
+      status: error.response?.status,
+      url: error.config?.url,
+      method: error.config?.method,
+      message: error.response?.data?.message || error.message
+    });
     if (error.response?.status === 401) {
       // 清除過期的令牌
       localStorage.removeItem('authToken');
@@ -64,7 +72,10 @@ export const projectAPI = {
   getDeleted: () => api.get('/projects/deleted'),
   
   // 還原項目
-  restore: (id) => api.patch(`/projects/${id}/restore`)
+  restore: (id) => api.patch(`/projects/${id}/restore`),
+
+  // 永久刪除項目（硬刪除，包含已軟刪除的項目）
+  permanentDelete: (id) => api.delete(`/projects/${id}/permanent`)
 };
 
 export const dataAPI = {
@@ -90,26 +101,32 @@ export const dataAPI = {
 
 export const dataFileAPI = {
   // 獲取所有資料檔案
-  getAll: (params = {}) => api.get('/data-files', { params }),
+  getAll: (params = {}) => api.get('/data', { params }),
   
   // 獲取單個資料檔案
-  getById: (id) => api.get(`/data-files/${id}`),
+  getById: (id) => api.get(`/data/${id}`),
   
-  // 上傳資料檔案
-  upload: (formData) => api.post('/data/upload', formData),
+  // 上傳資料檔案（大檔案，不設逾時限制）
+  upload: (formData) => api.post('/data/upload', formData, { timeout: 0 }),
   
   // 創建資料檔案
-  create: (data) => api.post('/data-files', data),
+  create: (data) => api.post('/data', data),
   
   // 更新資料檔案
-  update: (id, data) => api.put(`/data-files/${id}`, data),
+  update: (id, data) => api.put(`/data/${id}`, data),
   
-  // 刪除資料檔案 (軟刪除)
-  delete: (id) => api.delete(`/data-files/${id}`),
+  // 刪除資料檔案
+  delete: (id) => api.delete(`/data/${id}`),
   
   // 永久刪除資料檔案
   permanentDelete: (id) => api.delete(`/data-files/${id}/permanent`),
+
+  // 獲取專案的底圖列表
+  getProjectBasemaps: (projectId) => api.get(`/data/project/${projectId}/basemaps`),
   
+  // 獲取專案所有資料檔案
+  getProjectFiles: (projectId) => api.get(`/data/project/${projectId}`),
+
   // 獲取已刪除資料檔案
   getDeleted: () => api.get('/data-files/deleted'),
   
@@ -143,6 +160,15 @@ export const reportAPI = {
   restore: (id) => api.patch(`/reports/${id}/restore`)
 };
 
+export const disasterPointAPI = {
+  getByProject: (projectId) => api.get(`/disaster-points/project/${projectId}`),
+  getById: (id) => api.get(`/disaster-points/${id}`),
+  create: (formData) => api.post('/disaster-points', formData, { timeout: 0 }),
+  update: (id, formData) => api.put(`/disaster-points/${id}`, formData, { timeout: 0 }),
+  delete: (id) => api.delete(`/disaster-points/${id}`),
+  deleteMedia: (disasterPointId, mediaId) => api.delete(`/disaster-points/${disasterPointId}/media/${mediaId}`)
+};
+
 export const authAPI = {
   login: (credentials) => api.post('/auth/login', credentials),
   register: (userData) => api.post('/auth/register', userData),
@@ -151,7 +177,18 @@ export const authAPI = {
   updateProfile: (data) => api.put('/auth/profile', data),
   // User management (admin)
   getUsers: () => api.get('/auth/users'),
+  createUser: (userData) => api.post('/auth/users', userData),
   updateUser: (id, data) => api.put(`/auth/users/${id}`, data)
+};
+
+export const adminAPI = {
+  getOverview: () => api.get('/admin/overview'),
+  getHealth: () => api.get('/admin/health'),
+  getFiles: (params = {}) => api.get('/admin/files', { params }),
+  auditFiles: (params = {}) => api.get('/admin/files/audit', { params }),
+  checkFile: (id) => api.get(`/admin/files/${id}/check`),
+  getIssues: () => api.get('/admin/issues'),
+  getProjectDetail: (id) => api.get(`/admin/projects/${id}`)
 };
 
 export default api;

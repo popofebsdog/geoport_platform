@@ -1,7 +1,7 @@
 <template>
   <div class="geological-map-selector">
     <!-- 地質圖卡片 -->
-    <div class="p-3 rounded-2xl border transition-all duration-300 hover:scale-[1.02] shadow-sm hover:shadow-lg backdrop-blur-sm"
+    <div class="p-3 rounded border transition-all duration-300 transition-colors duration-150"
          :class="[
            isDarkMode ? 'bg-slate-700/80 border-slate-600/50 hover:bg-slate-600/80 hover:border-slate-500' : 'bg-white/90 border-gray-200/60 hover:bg-white hover:border-gray-300',
            isActive ? (isDarkMode ? 'ring-2 ring-blue-400/60 shadow-blue-400/20' : 'ring-2 ring-blue-500/60 shadow-blue-500/20') : ''

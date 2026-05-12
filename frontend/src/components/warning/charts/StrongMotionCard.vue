@@ -1,71 +1,91 @@
 <template>
   <div class="strong-motion-card w-full h-full p-4 flex flex-col">
+    <!-- 載入中 -->
     <div v-if="loading" class="flex items-center justify-center h-full">
       <div class="text-center">
-        <div class="w-6 h-6 border-2 border-blue-300 border-t-blue-600 rounded-full animate-spin mx-auto mb-2"></div>
-        <p class="text-xs text-gray-500 dark:text-gray-400">載入中...</p>
+        <div class="w-5 h-5 border-2 rounded-full animate-spin mx-auto mb-2"
+             :style="isDarkMode ? 'border-color:#334155; border-top-color:#a78bfa;' : 'border-color:#ede9fe; border-top-color:#7c3aed;'"></div>
+        <p class="text-xs" :class="isDarkMode ? 'text-slate-500' : 'text-gray-400'">載入中...</p>
       </div>
     </div>
-    
-    <div v-else class="flex flex-col h-full">
-      <!-- 標題 -->
-      <div class="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 px-3 py-2 mb-3">
-        <h4 class="text-center text-sm font-bold text-gray-800 dark:text-gray-200">
-          Ground Motion Condition for Early Warning
-        </h4>
+
+    <!-- 主體 -->
+    <div v-else class="flex flex-col h-full gap-3">
+      <!-- 標題列 -->
+      <div class="flex items-center justify-between">
+        <span class="text-[11px] font-semibold uppercase tracking-wider"
+              :class="isDarkMode ? 'text-slate-500' : 'text-gray-400'">強地動監測</span>
+        <span class="text-[10px]" :class="isDarkMode ? 'text-slate-600' : 'text-gray-400'">
+          {{ formatCurrentTime() }}
+        </span>
       </div>
-      
-      <!-- 當前摘要 -->
-      <div class="bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 border border-amber-200 dark:border-amber-800 px-3 py-2 mb-3">
-        <div class="text-center text-xs text-gray-600 dark:text-gray-400">
-          Current Summary {{ formatCurrentTime() }}
+
+      <!-- 警報等級三欄 -->
+      <div class="grid grid-cols-3 rounded overflow-hidden"
+           :style="isDarkMode ? 'border:1px solid #1e293b;' : 'border:1px solid #f3f4f6;'">
+        <div class="py-2.5 text-center"
+             :style="isDarkMode ? 'border-right:1px solid #1e293b;' : 'border-right:1px solid #f3f4f6;'">
+          <div class="flex items-center justify-center gap-1.5">
+            <span class="w-2 h-2 rounded-full"
+                  :class="alarmLevel === 'high' ? 'bg-red-500' : (isDarkMode ? 'bg-slate-700' : 'bg-gray-200')"></span>
+            <span class="text-[10px] font-medium"
+                  :class="alarmLevel === 'high'
+                    ? (isDarkMode ? 'text-red-400' : 'text-red-600')
+                    : (isDarkMode ? 'text-slate-500' : 'text-gray-400')">&gt;80gal</span>
+          </div>
+        </div>
+        <div class="py-2.5 text-center"
+             :style="isDarkMode ? 'border-right:1px solid #1e293b;' : 'border-right:1px solid #f3f4f6;'">
+          <div class="flex items-center justify-center gap-1.5">
+            <span class="w-2 h-2 rounded-full"
+                  :class="alarmLevel === 'medium' ? 'bg-amber-500' : (isDarkMode ? 'bg-slate-700' : 'bg-gray-200')"></span>
+            <span class="text-[10px] font-medium"
+                  :class="alarmLevel === 'medium'
+                    ? (isDarkMode ? 'text-amber-400' : 'text-amber-600')
+                    : (isDarkMode ? 'text-slate-500' : 'text-gray-400')">25~80</span>
+          </div>
+        </div>
+        <div class="py-2.5 text-center">
+          <div class="flex items-center justify-center gap-1.5">
+            <span class="w-2 h-2 rounded-full"
+                  :class="alarmLevel === 'low' || alarmLevel === 'none' ? 'bg-green-500' : (isDarkMode ? 'bg-slate-700' : 'bg-gray-200')"></span>
+            <span class="text-[10px] font-medium"
+                  :class="alarmLevel === 'low' || alarmLevel === 'none'
+                    ? (isDarkMode ? 'text-green-400' : 'text-green-600')
+                    : (isDarkMode ? 'text-slate-500' : 'text-gray-400')">NO ALM</span>
+          </div>
         </div>
       </div>
-      
-      <!-- 警報等級指示器 -->
-      <div class="grid grid-cols-3 gap-2 mb-3">
-        <div 
-          class="flex items-center justify-center py-2 rounded text-xs font-medium"
-          :class="alarmLevel === 'high' ? 'bg-red-500 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400'"
-        >
-          <span class="w-3 h-3 rounded-full mr-1" :class="alarmLevel === 'high' ? 'bg-white' : 'bg-gray-400'"></span>
-          >80gal
+
+      <!-- 分隔線 -->
+      <div class="h-px" :class="isDarkMode ? 'bg-slate-800' : 'bg-gray-100'"></div>
+
+      <!-- 參數列表 -->
+      <div class="space-y-2 flex-1">
+        <div class="flex items-center justify-between">
+          <span class="text-xs" :class="isDarkMode ? 'text-slate-400' : 'text-gray-500'">PGA</span>
+          <span class="text-sm font-semibold tabular-nums" :class="isDarkMode ? 'text-slate-200' : 'text-gray-800'">
+            {{ formatValue(pga) }}
+            <span class="text-xs font-normal" :class="isDarkMode ? 'text-slate-500' : 'text-gray-400'">gal</span>
+          </span>
         </div>
-        <div 
-          class="flex items-center justify-center py-2 rounded text-xs font-medium"
-          :class="alarmLevel === 'medium' ? 'bg-yellow-500 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400'"
-        >
-          <span class="w-3 h-3 rounded-full mr-1" :class="alarmLevel === 'medium' ? 'bg-white' : 'bg-gray-400'"></span>
-          25~80gal
+        <div class="flex items-center justify-between">
+          <span class="text-xs" :class="isDarkMode ? 'text-slate-400' : 'text-gray-500'">PGV</span>
+          <span class="text-sm font-semibold tabular-nums" :class="isDarkMode ? 'text-slate-200' : 'text-gray-800'">
+            {{ formatValue(pgv) }}
+            <span class="text-xs font-normal" :class="isDarkMode ? 'text-slate-500' : 'text-gray-400'">cm/s</span>
+          </span>
         </div>
-        <div 
-          class="flex items-center justify-center py-2 rounded text-xs font-medium"
-          :class="alarmLevel === 'low' ? 'bg-green-500 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400'"
-        >
-          <span class="w-3 h-3 rounded-full mr-1" :class="alarmLevel === 'low' ? 'bg-white' : 'bg-gray-400'"></span>
-          NO ALARM
+        <div class="flex items-center justify-between">
+          <span class="text-xs" :class="isDarkMode ? 'text-slate-400' : 'text-gray-500'">Lead Time</span>
+          <span class="text-sm font-semibold tabular-nums" :class="isDarkMode ? 'text-slate-200' : 'text-gray-800'">
+            {{ formatValue(leadTime) }}
+            <span class="text-xs font-normal" :class="isDarkMode ? 'text-slate-500' : 'text-gray-400'">sec</span>
+          </span>
         </div>
-      </div>
-      
-      <!-- 主要參數 -->
-      <div class="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 px-3 py-2.5">
-        <div class="grid grid-cols-4 gap-4 text-center">
-          <div>
-            <div class="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">PGA</div>
-            <div class="text-base font-bold text-gray-900 dark:text-gray-100">{{ formatValue(pga) }} gal</div>
-          </div>
-          <div>
-            <div class="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">PGV</div>
-            <div class="text-base font-bold text-gray-900 dark:text-gray-100">{{ formatValue(pgv) }} cm/s</div>
-          </div>
-          <div>
-            <div class="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Lead Time</div>
-            <div class="text-base font-bold text-gray-900 dark:text-gray-100">{{ formatValue(leadTime) }} sec</div>
-          </div>
-          <div>
-            <div class="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Intensity</div>
-            <div class="text-lg font-bold text-gray-900 dark:text-gray-100">{{ intensityLevel }}</div>
-          </div>
+        <div class="flex items-center justify-between">
+          <span class="text-xs" :class="isDarkMode ? 'text-slate-400' : 'text-gray-500'">Intensity</span>
+          <span class="text-lg font-semibold tabular-nums" :class="isDarkMode ? 'text-slate-200' : 'text-gray-800'">{{ intensityLevel }}</span>
         </div>
       </div>
     </div>
@@ -81,6 +101,10 @@ export default {
       default: null
     },
     loading: {
+      type: Boolean,
+      default: false
+    },
+    isDarkMode: {
       type: Boolean,
       default: false
     }

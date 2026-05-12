@@ -9,47 +9,32 @@
       ></div>
       
       <!-- 模態框內容 -->
-      <div 
-        class="relative w-full max-w-2xl rounded-2xl shadow-2xl transition-all duration-300 transform"
-        :class="isDarkMode ? 'bg-slate-800' : 'bg-white'"
+      <div
+        class="relative w-full max-w-2xl rounded border transition-all duration-300 flex flex-col max-h-[90vh]"
+        :class="[isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200']"
       >
         <!-- 標題列 -->
-        <div 
-          class="flex items-center justify-between p-6 border-b"
+        <div
+          class="flex items-center justify-between px-6 py-4 border-b flex-shrink-0"
           :class="isDarkMode ? 'border-slate-700' : 'border-gray-200'"
         >
-          <div class="flex items-center space-x-3">
-            <!-- 資料夾圖標 -->
-            <div class="p-2 rounded-lg" :class="isDarkMode ? 'bg-yellow-600/20' : 'bg-yellow-100'">
-              <svg class="w-6 h-6 text-yellow-500" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M10 4H4c-1.11 0-2 .89-2 2v12c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2h-8l-2-2z"/>
-              </svg>
-            </div>
-            <div>
-              <h3 class="text-xl font-semibold transition-colors duration-300"
-                  :class="isDarkMode ? 'text-white' : 'text-gray-900'">
-                新增地點專案
-              </h3>
-              <p class="text-sm" :class="isDarkMode ? 'text-gray-400' : 'text-gray-600'">
-                建立一個地點作為母專案，後續可在此地點下新增不同時期的監測資料
-              </p>
-            </div>
-          </div>
-          
-          <!-- 關閉按鈕 -->
+          <h3 class="text-lg font-semibold transition-colors duration-300"
+              :class="isDarkMode ? 'text-white' : 'text-gray-900'">
+            新增地點專案
+          </h3>
           <button
             @click="closeModal"
-            class="p-2 rounded-lg transition-all duration-300"
+            class="p-1.5 rounded-lg transition-all duration-300"
             :class="isDarkMode ? 'text-gray-400 hover:text-white hover:bg-slate-700' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'"
           >
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
             </svg>
           </button>
         </div>
-        
+
         <!-- 表單內容 -->
-        <div class="p-6 space-y-6 max-h-[calc(100vh-200px)] overflow-y-auto">
+        <div class="p-6 space-y-5 flex-1 overflow-y-auto">
           <!-- 專案名稱 -->
           <div>
             <label class="block text-sm font-medium mb-2 transition-colors duration-300"
@@ -255,6 +240,7 @@
 <script>
 import api from '@/services/api.js'
 import { ref, computed, inject } from 'vue'
+import { error as showError } from '@/utils/simpleAlertService'
 
 export default {
   name: 'CreateParentProjectModal',
@@ -361,7 +347,7 @@ export default {
         }
       } catch (error) {
         console.error('創建母專案失敗:', error)
-        alert(`創建失敗: ${error.response?.data?.message || error.message || '未知錯誤'}`)
+        await showError(`創建失敗: ${error.response?.data?.message || error.message || '未知錯誤'}`, '創建失敗', isDarkMode?.value ?? false)
       } finally {
         isSubmitting.value = false
       }

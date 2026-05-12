@@ -8,6 +8,7 @@ import {
   deleteTemporalData,
   getTemporalDataChart
 } from '../controllers/temporalDataController.js';
+import { authenticate } from '../middleware/auth.js';
 
 const router = express.Router();
 
@@ -18,13 +19,13 @@ router.get('/projects/:projectId/temporal-data', getTemporalDataList);
 router.get('/temporal-data/:temporalId', getTemporalDataById);
 
 // 上傳時序資料
-router.post('/projects/:projectId/temporal-data/upload', upload.single('file'), uploadTemporalData);
+router.post('/projects/:projectId/temporal-data/upload', authenticate, upload.single('file'), uploadTemporalData);
 
 // 更新時序資料
-router.put('/temporal-data/:temporalId', updateTemporalData);
+router.put('/temporal-data/:temporalId', authenticate, updateTemporalData);
 
 // 刪除時序資料
-router.delete('/temporal-data/:temporalId', deleteTemporalData);
+router.delete('/temporal-data/:temporalId', authenticate, deleteTemporalData);
 
 // 獲取時序資料的圖表數據
 router.get('/temporal-data/:temporalId/chart', getTemporalDataChart);

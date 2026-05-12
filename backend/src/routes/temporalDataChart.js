@@ -1,8 +1,9 @@
 import express from 'express';
-import { 
-  generateApexChartConfig, 
-  getChartPreview 
+import {
+  generateApexChartConfig,
+  getChartPreview
 } from '../controllers/temporalDataChartController.js';
+import { authenticate } from '../middleware/auth.js';
 
 const router = express.Router();
 
@@ -13,7 +14,7 @@ const router = express.Router();
 
 // 生成 ApexCharts 配置 JSON
 // POST /api/temporal-data/:temporalId/chart/apex
-router.post('/:temporalId/chart/apex', generateApexChartConfig);
+router.post('/:temporalId/chart/apex', authenticate, generateApexChartConfig);
 
 // 獲取圖表預覽資訊
 // GET /api/temporal-data/:temporalId/chart/preview

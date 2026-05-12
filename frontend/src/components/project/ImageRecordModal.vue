@@ -3,7 +3,7 @@
     <Transition name="modal">
       <div v-if="isVisible" class="fixed inset-0 z-50 flex items-center justify-center p-4"
            @click.self="handleClose">
-        <div class="relative w-full max-w-6xl max-h-[90vh] rounded-xl shadow-2xl overflow-hidden flex flex-col"
+        <div class="relative w-full max-w-6xl max-h-[90vh] rounded border overflow-hidden flex flex-col"
              :class="isDarkMode ? 'bg-slate-800' : 'bg-white'"
              @click.stop>
           
@@ -152,8 +152,14 @@
                     </div>
                   </div>
 
+                  <!-- 上傳中遮罩 -->
+                  <div v-if="media.uploading" class="absolute inset-0 bg-black/60 flex flex-col items-center justify-center space-y-2">
+                    <div class="animate-spin rounded-full h-6 w-6 border-2 border-white border-t-transparent"></div>
+                    <span class="text-white text-xs">上傳中...</span>
+                  </div>
+
                   <!-- 懸浮操作欄 -->
-                  <div class="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center space-x-2">
+                  <div v-else class="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center space-x-2">
                     <button
                       @click.stop="openPreview(media)"
                       class="p-2 rounded-lg bg-white/20 hover:bg-white/30 transition-colors"
@@ -238,6 +244,8 @@
 </template>
 
 <script>
+import { confirm as showConfirm, error as showError } from '@/utils/simpleAlertService'
+
 export default {
   name: 'ImageRecordModal',
   props: {
@@ -286,14 +294,10 @@ export default {
 
       this.isLoading = true
       try {
-        // TODO: 連接後端 API
-        // const response = await this.$api.get(`/child-projects/${this.childProject.project_id}/media`)
-        // if (response.success) {
-        //   this.mediaList = response.data
-        // }
-        
-        // 暫時使用模擬數據
-        this.mediaList = []
+        const response = await this.$api.get(`/child-projects/${this.childProject.project_id}/media`)
+        if (response.success) {
+          this.mediaList = response.data
+        }
       } catch (error) {
         console.error('載入影像紀錄失敗:', error)
       } finally {
@@ -345,68 +349,52 @@ export default {
         return
       }
 
-      const fileId = `upload_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-      this.uploadingFiles.push({ id: fileId, file, type, progress: 0 })
+      const tempId = `uploading_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`
+      const previewUrl = URL.createObjectURL(file)
+      const tempItem = {
+        id: tempId,
+        type,
+        name: file.name,
+        url: previewUrl,
+        thumbnail: type === 'image' ? previewUrl : null,
+        uploading: true
+      }
+      this.mediaList.unshift(tempItem)
+      this.uploadingFiles.push({ id: tempId, file, type, progress: 0 })
 
       try {
-        // 創建預覽 URL
-        const previewUrl = URL.createObjectURL(file)
+        const formData = new FormData()
+        formData.append('file', file)
 
-        // TODO: 連接後端 API 上傳
-        // const formData = new FormData()
-        // formData.append('file', file)
-        // formData.append('type', type)
-        // formData.append('projectId', this.childProject.project_id)
-        // 
-        // const response = await this.$api.post('/media/upload', formData, {
-        //   headers: { 'Content-Type': 'multipart/form-data' },
-        //   onUploadProgress: (progressEvent) => {
-        //     const progress = Math.round((progressEvent.loaded * 100) / progressEvent.total)
-        //     const uploadItem = this.uploadingFiles.find(item => item.id === fileId)
-        //     if (uploadItem) {
-        //       uploadItem.progress = progress
-        //     }
-        //   }
-        // })
-        // 
-        // if (response.success) {
-        //   this.mediaList.unshift({
-        //     id: response.data.id,
-        //     url: response.data.url,
-        //     thumbnail: response.data.thumbnail,
-        //     name: file.name,
-        //     type: type,
-        //     uploadDate: new Date(),
-        //     ...response.data
-        //   })
-        // }
+        const response = await this.$api.post(
+          `/child-projects/${this.childProject.project_id}/media`,
+          formData,
+          { headers: { 'Content-Type': 'multipart/form-data' } }
+        )
 
-        // 暫時使用模擬數據
-        const mockMedia = {
-          id: fileId,
-          url: previewUrl,
-          thumbnail: type === 'image' ? previewUrl : null,
-          name: file.name,
-          type: type,
-          uploadDate: new Date(),
-          size: file.size
-        }
-
-        this.mediaList.unshift(mockMedia)
-
-        // 移除上傳中的文件
-        const index = this.uploadingFiles.findIndex(item => item.id === fileId)
-        if (index > -1) {
-          this.uploadingFiles.splice(index, 1)
+        if (response.success && response.data?.[0]) {
+          const uploaded = response.data[0]
+          // 用真實資料替換暫存項目
+          const idx = this.mediaList.findIndex(m => m.id === tempId)
+          if (idx > -1) {
+            this.mediaList.splice(idx, 1, {
+              ...uploaded,
+              url: `http://localhost:3001${uploaded.url}`,
+              thumbnail: uploaded.thumbnail ? `http://localhost:3001${uploaded.thumbnail}` : null
+            })
+          }
+        } else {
+          throw new Error(response.message || '上傳失敗')
         }
       } catch (error) {
         console.error('上傳失敗:', error)
-        
-        // 移除上傳中的文件
-        const index = this.uploadingFiles.findIndex(item => item.id === fileId)
-        if (index > -1) {
-          this.uploadingFiles.splice(index, 1)
-        }
+        // 移除暫存項目
+        const idx = this.mediaList.findIndex(m => m.id === tempId)
+        if (idx > -1) this.mediaList.splice(idx, 1)
+        URL.revokeObjectURL(previewUrl)
+      } finally {
+        const idx = this.uploadingFiles.findIndex(item => item.id === tempId)
+        if (idx > -1) this.uploadingFiles.splice(idx, 1)
       }
     },
 
@@ -419,28 +407,26 @@ export default {
     },
 
     async handleDelete(media) {
-      if (!confirm(`確定要刪除「${media.name}」嗎？`)) {
-        return
-      }
+      // 暫存中的項目不可刪除
+      if (media.uploading) return
+
+      const confirmed = await showConfirm(`確定要刪除「${media.name}」嗎？`, '刪除確認', this.isDarkMode)
+      if (!confirmed) return
 
       try {
-        // TODO: 連接後端 API 刪除
-        // await this.$api.delete(`/media/${media.id}`)
-        
-        // 暫時直接從列表中移除
-        const index = this.mediaList.findIndex(item => item.id === media.id)
-        if (index > -1) {
-          this.mediaList.splice(index, 1)
-          
-          // 如果是預覽中的媒體，關閉預覽
-          if (this.previewMedia?.id === media.id) {
-            this.closePreview()
-          }
+        const response = await this.$api.delete(
+          `/child-projects/${this.childProject.project_id}/media/${media.id}`
+        )
+        if (response.success) {
+          const index = this.mediaList.findIndex(item => item.id === media.id)
+          if (index > -1) this.mediaList.splice(index, 1)
+          if (this.previewMedia?.id === media.id) this.closePreview()
+        } else {
+          throw new Error(response.message || '刪除失敗')
         }
-
       } catch (error) {
         console.error('刪除失敗:', error)
-        alert('刪除失敗，請稍後再試')
+        await showError('刪除失敗，請稍後再試', '刪除失敗', this.isDarkMode)
       }
     },
 

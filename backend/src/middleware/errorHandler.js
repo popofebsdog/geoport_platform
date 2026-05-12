@@ -1,5 +1,40 @@
+import { createLogger } from '../utils/logger.js';
+
+const log = createLogger('error-handler');
+
 export const errorHandler = (err, req, res, next) => {
-  console.error('錯誤詳情:', err);
+  log.error('Unhandled request error', {
+    requestId: req.id,
+    method: req.method,
+    path: req.originalUrl || req.url,
+    statusCode: err.statusCode || err.status || 500,
+    error: err
+  });
+
+  // Multer upload errors
+  if (err.name === 'MulterError') {
+    const statusCode = err.code === 'LIMIT_FILE_SIZE' ? 413 : 400;
+    const message = err.code === 'LIMIT_FILE_SIZE'
+      ? '檔案超過允許大小'
+      : err.message || '檔案上傳失敗';
+
+    return res.status(statusCode).json({
+      success: false,
+      message,
+      code: err.code
+    });
+  }
+
+  if (err.message && (
+    err.message.includes('不允許副檔名') ||
+    err.message.includes('不允許 MIME') ||
+    err.message.includes('不支援的檔案')
+  )) {
+    return res.status(400).json({
+      success: false,
+      message: err.message
+    });
+  }
 
   // Sequelize 驗證錯誤
   if (err.name === 'SequelizeValidationError') {

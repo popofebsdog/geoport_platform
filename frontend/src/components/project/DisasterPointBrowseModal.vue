@@ -22,10 +22,12 @@
           <button
             v-if="canGoPrevious"
             @click="previousPhoto"
-            class="absolute left-4 top-1/2 transform -translate-y-1/2 p-3 rounded-full backdrop-blur-md bg-white/80 hover:bg-white shadow-lg transition-all z-10"
+            class="absolute left-4 top-1/2 transform -translate-y-1/2 p-3 rounded-full backdrop-blur-md shadow-lg transition-all z-10"
+            :class="isDarkMode ? 'bg-slate-800/80 hover:bg-slate-700/90' : 'bg-white/80 hover:bg-white'"
             title="上一張照片"
           >
-            <svg class="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="w-6 h-6" :class="isDarkMode ? 'text-slate-200' : 'text-gray-700'"
+                 fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
             </svg>
           </button>
@@ -34,16 +36,18 @@
           <button
             v-if="canGoNext"
             @click="nextPhoto"
-            class="absolute right-4 top-1/2 transform -translate-y-1/2 p-3 rounded-full backdrop-blur-md bg-white/80 hover:bg-white shadow-lg transition-all z-10"
+            class="absolute right-4 top-1/2 transform -translate-y-1/2 p-3 rounded-full backdrop-blur-md shadow-lg transition-all z-10"
+            :class="isDarkMode ? 'bg-slate-800/80 hover:bg-slate-700/90' : 'bg-white/80 hover:bg-white'"
             title="下一張照片"
           >
-            <svg class="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="w-6 h-6" :class="isDarkMode ? 'text-slate-200' : 'text-gray-700'"
+                 fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
             </svg>
           </button>
           
           <!-- 照片計數器 -->
-          <div class="absolute top-4 left-4 px-3 py-1 rounded-lg backdrop-blur-md bg-black/50 text-white text-sm font-medium">
+          <div class="absolute top-4 left-4 px-3 py-1 rounded backdrop-blur-md bg-black/50 text-white text-sm font-medium">
             {{ currentPhotoIndex + 1 }} / {{ mediaFiles.length }}
           </div>
         </template>
@@ -51,22 +55,25 @@
         <!-- 右上方：發生時間 -->
         <div 
           v-if="currentDisasterTime"
-          class="absolute top-4 right-4 px-4 py-2 rounded-lg backdrop-blur-sm"
-          style="background-color: rgba(255, 255, 255, 0.8);"
+          class="absolute top-4 right-4 px-4 py-2 rounded backdrop-blur-sm"
+          :style="isDarkMode ? 'background-color: rgba(15,23,42,0.85);' : 'background-color: rgba(255,255,255,0.85);'"
         >
-          <span class="text-sm font-medium text-gray-900">
+          <span class="text-sm font-medium" :class="isDarkMode ? 'text-slate-200' : 'text-gray-900'">
             {{ formatDisasterTime(currentDisasterTime) }}
           </span>
         </div>
         
         <!-- 底部：災點描述和縮略圖 -->
-        <div class="absolute bottom-0 left-0 right-0 backdrop-blur-sm" style="background-color: rgba(255, 255, 255, 0.9);">
+        <div class="absolute bottom-0 left-0 right-0 backdrop-blur-sm"
+             :style="isDarkMode ? 'background-color: rgba(15,23,42,0.92);' : 'background-color: rgba(255,255,255,0.92);'">
           <!-- 災點描述 -->
           <div 
             v-if="currentDisasterDescription"
-            class="px-6 py-3 border-b border-gray-200"
+            class="px-6 py-3 border-b"
+            :class="isDarkMode ? 'border-slate-700' : 'border-gray-200'"
           >
-            <p class="text-center text-sm text-gray-900 leading-relaxed">
+            <p class="text-center text-sm leading-relaxed"
+               :class="isDarkMode ? 'text-slate-200' : 'text-gray-900'">
               {{ currentDisasterDescription }}
             </p>
           </div>
@@ -81,8 +88,10 @@
                 v-for="(photo, index) in mediaFiles"
                 :key="`thumb-${photo.media_id}-${index}`"
                 @click="goToPhoto(index)"
-                class="flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 transition-all"
-                :class="index === currentPhotoIndex ? 'border-blue-500 shadow-lg' : 'border-gray-300 opacity-60 hover:opacity-100'"
+                class="flex-shrink-0 w-16 h-16 rounded overflow-hidden border-2 transition-all"
+                :class="index === currentPhotoIndex
+                  ? 'border-blue-500'
+                  : (isDarkMode ? 'border-slate-600 opacity-60 hover:opacity-100' : 'border-gray-300 opacity-60 hover:opacity-100')"
                 :title="getThumbnailTitle(photo, index)"
               >
                 <img
@@ -99,13 +108,16 @@
       </div>
       
       <!-- 無照片提示 -->
-      <div v-else class="w-full h-full flex items-center justify-center bg-gray-100">
+      <div v-else class="w-full h-full flex items-center justify-center transition-colors duration-300"
+           :class="isDarkMode ? 'bg-slate-800' : 'bg-gray-100'">
         <div class="text-center">
-          <svg class="w-16 h-16 mx-auto mb-4 text-gray-400"
+          <svg class="w-16 h-16 mx-auto mb-4 transition-colors duration-300"
+               :class="isDarkMode ? 'text-slate-600' : 'text-gray-400'"
                fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
           </svg>
-          <p class="text-sm text-gray-500">
+          <p class="text-sm transition-colors duration-300"
+             :class="isDarkMode ? 'text-slate-500' : 'text-gray-500'">
             暫無照片
           </p>
         </div>

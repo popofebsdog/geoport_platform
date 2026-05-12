@@ -9,18 +9,18 @@
       :progress="uploadProgress"
     />
     
-    <div class="w-[600px] max-w-[90vw] mx-4 rounded-lg shadow-2xl transition-colors duration-300 flex flex-col"
+    <div class="w-[600px] max-w-[90vw] mx-4 rounded-lg transition-colors duration-300 flex flex-col max-h-[90vh]"
          :class="isDarkMode ? 'bg-slate-800' : 'bg-white'">
       <!-- 模態框標題 -->
-      <div class="flex items-center justify-between p-6 border-b transition-colors duration-300"
+      <div class="flex items-center justify-between px-6 py-4 border-b flex-shrink-0 transition-colors duration-300"
            :class="isDarkMode ? 'border-slate-700' : 'border-gray-200'">
         <h3 class="text-lg font-semibold transition-colors duration-300"
             :class="isDarkMode ? 'text-white' : 'text-gray-900'">
           上傳正射影像底圖
         </h3>
-        <button @click="closeModal" 
-                class="flex items-center justify-center w-8 h-8 transition-colors duration-300"
-                :class="isDarkMode ? 'text-gray-400 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'">
+        <button @click="closeModal"
+                class="p-1.5 rounded-lg transition-colors duration-300"
+                :class="isDarkMode ? 'text-gray-400 hover:text-white hover:bg-slate-700' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
           </svg>
@@ -28,7 +28,7 @@
       </div>
 
       <!-- 模態框內容 -->
-      <div class="p-6">
+      <div class="p-6 flex-1 overflow-y-auto">
         <form @submit.prevent="handleUpload" class="space-y-4">
           <!-- 底圖名稱 -->
           <div>
@@ -330,19 +330,21 @@ export default {
       this.uploadProgress = 0
 
       try {
-        // 模擬上傳進度
+        // 進度模擬（大型 TIF 可能需數分鐘，放慢增長速度）
         const progressInterval = setInterval(() => {
-          if (this.uploadProgress < 90) {
-            this.uploadProgress += Math.random() * 10
-            if (this.uploadProgress < 30) {
-              this.uploadStatus = '正在上傳檔案...'
-            } else if (this.uploadProgress < 60) {
-              this.uploadStatus = '正在轉換為 COG 格式...'
-            } else if (this.uploadProgress < 90) {
-              this.uploadStatus = '正在優化影像...'
+          if (this.uploadProgress < 88) {
+            // 前 40% 較快（上傳阶段），之後放慢（COG 轉換耗時）
+            const step = this.uploadProgress < 40 ? Math.random() * 3 : Math.random() * 0.5
+            this.uploadProgress = Math.min(88, this.uploadProgress + step)
+            if (this.uploadProgress < 35) {
+              this.uploadStatus = '正在上傳檔案（大型檔案請耐心等候）...'
+            } else if (this.uploadProgress < 70) {
+              this.uploadStatus = '正在轉換為 COG 格式（此步驟較耗時）...'
+            } else {
+              this.uploadStatus = '正在優化影像結構...'
             }
           }
-        }, 200)
+        }, 800)
 
         const formData = new FormData()
         formData.append('data_name', this.form.name)

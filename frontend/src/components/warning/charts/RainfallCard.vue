@@ -1,78 +1,101 @@
 <template>
-  <div class="rainfall-card w-full h-full p-4 flex flex-col">
+  <div class="rainfall-card w-full h-full p-4 flex flex-col relative overflow-hidden"
+       :class="{
+         'alert-red':    status === 'high',
+         'alert-yellow': status === 'medium'
+       }">
+    <!-- 載入中 -->
     <div v-if="loading" class="flex items-center justify-center h-full">
       <div class="text-center">
-        <div class="w-6 h-6 border-2 border-green-300 border-t-green-600 rounded-full animate-spin mx-auto mb-2"></div>
-        <p class="text-xs text-gray-500 dark:text-gray-400">載入中...</p>
+        <div class="w-5 h-5 border-2 border-t-blue-500 rounded-full animate-spin mx-auto mb-2"
+             :style="isDarkMode ? 'border-color:#334155; border-top-color:#22c55e;' : 'border-color:#dcfce7; border-top-color:#16a34a;'"></div>
+        <p class="text-xs" :class="isDarkMode ? 'text-slate-500' : 'text-gray-400'">載入中...</p>
       </div>
     </div>
-    
+
+    <!-- 無數據 -->
     <div v-else-if="!data" class="flex items-center justify-center h-full">
-      <div class="text-center text-gray-400 dark:text-gray-500">
-        <svg class="w-12 h-12 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z"></path>
+      <div class="text-center" :class="isDarkMode ? 'text-slate-600' : 'text-gray-400'">
+        <svg class="w-10 h-10 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z"/>
         </svg>
-        <p class="text-sm">暫無數據</p>
+        <p class="text-xs">暫無數據</p>
       </div>
     </div>
-    
-    <div v-else-if="data !== null && data !== undefined" class="space-y-3 flex flex-col">
-      <!-- 標題區域 -->
-      <div class="flex items-center justify-between mb-2">
-        <div class="flex items-center gap-2">
-          <h4 class="text-sm font-bold text-gray-800 dark:text-gray-200">雨量監測</h4>
-        </div>
-        <span 
-          class="px-2 py-0.5 rounded-full text-xs font-medium"
-          :class="getStatusClass(status)"
-        >
+
+    <!-- 有數據 -->
+    <div v-else class="flex flex-col h-full gap-3">
+      <!-- 標題列 -->
+      <div class="flex items-center justify-between">
+        <span class="text-[11px] font-semibold uppercase tracking-wider"
+              :class="isDarkMode ? 'text-slate-500' : 'text-gray-400'">雨量監測</span>
+        <span class="flex items-center gap-1.5 text-xs font-medium"
+              :class="status === 'high' ? (isDarkMode ? 'text-red-400' : 'text-red-600')
+                    : status === 'medium' ? (isDarkMode ? 'text-amber-400' : 'text-amber-600')
+                    : (isDarkMode ? 'text-green-400' : 'text-green-600')">
+          <span class="relative flex w-2 h-2 flex-shrink-0">
+            <span v-if="status === 'high' || status === 'medium'"
+                  class="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75"
+                  :class="status === 'high' ? 'bg-red-500' : 'bg-amber-400'"></span>
+            <span class="relative inline-flex rounded-full w-2 h-2"
+                  :class="status === 'high' ? 'bg-red-500' : status === 'medium' ? 'bg-amber-500' : 'bg-green-500'"></span>
+          </span>
           {{ statusText }}
         </span>
       </div>
-      
-      <!-- 主要指標 -->
-      <div class="grid grid-cols-2 gap-2 mb-3">
-        <div class="bg-green-50 dark:bg-green-900/20 rounded-lg p-3 border border-green-200 dark:border-green-800">
-          <p class="text-xs text-green-600 dark:text-green-400 mb-1">累積雨量</p>
-          <p class="text-2xl font-bold text-green-700 dark:text-green-300">
-            {{ formatValue(accumulatedRainfall) }}<span class="text-sm ml-1">mm</span>
-          </p>
-        </div>
-        <div class="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3 border border-blue-200 dark:border-blue-800">
-          <p class="text-xs text-blue-600 dark:text-blue-400 mb-1">時雨量</p>
-          <p class="text-2xl font-bold text-blue-700 dark:text-blue-300">
-            {{ formatValue(hourlyRainfall) }}<span class="text-sm ml-1">mm</span>
-          </p>
-        </div>
-      </div>
-      
-      <!-- 統計信息 -->
-      <div class="grid grid-cols-2 gap-2">
-        <div class="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-2.5 border border-gray-200 dark:border-gray-600">
-          <p class="text-xs text-gray-600 dark:text-gray-400 mb-1">今日最高</p>
-          <div class="flex items-baseline gap-1">
-            <p class="text-lg font-bold text-gray-800 dark:text-gray-200">
-              {{ formatValue(maxHourlyRainfall) }}<span class="text-xs ml-1">mm</span>
-            </p>
-            <span class="text-[10px] text-gray-500 dark:text-gray-400">{{ maxHourlyTime }}</span>
+
+      <!-- 兩欄雨量數值 -->
+      <div class="grid grid-cols-2 rounded overflow-hidden"
+           :style="isDarkMode ? 'border:1px solid #1e293b;' : 'border:1px solid #f3f4f6;'">
+        <div class="py-3 pr-3 pl-3 min-w-0"
+             :style="isDarkMode ? 'border-right:1px solid #1e293b;' : 'border-right:1px solid #f3f4f6;'">
+          <div class="text-[10px] font-medium tracking-wide mb-1"
+               :class="isDarkMode ? 'text-slate-500' : 'text-gray-400'">累積雨量</div>
+          <div class="flex items-baseline gap-1 min-w-0">
+            <span class="text-xl font-semibold tabular-nums truncate"
+                  :class="isDarkMode ? 'text-slate-200' : 'text-gray-800'">{{ formatValue(accumulatedRainfall) }}</span>
+            <span class="text-xs flex-shrink-0" :class="isDarkMode ? 'text-slate-500' : 'text-gray-400'">mm</span>
           </div>
         </div>
-        <div class="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-2.5 border border-gray-200 dark:border-gray-600">
-          <p class="text-xs text-gray-600 dark:text-gray-400 mb-1">有雨時段</p>
-          <p class="text-lg font-bold text-gray-800 dark:text-gray-200">
-            {{ rainyHoursCount }}<span class="text-xs ml-1">小時</span>
-          </p>
+        <div class="py-3 pl-3 min-w-0">
+          <div class="text-[10px] font-medium tracking-wide mb-1"
+               :class="isDarkMode ? 'text-slate-500' : 'text-gray-400'">時雨量</div>
+          <div class="flex items-baseline gap-1 min-w-0">
+            <span class="text-xl font-semibold tabular-nums truncate"
+                  :class="isDarkMode ? 'text-slate-200' : 'text-gray-800'">{{ formatValue(hourlyRainfall) }}</span>
+            <span class="text-xs flex-shrink-0" :class="isDarkMode ? 'text-slate-500' : 'text-gray-400'">mm</span>
+          </div>
         </div>
       </div>
-      
-      <!-- 底部信息 -->
-      <div class="flex items-center justify-between pt-2 border-t border-gray-200 dark:border-gray-700">
-        <span class="text-xs text-gray-500 dark:text-gray-400">
-          數據點：{{ dataPointCount }}
-        </span>
-        <span class="text-xs text-gray-400 dark:text-gray-500">
-          {{ formatTime(updateTime) }}
-        </span>
+
+      <!-- 分隔線 -->
+      <div class="h-px" :class="isDarkMode ? 'bg-slate-800' : 'bg-gray-100'"></div>
+
+      <!-- 統計列表 -->
+      <div class="space-y-2 flex-1">
+        <div class="flex items-center justify-between">
+          <span class="text-xs" :class="isDarkMode ? 'text-slate-400' : 'text-gray-500'">今日最高</span>
+          <span class="text-sm font-semibold tabular-nums"
+                :class="isDarkMode ? 'text-slate-200' : 'text-gray-800'">
+            {{ formatValue(maxHourlyRainfall) }} mm
+            <span class="text-[10px] font-normal"
+                  :class="isDarkMode ? 'text-slate-500' : 'text-gray-400'">{{ maxHourlyTime }}</span>
+          </span>
+        </div>
+        <div class="flex items-center justify-between">
+          <span class="text-xs" :class="isDarkMode ? 'text-slate-400' : 'text-gray-500'">有雨時段</span>
+          <span class="text-sm font-semibold tabular-nums"
+                :class="isDarkMode ? 'text-slate-200' : 'text-gray-800'">{{ rainyHoursCount }} 小時</span>
+        </div>
+        <div class="flex items-center justify-between">
+          <span class="text-xs" :class="isDarkMode ? 'text-slate-600' : 'text-gray-400'">數據點</span>
+          <span class="text-xs tabular-nums" :class="isDarkMode ? 'text-slate-600' : 'text-gray-400'">{{ dataPointCount }}</span>
+        </div>
+      </div>
+
+      <!-- 更新時間 -->
+      <div class="pt-2 border-t" :class="isDarkMode ? 'border-slate-800' : 'border-gray-100'">
+        <span class="text-[10px]" :class="isDarkMode ? 'text-slate-600' : 'text-gray-400'">{{ formatTime(updateTime) }}</span>
       </div>
     </div>
   </div>
@@ -82,14 +105,13 @@
 export default {
   name: 'RainfallCard',
   props: {
-    data: {
+    data:       { type: Object,  default: null },
+    loading:    { type: Boolean, default: false },
+    isDarkMode: { type: Boolean, default: false },
+    thresholds: {
       type: Object,
-      default: null
+      default: () => ({ yellow: 20, red: 40 })
     },
-    loading: {
-      type: Boolean,
-      default: false
-    }
   },
   computed: {
     timeSeries() {
@@ -273,23 +295,14 @@ export default {
     status() {
       const hourly = this.hourlyRainfall;
       if (hourly === null || hourly === undefined) return 'unknown';
-      
-      const numValue = parseFloat(hourly);
-      if (isNaN(numValue)) return 'unknown';
-      
-      // 根據時雨量判斷狀態
-      if (numValue >= 40) return 'high'; // 大雨
-      if (numValue >= 20) return 'medium'; // 中雨
-      return 'normal'; // 小雨或無雨
+      const v = parseFloat(hourly);
+      if (isNaN(v)) return 'unknown';
+      if (v >= this.thresholds.red)    return 'high';
+      if (v >= this.thresholds.yellow) return 'medium';
+      return 'normal';
     },
     statusText() {
-      const statusMap = {
-        'high': '大雨',
-        'medium': '中雨',
-        'normal': '正常',
-        'unknown': '未知'
-      };
-      return statusMap[this.status] || '未知';
+      return { high: '紅色警戒', medium: '黃色警戒', normal: '正常', unknown: '未知' }[this.status] || '未知';
     },
     dataPointCount() {
       if (!this.data) return 0;
@@ -349,5 +362,21 @@ export default {
 <style scoped>
 .rainfall-card {
   min-height: 200px;
+}
+.alert-red {
+  box-shadow: 0 0 0 2px rgba(239,68,68,0.6);
+  animation: pulse-red 2s infinite;
+}
+.alert-yellow {
+  box-shadow: 0 0 0 2px rgba(245,158,11,0.6);
+  animation: pulse-yellow 2s infinite;
+}
+@keyframes pulse-red {
+  0%, 100% { box-shadow: 0 0 0 2px rgba(239,68,68,0.6); }
+  50%       { box-shadow: 0 0 0 5px rgba(239,68,68,0.2); }
+}
+@keyframes pulse-yellow {
+  0%, 100% { box-shadow: 0 0 0 2px rgba(245,158,11,0.6); }
+  50%       { box-shadow: 0 0 0 5px rgba(245,158,11,0.15); }
 }
 </style>

@@ -19,6 +19,10 @@ export default {
     isVisible: {
       type: Boolean,
       default: true
+    },
+    isDarkMode: {
+      type: Boolean,
+      default: false
     }
   },
   data() {
@@ -150,32 +154,40 @@ export default {
     },
     
     createPopupContent() {
+      const dark = this.isDarkMode
+      const bg = dark ? '#1e293b' : '#ffffff'
+      const titleColor = dark ? '#f1f5f9' : '#1f2937'
+      const descColor = dark ? '#94a3b8' : '#6b7280'
+      const labelColor = dark ? '#64748b' : '#6b7280'
+      const valueColor = dark ? '#e2e8f0' : '#1f2937'
+      const borderColor = dark ? '#334155' : '#f3f4f6'
       return `
-        <div class="temporal-popup-content">
-          <div class="popup-header">
-            <h4 class="popup-title">${this.temporalData.name}</h4>
-            <span class="popup-type" style="background-color: ${this.getTypeColor(this.temporalData.data_type)}">
+        <div style="min-width:200px;background:${bg};padding:12px;border-radius:6px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+            <h4 style="font-size:14px;font-weight:600;margin:0;color:${titleColor}">${this.temporalData.name}</h4>
+            <span style="font-size:10px;color:#fff;padding:2px 6px;border-radius:4px;font-weight:500;background-color:${this.getTypeColor(this.temporalData.data_type)}">
               ${this.getTypeLabel(this.temporalData.data_type)}
             </span>
           </div>
-          <div class="popup-body">
-            <p class="popup-description">${this.temporalData.description || '無描述'}</p>
-            <div class="popup-info">
-              <div class="info-item">
-                <span class="info-label">資料格式:</span>
-                <span class="info-value">${this.temporalData.data_format.toUpperCase()}</span>
+          <div style="font-size:12px;">
+            <p style="margin:0 0 8px 0;color:${descColor};line-height:1.4">${this.temporalData.description || '無描述'}</p>
+            <div style="margin-bottom:12px;border-top:1px solid ${borderColor};padding-top:8px;">
+              <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+                <span style="color:${labelColor};font-weight:500">資料格式:</span>
+                <span style="color:${valueColor};font-weight:600">${(this.temporalData.data_format || '').toUpperCase()}</span>
               </div>
-              <div class="info-item">
-                <span class="info-label">記錄數:</span>
-                <span class="info-value">${this.temporalData.total_records || 0}</span>
+              <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+                <span style="color:${labelColor};font-weight:500">記錄數:</span>
+                <span style="color:${valueColor};font-weight:600">${this.temporalData.total_records || 0}</span>
               </div>
-              <div class="info-item">
-                <span class="info-label">時間範圍:</span>
-                <span class="info-value">${this.formatDateRange(this.temporalData.start_time, this.temporalData.end_time)}</span>
+              <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+                <span style="color:${labelColor};font-weight:500">時間範圍:</span>
+                <span style="color:${valueColor};font-weight:600">${this.formatDateRange(this.temporalData.start_time, this.temporalData.end_time)}</span>
               </div>
             </div>
-            <div class="popup-actions">
-              <button class="view-chart-btn" onclick="window.viewTemporalChart('${this.temporalData.temporal_id}')">
+            <div style="text-align:center;">
+              <button style="background-color:#3b82f6;color:white;border:none;padding:6px 12px;border-radius:4px;font-size:12px;font-weight:500;cursor:pointer;"
+                      onclick="window.viewTemporalChart('${this.temporalData.temporal_id}')">
                 查看圖表
               </button>
             </div>
@@ -267,7 +279,6 @@ export default {
   font-size: 14px;
   font-weight: 600;
   margin: 0;
-  color: #1f2937;
 }
 
 :global(.popup-type) {
@@ -284,7 +295,6 @@ export default {
 
 :global(.popup-description) {
   margin: 0 0 8px 0;
-  color: #6b7280;
   line-height: 1.4;
 }
 
@@ -299,12 +309,10 @@ export default {
 }
 
 :global(.info-label) {
-  color: #6b7280;
   font-weight: 500;
 }
 
 :global(.info-value) {
-  color: #1f2937;
   font-weight: 600;
 }
 

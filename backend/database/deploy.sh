@@ -83,25 +83,36 @@ echo -e "${GREEN}✅ 資料庫初始化完成${NC}"
 # 執行遷移腳本
 echo -e "${BLUE}📋 執行資料庫遷移...${NC}"
 
-# 按順序執行遷移腳本
-MIGRATION_FILES=(
-    "001_create_projects_table.sql"
-    "002_create_data_files_table.sql"
-    "003_create_spatial_layers_table.sql"
-    "004_create_users_table.sql"
-    "005_create_foreign_keys_and_indexes.sql"
-)
+# 按檔名順序執行所有遷移腳本，並寫入 schema_migrations
+shopt -s nullglob
+MIGRATION_PATHS=("$SCRIPT_DIR"/migrations/*.sql)
+if [ ${#MIGRATION_PATHS[@]} -eq 0 ]; then
+    echo -e "${YELLOW}  ⚠️  找不到 migration 檔案${NC}"
+fi
 
-for migration_file in "${MIGRATION_FILES[@]}"; do
-    migration_path="$SCRIPT_DIR/migrations/$migration_file"
-    if [ -f "$migration_path" ]; then
-        echo -e "${BLUE}  📄 執行 $migration_file...${NC}"
-        psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -f "$migration_path"
-        echo -e "${GREEN}  ✅ $migration_file 完成${NC}"
-    else
-        echo -e "${YELLOW}  ⚠️  找不到 $migration_file${NC}"
+for migration_path in "${MIGRATION_PATHS[@]}"; do
+    migration_file="$(basename "$migration_path")"
+    if [ "$migration_file" != "000_create_schema_migrations.sql" ]; then
+        already_applied=$(psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -tAc "SELECT 1 FROM schema_migrations WHERE version = '$migration_file' LIMIT 1;" 2>/dev/null || true)
+        if [ "$already_applied" = "1" ]; then
+            echo -e "${GREEN}  ⏭️  $migration_file 已套用，略過${NC}"
+            continue
+        fi
     fi
+
+    echo -e "${BLUE}  📄 執行 $migration_file...${NC}"
+    psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -f "$migration_path"
+
+    checksum=$(shasum -a 256 "$migration_path" | awk '{print $1}')
+    psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -c "
+      INSERT INTO schema_migrations (version, checksum)
+      VALUES ('$migration_file', '$checksum')
+      ON CONFLICT (version) DO UPDATE
+      SET checksum = EXCLUDED.checksum;
+    " > /dev/null
+    echo -e "${GREEN}  ✅ $migration_file 完成${NC}"
 done
+shopt -u nullglob
 
 echo -e "${GREEN}✅ 所有遷移腳本執行完成${NC}"
 

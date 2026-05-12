@@ -5,6 +5,7 @@ import multer from 'multer';
 import csv from 'csv-parser';
 import { v4 as uuidv4 } from 'uuid';
 import { fileURLToPath } from 'url';
+import { createMulterFileFilter, createStoredFilename, maxUploadSize } from '../config/uploadPolicy.js';
 
 // 在 ES6 模組中獲取 __dirname
 const __filename = fileURLToPath(import.meta.url);
@@ -27,26 +28,16 @@ const storage = multer.diskStorage({
     cb(null, uploadPath);
   },
   filename: (req, file, cb) => {
-    const uniqueName = `${Date.now()}-${Math.round(Math.random() * 1E9)}-${file.originalname}`;
-    cb(null, uniqueName);
+    cb(null, createStoredFilename('temporal', file.originalname));
   }
 });
 
 const upload = multer({
   storage: storage,
   limits: {
-    fileSize: 100 * 1024 * 1024 // 100MB
+    fileSize: maxUploadSize('temporalData')
   },
-  fileFilter: (req, file, cb) => {
-    const allowedTypes = ['.csv', '.shp', '.dbf', '.prj', '.shx', '.geojson', '.json'];
-    const ext = path.extname(file.originalname).toLowerCase();
-    
-    if (allowedTypes.includes(ext)) {
-      cb(null, true);
-    } else {
-      cb(new Error('不支援的檔案格式。請上傳 CSV、Shapefile 或 GeoJSON 檔案。'), false);
-    }
-  }
+  fileFilter: createMulterFileFilter('temporalData')
 });
 
 // 獲取專案的時序資料列表
@@ -568,8 +559,6 @@ const readCsvChartData = async (filePath, options) => {
   return new Promise((resolve, reject) => {
     const results = [];
     
-    console.log('開始讀取 CSV 圖表數據:', filePath);
-    console.log('選項:', options);
     
     fs.createReadStream(filePath)
       .pipe(csv())
@@ -609,7 +598,6 @@ const readCsvChartData = async (filePath, options) => {
         
         // 處理數值列
         const columnsToProcess = options.selectedColumns || options.valueColumns || [];
-        console.log('處理的列:', columnsToProcess);
         
         columnsToProcess.forEach(col => {
           if (data[col] !== undefined && data[col] !== null && data[col] !== '') {
@@ -635,8 +623,6 @@ const readCsvChartData = async (filePath, options) => {
         results.push(row);
       })
       .on('end', () => {
-        console.log('CSV 讀取完成，總行數:', results.length);
-        console.log('前3行結果:', results.slice(0, 3));
         resolve(results);
       })
       .on('error', (error) => {

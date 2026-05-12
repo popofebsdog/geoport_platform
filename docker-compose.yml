@@ -1,18 +1,17 @@
-version: '3.8'
-
 services:
   # PostgreSQL 資料庫
   postgres:
-    image: postgres:15-alpine
+    image: postgis/postgis:15-3.5-alpine
+    profiles: ["prod"]
     environment:
       POSTGRES_DB: ${DB_NAME:-geoport}
       POSTGRES_USER: ${DB_USER:-geoport_user}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD must be set}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-replace-with-strong-password}
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./backend/database/init.sql:/docker-entrypoint-initdb.d/init.sql
-    ports:
-      - "5432:5432"
+    expose:
+      - "5432"
     restart: unless-stopped
     networks:
       - geoport-network
@@ -24,21 +23,33 @@ services:
 
   # 後端服務
   backend:
+    profiles: ["prod"]
     build:
       context: ./backend
       dockerfile: Dockerfile
-    ports:
-      - "3001:3001"
+    expose:
+      - "3001"
     environment:
       - NODE_ENV=production
       - PORT=3001
+      - TRUST_PROXY=${TRUST_PROXY:-1}
       - DB_HOST=postgres
       - DB_PORT=5432
       - DB_NAME=${DB_NAME:-geoport}
       - DB_USER=${DB_USER:-geoport_user}
-      - DB_PASSWORD=${DB_PASSWORD:?DB_PASSWORD must be set}
-      - JWT_SECRET=${JWT_SECRET:?JWT_SECRET must be set}
-      - FRONTEND_URL=http://frontend:5173
+      - DB_PASSWORD=${DB_PASSWORD:-replace-with-strong-password}
+      - JWT_SECRET=${JWT_SECRET:-replace-with-strong-random-secret}
+      - JWT_EXPIRES_IN=${JWT_EXPIRES_IN:-24h}
+      - ALLOW_PUBLIC_REGISTRATION=${ALLOW_PUBLIC_REGISTRATION:-false}
+      - FRONTEND_URL=${FRONTEND_URL:-http://localhost}
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://localhost}
+      - DB_SSL=${DB_SSL:-false}
+      - STORAGE_PROVIDER=${STORAGE_PROVIDER:-local}
+      - UPLOADS_ROOT=/app/uploads
+      - DATA_ROOT=/app/data
+      - UPLOADS_PUBLIC_PATH=/uploads
+      - DATA_PUBLIC_PATH=/data
+      - TITILER_INTERNAL_URL=http://titiler:8000
     volumes:
       - ./backend/uploads:/app/uploads
       - ./data:/app/data
@@ -51,13 +62,21 @@ services:
 
   # 前端服務
   frontend:
+    profiles: ["prod"]
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    ports:
-      - "5173:5173"
+      args:
+        VITE_API_URL: ${VITE_API_URL:-/api}
+        VITE_STATIC_URL: ${VITE_STATIC_URL:-}
+        VITE_TITILER_URL: ${VITE_TITILER_URL:-/titiler}
+        VITE_LOG_LEVEL: ${VITE_LOG_LEVEL:-warn}
+    expose:
+      - "5173"
     environment:
-      - VITE_API_URL=http://backend:3001
+      - VITE_API_URL=/api
+      - VITE_STATIC_URL=
+      - VITE_TITILER_URL=/titiler
     depends_on:
       - backend
     restart: unless-stopped
@@ -67,8 +86,9 @@ services:
   # TiTiler COG 瓦片服務
   titiler:
     image: ghcr.io/developmentseed/titiler:latest
-    ports:
-      - "8000:8000"
+    profiles: ["prod"]
+    expose:
+      - "8000"
     environment:
       - PORT=8000
       - HOST=0.0.0.0
@@ -79,15 +99,49 @@ services:
   # Nginx 反向代理（可選）
   nginx:
     image: nginx:alpine
+    profiles: ["prod"]
     ports:
-      - "80:80"
-      - "443:443"
+      - "${HTTP_PORT:-80}:80"
     volumes:
       - ./nginx.conf:/etc/nginx/nginx.conf
-      - ./ssl:/etc/nginx/ssl
     depends_on:
       - frontend
       - backend
+      - titiler
+    restart: unless-stopped
+    networks:
+      - geoport-network
+
+  # Dev profile: 本機開發時只啟動基礎服務，前後端仍可用 npm run dev 跑在主機上
+  postgres-dev:
+    image: postgres:15-alpine
+    profiles: ["dev"]
+    environment:
+      POSTGRES_DB: ${DB_NAME:-geoport_db}
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-your-postgres-password}
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+      - ./backend/database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "${DB_PORT_PUBLISH:-5432}:5432"
+    restart: unless-stopped
+    networks:
+      - geoport-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-geoport_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  titiler-dev:
+    image: ghcr.io/developmentseed/titiler:latest
+    profiles: ["dev"]
+    ports:
+      - "${TITILER_PORT:-8080}:8000"
+    environment:
+      - PORT=8000
+      - HOST=0.0.0.0
     restart: unless-stopped
     networks:
       - geoport-network
@@ -98,4 +152,5 @@ networks:
 
 volumes:
   postgres_data:
+  postgres_dev_data:
   uploads:

@@ -6,6 +6,7 @@ import ProjectManagement from '@/views/ProjectManagement.vue'
 import ProjectDetail from '@/views/ProjectDetail.vue'
 import Login from '@/views/Login.vue'
 import UserManagement from '@/views/UserManagement.vue'
+import AdminDashboard from '@/views/AdminDashboard.vue'
 
 const routes = [
   {
@@ -35,6 +36,12 @@ const routes = [
     path: '/projects/:id',
     name: 'project-detail',
     component: ProjectDetail,
+    props: route => ({
+      project: {
+        projectId: route.params.id,
+        project_id: route.params.id
+      }
+    }),
     meta: { title: '專案詳情' }
   },
   {
@@ -48,6 +55,12 @@ const routes = [
     name: 'UserManagement',
     component: UserManagement,
     meta: { title: '使用者管理', requireAdmin: true }
+  },
+  {
+    path: '/admin',
+    name: 'AdminDashboard',
+    component: AdminDashboard,
+    meta: { title: '資料管理後台', requireAdmin: true }
   }
 ]
 

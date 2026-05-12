@@ -2,85 +2,78 @@
   <div class="min-h-screen flex" :class="isDarkMode ? 'dark' : ''">
 
     <!-- Left panel — brand identity -->
-    <div class="hidden lg:flex lg:w-5/12 xl:w-1/2 flex-col justify-between p-10"
-         :style="{ background: isDarkMode
-           ? 'linear-gradient(160deg, #0f2d47 0%, #153f62 100%)'
-           : 'linear-gradient(160deg, #1e5c8a 0%, #153f62 100%)' }">
+    <div class="hidden lg:flex lg:w-5/12 xl:w-2/5 flex-col justify-between p-10"
+         :style="{ backgroundColor: isDarkMode ? '#0a1628' : '#0f2d47' }">
 
       <!-- Brand mark -->
-      <div class="flex items-center gap-3">
-        <div class="w-9 h-9 rounded-lg bg-white/15 flex items-center justify-center">
-          <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/>
-          </svg>
-        </div>
-        <span class="text-white font-semibold tracking-wide text-sm">GeoPORTech</span>
+      <div class="flex items-center gap-2.5">
+        <svg class="w-5 h-5 text-white/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75"
+                d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/>
+        </svg>
+        <span class="text-white/90 font-semibold tracking-tight text-sm">GeoPORTech</span>
       </div>
 
       <!-- Centre message -->
       <div>
-        <h2 class="text-3xl font-bold text-white leading-snug mb-4">
+        <p class="text-[11px] uppercase tracking-[0.2em] text-white/40 mb-4">
+          Mountain Road Disaster Prevention
+        </p>
+        <h2 class="text-[2rem] font-bold text-white leading-[1.1] tracking-tight mb-5">
           山區公路<br>防災預警系統
         </h2>
-        <p class="text-brand-200 text-sm leading-relaxed max-w-xs">
-          整合即時監測、災情資料搜集與地理空間分析，提供公路主管機關全面的防災決策支援。
+        <p class="text-white/50 text-sm leading-relaxed max-w-xs">
+          整合即時監測、災情資料搜集與地理空間分析，提供全面的防災決策支援。
         </p>
 
-        <div class="mt-8 flex flex-col gap-3">
-          <div v-for="item in features" :key="item.label" class="flex items-center gap-3">
-            <div class="w-7 h-7 rounded-md bg-white/10 flex items-center justify-center flex-shrink-0">
-              <svg class="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="item.icon"/>
-              </svg>
-            </div>
-            <span class="text-brand-100 text-xs">{{ item.label }}</span>
-          </div>
+        <div class="mt-10 flex flex-col gap-3 border-l-2 border-white/10 pl-4">
+          <p v-for="item in features" :key="item.label"
+             class="text-white/40 text-xs leading-snug">
+            {{ item.label }}
+          </p>
         </div>
       </div>
 
-      <p class="text-brand-300 text-xs">© {{ new Date().getFullYear() }} GeoPORTech — 版權所有</p>
+      <p class="text-white/25 text-[11px]">© {{ new Date().getFullYear() }} GeoPORTech</p>
     </div>
 
     <!-- Right panel — form -->
     <div class="flex-1 flex flex-col justify-center items-center px-6 py-12 transition-colors duration-300"
-         :class="isDarkMode ? 'bg-slate-900' : 'bg-surface-50'">
+         :class="isDarkMode ? 'bg-slate-950' : 'bg-white'">
 
       <!-- Mobile brand (hidden on lg+) -->
       <div class="lg:hidden mb-8 text-center">
-        <div class="inline-flex items-center gap-2 mb-2">
-          <div class="w-7 h-7 rounded-md flex items-center justify-center"
-               :style="{ backgroundColor: '#1e5c8a' }">
-            <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                    d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/>
-            </svg>
-          </div>
-          <span class="font-semibold text-sm" :class="isDarkMode ? 'text-white' : 'text-gray-900'">GeoPORTech</span>
+        <div class="inline-flex items-center gap-2 mb-1">
+          <svg class="w-4 h-4" :class="isDarkMode ? 'text-white/60' : 'text-gray-400'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75"
+                  d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/>
+          </svg>
+          <span class="font-semibold text-sm tracking-tight" :class="isDarkMode ? 'text-white' : 'text-gray-900'">GeoPORTech</span>
         </div>
-        <p class="text-xs" :class="isDarkMode ? 'text-slate-400' : 'text-surface-500'">山區公路防災預警系統</p>
+        <p class="text-[11px] uppercase tracking-widest" :class="isDarkMode ? 'text-slate-600' : 'text-gray-400'">山區公路防災預警</p>
       </div>
 
-      <div class="w-full max-w-sm">
+      <div class="w-full max-w-xs">
         <!-- Heading -->
         <div class="mb-7">
-          <h1 class="text-xl font-bold mb-1" :class="isDarkMode ? 'text-white' : 'text-gray-900'">
-            {{ activeTab === 'login' ? '登入帳號' : '建立帳號' }}
+          <h1 class="text-xl font-bold tracking-tight mb-1"
+              :class="isDarkMode ? 'text-white' : 'text-gray-900'">
+            {{ activeTab === 'login' ? '登入' : '建立帳號' }}
           </h1>
-          <p class="text-xs" :class="isDarkMode ? 'text-slate-400' : 'text-surface-500'">
-            {{ activeTab === 'login' ? '請輸入您的帳號與密碼以繼續' : '填寫以下資訊以建立新帳號' }}
+          <p class="text-xs" :class="isDarkMode ? 'text-slate-500' : 'text-gray-400'">
+            {{ activeTab === 'login' ? '輸入帳號與密碼以繼續' : '填寫以下資訊建立新帳號' }}
           </p>
         </div>
 
-        <!-- Tab switcher -->
-        <div class="flex gap-1 mb-6 p-1 rounded-lg w-fit"
-             :class="isDarkMode ? 'bg-slate-800' : 'bg-surface-100'">
+        <!-- Tab switcher — 底線式，非 pill -->
+        <div class="flex gap-0 mb-6 border-b transition-colors"
+             :class="isDarkMode ? 'border-slate-800' : 'border-gray-200'">
           <button v-for="tab in ['login','register']" :key="tab"
                   @click="activeTab = tab"
-                  class="px-4 py-1.5 text-xs font-medium rounded-md transition-all duration-200"
+                  class="px-0 mr-6 pb-2.5 text-xs font-semibold transition-colors border-b-2 -mb-px"
                   :class="activeTab === tab
-                    ? 'bg-white text-brand shadow-sm'
-                    : (isDarkMode ? 'text-slate-400 hover:text-slate-200' : 'text-surface-500 hover:text-gray-700')">
+                    ? (isDarkMode ? 'text-white border-white' : 'text-gray-900 border-gray-900')
+                    : (isDarkMode ? 'text-slate-600 border-transparent hover:text-slate-400' : 'text-gray-400 border-transparent hover:text-gray-600')">
             {{ tab === 'login' ? '登入' : '註冊' }}
           </button>
         </div>
@@ -195,18 +188,11 @@
         </form>
 
         <!-- Dark mode toggle -->
-        <div class="mt-8 flex justify-center">
+        <div class="mt-8 pt-6 border-t flex justify-center transition-colors"
+             :class="isDarkMode ? 'border-slate-800' : 'border-gray-100'">
           <button @click="toggleDarkMode"
-                  class="flex items-center gap-1.5 text-xs transition-colors"
-                  :class="isDarkMode ? 'text-slate-500 hover:text-slate-300' : 'text-surface-400 hover:text-surface-600'">
-            <svg v-if="isDarkMode" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                    d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707M17.657 17.657l-.707-.707M6.343 6.343l-.707-.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/>
-            </svg>
-            <svg v-else class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                    d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/>
-            </svg>
+                  class="text-[11px] uppercase tracking-widest transition-colors"
+                  :class="isDarkMode ? 'text-slate-700 hover:text-slate-400' : 'text-gray-300 hover:text-gray-500'">
             {{ isDarkMode ? '淺色模式' : '深色模式' }}
           </button>
         </div>

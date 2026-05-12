@@ -1,61 +1,49 @@
 <template>
-  <div class="w-full shadow-lg transition-colors duration-300 flex flex-col h-full border-r"
+  <div class="w-full transition-colors duration-150 flex flex-col h-full border-r"
        :class="isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'">
-    
-    <!-- 側邊欄內容 -->
+
     <div class="flex-1 flex flex-col overflow-hidden">
-      <!-- 可滾動的側邊欄內容 -->
       <div class="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-200 dark:scrollbar-thumb-gray-600 dark:scrollbar-track-gray-800">
-        <!-- 圖層資料區域 -->
-        <div class="border-b transition-colors duration-300"
+
+        <!-- ── 圖層資料 ── -->
+        <div class="border-b transition-colors duration-150"
              :class="isDarkMode ? 'border-slate-700' : 'border-gray-200'">
-        <button @click="toggleExpanded('addData')" 
-                class="w-full flex items-center justify-between p-4 text-left transition-all duration-300 rounded-lg mx-2 my-1"
-                :class="isDarkMode ? 'bg-blue-900/20 hover:bg-blue-800/30 border-l-4 border-blue-500' : 'bg-blue-50/80 hover:bg-blue-100/80 border-l-4 border-blue-500'">
-            <div class="flex items-center">
-              <div class="w-2 h-2 rounded-full bg-blue-500 mr-3"></div>
-              <h3 class="font-semibold text-lg transition-colors duration-300"
-                  :class="isDarkMode ? 'text-white' : 'text-gray-900'">
-                圖層資料
-              </h3>
-            </div>
-            <svg class="w-5 h-5 transition-all duration-300"
-                 :class="[
-                   expandedAreas.addData ? 'rotate-180' : 'rotate-0',
-                   isDarkMode ? 'text-gray-400' : 'text-gray-500'
-                 ]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+
+          <button @click="toggleExpanded('addData')"
+                  class="w-full flex items-center justify-between px-4 py-3 text-left transition-colors duration-150"
+                  :class="isDarkMode ? 'hover:bg-slate-700/50' : 'hover:bg-gray-50'">
+            <h3 class="font-medium text-sm transition-colors duration-150"
+                :class="isDarkMode ? 'text-white' : 'text-gray-900'">
+              圖層資料
+            </h3>
+            <svg class="w-4 h-4 transition-transform duration-200 flex-shrink-0"
+                 :class="[expandedAreas.addData ? 'rotate-180' : '', isDarkMode ? 'text-gray-400' : 'text-gray-500']"
+                 fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
             </svg>
           </button>
-        
-        <div v-if="expandedAreas.addData" class="px-4 pb-4">
-          <!-- 圖層管理標題和上傳按鈕 -->
-          <div class="flex items-center justify-between mb-2">
-            <h4 class="text-sm font-medium transition-colors duration-300"
-                :class="isDarkMode ? 'text-gray-300' : 'text-gray-700'">
-              圖層管理
-            </h4>
-            
-            <!-- 上傳資料圖標按鈕 -->
-            <button @click="$emit('open-layer-upload')"
-                    class="p-1.5 rounded-lg transition-all duration-300 hover:scale-110"
-                    :class="isDarkMode 
-                      ? 'text-gray-400 hover:text-blue-400 hover:bg-blue-400/10' 
-                      : 'text-gray-500 hover:text-blue-600 hover:bg-blue-50'"
-                    title="上傳資料">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
-              </svg>
-            </button>
-          </div>
-          
-          <!-- 統一圖層列表 -->
-          <div v-if="allLayers.length > 0" class="space-y-2">
-            
-            <!-- 圖層拖拽容器 -->
-            <div class="space-y-2">
-              
-              <div v-for="(layer, index) in allLayers" :key="layer.id" 
+
+          <div v-if="expandedAreas.addData" class="px-4 pb-4">
+            <div class="flex items-center justify-between mb-3">
+              <span class="text-xs font-medium uppercase tracking-wide transition-colors duration-150"
+                    :class="isDarkMode ? 'text-gray-500' : 'text-gray-400'">
+                圖層管理
+              </span>
+              <button @click="$emit('open-layer-upload')"
+                      class="p-1.5 rounded transition-colors duration-150 border"
+                      :class="isDarkMode
+                        ? 'border-slate-600 text-slate-400 hover:text-slate-200 hover:bg-slate-700'
+                        : 'border-gray-200 text-gray-500 hover:text-gray-700 hover:bg-gray-50'"
+                      title="上傳圖層">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+                </svg>
+              </button>
+            </div>
+
+            <!-- 圖層列表 -->
+            <div v-if="allLayers.length > 0" class="space-y-1.5">
+              <div v-for="layer in allLayers" :key="layer.id"
                    draggable="true"
                    @dragstart="handleDragStart($event, layer)"
                    @dragend="handleDragEnd"
@@ -63,235 +51,197 @@
                    @dragenter="handleDragEnter($event, layer)"
                    @dragleave="handleDragLeave"
                    @drop="handleDrop($event, layer)"
-                   class="p-3 rounded-2xl border transition-all duration-300 hover:scale-[1.02] shadow-sm hover:shadow-lg cursor-move backdrop-blur-sm relative"
+                   class="flex items-center gap-1.5 px-2 py-2 rounded-md border transition-colors duration-150 cursor-move"
                    :class="[
-                     isDarkMode ? 'bg-slate-700/80 border-slate-600/50 hover:bg-slate-600/80 hover:border-slate-500' : 'bg-white/90 border-gray-200/60 hover:bg-white hover:border-gray-300',
-                     layer.isGeojson && activeGeojsonLayer === layer.id ? (isDarkMode ? 'ring-2 ring-blue-400/60 shadow-blue-400/20' : 'ring-2 ring-blue-500/60 shadow-blue-500/20') : '',
-                     draggedOverLayer && draggedOverLayer.id === layer.id ? (isDarkMode ? 'ring-2 ring-yellow-400/60 bg-slate-600/80' : 'ring-2 ring-yellow-500/60 bg-gray-50') : ''
+                     isDarkMode
+                       ? 'bg-slate-700/50 border-slate-600 hover:bg-slate-700 hover:border-slate-500'
+                       : 'bg-gray-50 border-gray-200 hover:bg-white hover:border-gray-300',
+                     draggedOverLayer?.id === layer.id
+                       ? (isDarkMode ? 'border-yellow-500' : 'border-yellow-400') : ''
                    ]">
-              <div class="flex items-center justify-between">
+
+                <!-- 拖拽手柄 -->
+                <svg class="w-3.5 h-3.5 flex-shrink-0 opacity-40 hover:opacity-70 transition-opacity"
+                     :class="isDarkMode ? 'text-gray-400' : 'text-gray-400'"
+                     fill="currentColor" viewBox="0 0 24 24">
+                  <circle cx="9" cy="6" r="1.5"/><circle cx="15" cy="6" r="1.5"/>
+                  <circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/>
+                  <circle cx="9" cy="18" r="1.5"/><circle cx="15" cy="18" r="1.5"/>
+                </svg>
+
+                <!-- 名稱 + 日期 -->
                 <div class="flex-1 min-w-0">
-                  <div class="flex items-center space-x-2">
-                    <!-- 拖拽手柄 -->
-                    <div class="flex flex-col space-y-0.5 cursor-move opacity-60 hover:opacity-100 transition-opacity duration-200"
-                         :class="isDarkMode ? 'text-gray-300' : 'text-gray-400'"
-                         title="拖拽到其他圖層交換位置">
-                      <div class="w-1 h-1 rounded-full bg-current"></div>
-                      <div class="w-1 h-1 rounded-full bg-current"></div>
-                      <div class="w-1 h-1 rounded-full bg-current"></div>
-                      <div class="w-1 h-1 rounded-full bg-current"></div>
-                      <div class="w-1 h-1 rounded-full bg-current"></div>
-                      <div class="w-1 h-1 rounded-full bg-current"></div>
-                    </div>
-                    <h4 class="text-sm font-medium transition-colors duration-300 truncate"
-                        :class="isDarkMode ? 'text-white' : 'text-gray-900'">
-                      {{ layer.name }}
-                    </h4>
-                  </div>
+                  <p class="text-xs font-medium truncate transition-colors duration-150"
+                     :class="isDarkMode ? 'text-gray-200' : 'text-gray-800'">
+                    {{ layer.name }}
+                  </p>
+                  <p class="text-xs mt-0.5 transition-colors duration-150"
+                     :class="isDarkMode ? 'text-gray-500' : 'text-gray-400'">
+                    {{ formatDate(layer.data.upload_date) }}
+                  </p>
                 </div>
-                <div class="flex items-center space-x-0.5 ml-2">
-                  <!-- 顯示/隱藏按鈕（所有圖層） -->
-                  <button @click="toggleLayerVisibility(layer)" 
-                          class="p-1.5 rounded-lg transition-all duration-300 hover:scale-110"
-                          :class="getLayerVisibility(layer.id) ? (isDarkMode ? 'text-gray-400 hover:text-blue-400 hover:bg-blue-400/10' : 'text-gray-500 hover:text-blue-600 hover:bg-blue-50') : (isDarkMode ? 'text-gray-400 hover:text-blue-400 hover:bg-blue-400/10' : 'text-gray-500 hover:text-blue-600 hover:bg-blue-50')"
+
+                <!-- 操作按鈕 -->
+                <div class="flex items-center gap-0.5 flex-shrink-0">
+                  <button @click="toggleLayerVisibility(layer)"
+                          class="p-1 rounded transition-colors duration-150"
+                          :class="isDarkMode ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-600' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'"
                           :title="getLayerVisibility(layer.id) ? '隱藏圖層' : '顯示圖層'">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path v-if="getLayerVisibility(layer.id)" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                      <path v-if="getLayerVisibility(layer.id)" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
-                      <path v-else stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21"></path>
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path v-if="getLayerVisibility(layer.id)" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                      <path v-if="getLayerVisibility(layer.id)" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                      <path v-else stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21"/>
                     </svg>
                   </button>
-                  
-                  <!-- 定位按鈕（所有圖層） -->
-                  <button @click="$emit('locate-data', layer.data)" 
-                          class="p-1.5 rounded-lg transition-all duration-300 hover:scale-110"
-                          :class="isDarkMode ? 'text-gray-400 hover:text-blue-400 hover:bg-blue-400/10' : 'text-gray-500 hover:text-blue-600 hover:bg-blue-50'"
+                  <button @click="$emit('locate-data', layer.data)"
+                          class="p-1 rounded transition-colors duration-150"
+                          :class="isDarkMode ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-600' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'"
                           title="定位">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
                     </svg>
                   </button>
-                  
-                  <!-- 關聯上傳按鈕（所有圖層） -->
-                  <button @click="$emit('associate-data', layer.data)" 
-                          class="p-1.5 rounded-lg transition-all duration-300 hover:scale-110"
-                          :class="isDarkMode ? 'text-gray-400 hover:text-blue-400 hover:bg-blue-400/10' : 'text-gray-500 hover:text-blue-600 hover:bg-blue-50'"
+                  <button @click="$emit('associate-data', layer.data)"
+                          class="p-1 rounded transition-colors duration-150"
+                          :class="isDarkMode ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-600' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'"
                           title="關聯上傳">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
                     </svg>
                   </button>
-                  
-                  <!-- 編輯按鈕（所有圖層） -->
-                  <button @click="$emit('edit-data', layer.data)" 
-                          class="p-1.5 rounded-lg transition-all duration-300 hover:scale-110"
-                          :class="isDarkMode ? 'text-gray-400 hover:text-blue-400 hover:bg-blue-400/10' : 'text-gray-500 hover:text-blue-600 hover:bg-blue-50'"
+                  <button @click="$emit('edit-data', layer.data)"
+                          class="p-1 rounded transition-colors duration-150"
+                          :class="isDarkMode ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-600' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'"
                           title="編輯">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
                     </svg>
                   </button>
-                  
-                  <!-- 刪除按鈕（所有圖層） -->
-                  <button @click="$emit('delete-data', layer.data)" 
-                          class="p-1.5 rounded-lg transition-all duration-300 hover:scale-110"
-                          :class="isDarkMode ? 'text-gray-400 hover:text-red-400 hover:bg-red-400/10' : 'text-gray-500 hover:text-red-600 hover:bg-red-50'"
+                  <button @click="$emit('delete-data', layer.data)"
+                          class="p-1 rounded transition-colors duration-150"
+                          :class="isDarkMode ? 'text-gray-400 hover:text-red-400 hover:bg-red-400/10' : 'text-gray-400 hover:text-red-600 hover:bg-red-50'"
                           title="刪除">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
                     </svg>
                   </button>
                 </div>
               </div>
             </div>
-            
-            </div> <!-- 圖層拖拽容器結束 -->
-          </div>
-          
-          <!-- 沒有圖層時的提示 -->
-          <div v-else class="text-center py-8">
-            <div class="text-gray-400 mb-4">
-              <svg class="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+
+            <!-- 空狀態 -->
+            <div v-else class="py-8 text-center">
+              <svg class="w-9 h-9 mx-auto mb-2 transition-colors duration-150"
+                   :class="isDarkMode ? 'text-slate-600' : 'text-gray-300'"
+                   fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
               </svg>
+              <p class="text-xs transition-colors duration-150"
+                 :class="isDarkMode ? 'text-gray-500' : 'text-gray-400'">
+                尚未上傳任何圖層
+              </p>
             </div>
-            <p class="text-sm transition-colors duration-300"
-               :class="isDarkMode ? 'text-gray-400' : 'text-gray-500'">
-              還沒有上傳任何圖層資料
-            </p>
-            <p class="text-xs mt-1 transition-colors duration-300"
-               :class="isDarkMode ? 'text-gray-500' : 'text-gray-400'">
-              點擊上方的上傳按鈕開始添加圖層
-            </p>
           </div>
         </div>
-      </div>
-      
-      <!-- 時序資料區域 -->
-      <div class="border-b transition-colors duration-300"
-           :class="isDarkMode ? 'border-slate-700' : 'border-gray-200'">
-        <button @click="toggleExpanded('externalData')" 
-                class="w-full flex items-center justify-between p-4 text-left transition-all duration-300 rounded-lg mx-2 my-1"
-                :class="isDarkMode ? 'bg-blue-900/20 hover:bg-blue-800/30 border-l-4 border-blue-500' : 'bg-blue-50/80 hover:bg-blue-100/80 border-l-4 border-blue-500'">
-          <div class="flex items-center">
-            <div class="w-2 h-2 rounded-full bg-blue-500 mr-3"></div>
-            <h3 class="font-semibold text-lg transition-colors duration-300"
+
+        <!-- ── 時序資料 ── -->
+        <div class="border-b transition-colors duration-150"
+             :class="isDarkMode ? 'border-slate-700' : 'border-gray-200'">
+
+          <button @click="toggleExpanded('externalData')"
+                  class="w-full flex items-center justify-between px-4 py-3 text-left transition-colors duration-150"
+                  :class="isDarkMode ? 'hover:bg-slate-700/50' : 'hover:bg-gray-50'">
+            <h3 class="font-medium text-sm transition-colors duration-150"
                 :class="isDarkMode ? 'text-white' : 'text-gray-900'">
               時序資料
             </h3>
-          </div>
-          <svg class="w-5 h-5 transition-all duration-300"
-               :class="[
-                 expandedAreas.externalData ? 'rotate-180' : 'rotate-0',
-                 isDarkMode ? 'text-gray-400' : 'text-gray-500'
-               ]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-          </svg>
-        </button>
-        
-        <div v-if="expandedAreas.externalData" class="px-4 pb-4 space-y-3">
-          <!-- 上傳資料 -->
-          <div class="border rounded-2xl transition-all duration-300 shadow-sm hover:shadow-md backdrop-blur-sm"
-               :class="isDarkMode ? 'bg-slate-700/80 border-slate-600/50 hover:bg-slate-600/80 hover:border-slate-500' : 'bg-white/90 border-gray-200/60 hover:bg-white hover:border-gray-300'">
-            <div class="flex items-center justify-between p-3">
-              <h4 class="font-medium transition-colors duration-300"
-                  :class="isDarkMode ? 'text-white' : 'text-gray-900'">
-                時序資料管理
-              </h4>
-              
-              <!-- 上傳圖標按鈕 -->
+            <svg class="w-4 h-4 transition-transform duration-200 flex-shrink-0"
+                 :class="[expandedAreas.externalData ? 'rotate-180' : '', isDarkMode ? 'text-gray-400' : 'text-gray-500']"
+                 fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+            </svg>
+          </button>
+
+          <div v-if="expandedAreas.externalData" class="px-4 pb-4">
+            <div class="flex items-center justify-between mb-3">
+              <span class="text-xs font-medium uppercase tracking-wide transition-colors duration-150"
+                    :class="isDarkMode ? 'text-gray-500' : 'text-gray-400'">
+                資料管理
+              </span>
               <button @click="showTemporalUploadModal = true"
-                      class="p-1.5 rounded-lg transition-all duration-300 hover:scale-110"
-                      :class="isDarkMode 
-                        ? 'text-gray-400 hover:text-blue-400 hover:bg-blue-400/10' 
-                        : 'text-gray-500 hover:text-blue-600 hover:bg-blue-50'"
+                      class="p-1.5 rounded transition-colors duration-150 border"
+                      :class="isDarkMode
+                        ? 'border-slate-600 text-slate-400 hover:text-slate-200 hover:bg-slate-700'
+                        : 'border-gray-200 text-gray-500 hover:text-gray-700 hover:bg-gray-50'"
                       title="上傳時序資料">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
                 </svg>
               </button>
             </div>
-            
-            <div class="px-3 pb-3">
-              <TemporalDataManager
-                ref="temporalManager"
-                :project-id="projectId"
-                @locate="onLocateTemporalData"
-                @toggle-visibility="onToggleTemporalDataVisibility"
-                @edit="onEditTemporalData"
-              />
-            </div>
+            <TemporalDataManager
+              ref="temporalManager"
+              :project-id="projectId"
+              @locate="onLocateTemporalData"
+              @toggle-visibility="onToggleTemporalDataVisibility"
+              @edit="onEditTemporalData"
+            />
           </div>
         </div>
-      </div>
-      
-      <!-- 底圖套疊區域 -->
-      <div class="border-b transition-colors duration-300"
-           :class="isDarkMode ? 'border-slate-700' : 'border-gray-200'">
-        <button @click="toggleExpanded('overlayLayers')" 
-                class="w-full flex items-center justify-between p-4 text-left transition-all duration-300 rounded-lg mx-2 my-1"
-                :class="isDarkMode ? 'bg-blue-900/20 hover:bg-blue-800/30 border-l-4 border-blue-500' : 'bg-blue-50/80 hover:bg-blue-100/80 border-l-4 border-blue-500'">
-          <div class="flex items-center">
-            <div class="w-2 h-2 rounded-full bg-blue-500 mr-3"></div>
-            <h3 class="font-semibold text-lg transition-colors duration-300"
+
+        <!-- ── 底圖套疊 ── -->
+        <div class="border-b transition-colors duration-150"
+             :class="isDarkMode ? 'border-slate-700' : 'border-gray-200'">
+
+          <button @click="toggleExpanded('overlayLayers')"
+                  class="w-full flex items-center justify-between px-4 py-3 text-left transition-colors duration-150"
+                  :class="isDarkMode ? 'hover:bg-slate-700/50' : 'hover:bg-gray-50'">
+            <h3 class="font-medium text-sm transition-colors duration-150"
                 :class="isDarkMode ? 'text-white' : 'text-gray-900'">
               底圖套疊
             </h3>
-          </div>
-          <svg class="w-5 h-5 transition-all duration-300"
-               :class="[
-                 expandedAreas.overlayLayers ? 'rotate-180' : 'rotate-0',
-                 isDarkMode ? 'text-gray-400' : 'text-gray-500'
-               ]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-          </svg>
-        </button>
-        
-        <div v-if="expandedAreas.overlayLayers" class="px-4 pb-4 space-y-3">
-          <!-- 正射影像底圖 -->
-          <div class="border rounded-2xl transition-all duration-300 shadow-sm hover:shadow-md backdrop-blur-sm"
-               :class="isDarkMode ? 'bg-slate-700/80 border-slate-600/50 hover:bg-slate-600/80 hover:border-slate-500' : 'bg-white/90 border-gray-200/60 hover:bg-white hover:border-gray-300'">
-            <div class="flex items-center justify-between p-3">
-              <h4 class="font-medium transition-colors duration-300"
-                  :class="isDarkMode ? 'text-white' : 'text-gray-900'">
-                正射影像底圖
-              </h4>
-              
-              <!-- 上傳圖標按鈕 -->
+            <svg class="w-4 h-4 transition-transform duration-200 flex-shrink-0"
+                 :class="[expandedAreas.overlayLayers ? 'rotate-180' : '', isDarkMode ? 'text-gray-400' : 'text-gray-500']"
+                 fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+            </svg>
+          </button>
+
+          <div v-if="expandedAreas.overlayLayers" class="px-4 pb-4">
+            <div class="flex items-center justify-between mb-3">
+              <span class="text-xs font-medium uppercase tracking-wide transition-colors duration-150"
+                    :class="isDarkMode ? 'text-gray-500' : 'text-gray-400'">
+                正射影像
+              </span>
               <button @click="$emit('open-basemap-upload')"
-                      class="p-1.5 rounded-lg transition-all duration-300 hover:scale-110"
-                      :class="isDarkMode 
-                        ? 'text-gray-400 hover:text-blue-400 hover:bg-blue-400/10' 
-                        : 'text-gray-500 hover:text-blue-600 hover:bg-blue-50'"
-                      title="上傳正射影像底圖">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                      class="p-1.5 rounded transition-colors duration-150 border"
+                      :class="isDarkMode
+                        ? 'border-slate-600 text-slate-400 hover:text-slate-200 hover:bg-slate-700'
+                        : 'border-gray-200 text-gray-500 hover:text-gray-700 hover:bg-gray-50'"
+                      title="上傳正射影像">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
                 </svg>
               </button>
             </div>
-            
-            <div class="px-3 pb-3">
-              <!-- 底圖選擇器 -->
-              <BaseMapSelector
-                ref="baseMapSelector"
-                :project-id="projectId"
-                :is-dark-mode="isDarkMode"
-                :current-base-map-id="currentBaseMapId"
-                :base-map-service="baseMapService"
-                @base-map-selected="onBaseMapSelected"
-                @base-map-changed="onBaseMapChanged"
-                @base-map-located="onBaseMapLocated"
-                @base-map-edited="onBaseMapEdited"
-                @base-map-deleted="onBaseMapDeleted"
-                @base-map-delete-request="onBaseMapDeleteRequest"
-              />
-            </div>
+            <BaseMapSelector
+              ref="baseMapSelector"
+              :project-id="projectId"
+              :is-dark-mode="isDarkMode"
+              :current-base-map-id="currentBaseMapId"
+              :base-map-service="baseMapService"
+              @base-map-selected="onBaseMapSelected"
+              @base-map-changed="onBaseMapChanged"
+              @base-map-located="onBaseMapLocated"
+              @base-map-edited="onBaseMapEdited"
+              @base-map-deleted="onBaseMapDeleted"
+              @base-map-delete-request="onBaseMapDeleteRequest"
+            />
           </div>
-          
         </div>
+
       </div>
-      </div> <!-- 結束可滾動內容 -->
     </div>
 
     <!-- 刪除確認對話框 -->
@@ -310,12 +260,13 @@
       @cancel="cancelDelete"
       @close="cancelDelete"
     />
-    
+
     <!-- 時序資料上傳模態框 -->
     <TemporalDataUploadModal
       ref="temporalUploadModal"
       :is-visible="showTemporalUploadModal"
       :project-id="projectId"
+      :is-dark-mode="isDarkMode"
       @close="showTemporalUploadModal = false"
       @uploaded="handleTemporalDataUploaded"
     />
@@ -327,6 +278,7 @@ import BaseMapSelector from '../basemap/BaseMapSelector.vue'
 import TemporalDataManager from '../temporal/TemporalDataManager.vue'
 import TemporalDataUploadModal from '../temporal/TemporalDataUploadModal.vue'
 import CustomAlert from '../CustomAlert.vue'
+import { dataFileAPI } from '../../services/api'
 
 export default {
   name: 'ProjectSidebar',
@@ -555,6 +507,13 @@ export default {
     }
   },
   methods: {
+    formatDate(dateString) {
+      if (!dateString) return '—'
+      return new Date(dateString).toLocaleDateString('zh-TW', {
+        year: 'numeric', month: '2-digit', day: '2-digit'
+      })
+    },
+
     toggleExpanded(area) {
       this.$emit('toggle-expanded', area)
     },
@@ -602,6 +561,11 @@ export default {
       }
     },
     
+    // 地質圖層切換事件轉發
+    onToggleGeologicalMap(data) {
+      this.$emit('toggle-geological-map', data)
+    },
+
     // 底圖選擇事件處理
     onBaseMapSelected(baseMap) {
       this.$emit('base-map-selected', baseMap)
@@ -638,11 +602,7 @@ export default {
       const baseMap = this.pendingDeleteBaseMap
       
       try {
-        const response = await fetch(`http://localhost:3001/api/data/${baseMap.id}`, {
-          method: 'DELETE'
-        })
-        
-        const result = await response.json()
+        const result = await dataFileAPI.delete(baseMap.id)
         
         if (result.success) {
           this.$emit('base-map-deleted', baseMap)

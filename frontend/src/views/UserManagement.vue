@@ -3,20 +3,17 @@
        :class="isDarkMode ? 'bg-slate-900 text-white' : 'bg-surface-50 text-gray-900'">
 
     <!-- Header -->
-    <div class="flex items-center justify-between mb-6">
+    <div class="flex items-center justify-between mb-5">
       <div>
-        <h1 class="text-2xl font-bold">使用者管理</h1>
-        <p class="text-sm mt-0.5 transition-colors duration-300"
+        <h1 class="text-base font-semibold">使用者管理</h1>
+        <p class="text-xs mt-0.5 transition-colors duration-300"
            :class="isDarkMode ? 'text-slate-400' : 'text-gray-500'">
           共 {{ users.length }} 位使用者
         </p>
       </div>
       <button @click="showAddModal = true"
-              class="flex items-center gap-2 px-4 py-2 rounded-lg text-white text-sm font-medium transition-colors"
-              style="background-color:#1e5c8a"
-              @mouseover="e=>e.currentTarget.style.backgroundColor='#153f62'"
-              @mouseout="e=>e.currentTarget.style.backgroundColor='#1e5c8a'">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              class="flex items-center gap-1.5 px-3 py-1.5 rounded text-white text-xs font-medium transition-colors border border-brand bg-brand hover:bg-brand-700">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
         </svg>
         新增使用者
@@ -24,13 +21,14 @@
     </div>
 
     <!-- Error -->
-    <div v-if="error" class="mb-4 px-4 py-3 rounded-lg text-sm bg-red-50 text-red-700 border border-red-200">
+    <div v-if="error" class="mb-4 px-3 py-2 rounded text-sm border"
+         :class="isDarkMode ? 'bg-red-900/20 text-red-400 border-red-800' : 'bg-red-50 text-red-600 border-red-200'">
       {{ error }}
     </div>
 
     <!-- Table -->
-    <div class="rounded-xl shadow overflow-hidden transition-colors duration-300"
-         :class="isDarkMode ? 'bg-slate-800 border border-slate-700' : 'bg-white border border-gray-200'">
+    <div class="rounded border overflow-hidden transition-colors duration-300"
+         :class="isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'">
       <!-- Loading -->
       <div v-if="loading" class="flex items-center justify-center py-16">
         <div class="w-6 h-6 border-2 border-t-transparent rounded-full animate-spin" style="border-color:#1e5c8a;border-top-color:transparent"></div>
@@ -96,12 +94,12 @@
             <!-- Active -->
             <td class="px-4 py-3">
               <button @click="toggleActive(user)"
-                      class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-all"
+                      class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium border transition-colors duration-150"
                       :class="user.is_active
-                        ? 'bg-green-100 text-green-700 hover:bg-green-200'
-                        : 'bg-red-100 text-red-700 hover:bg-red-200'">
-                <span class="w-1.5 h-1.5 rounded-full"
-                      :class="user.is_active ? 'bg-green-500' : 'bg-red-500'"></span>
+                        ? (isDarkMode ? 'border-slate-600 text-slate-300 hover:border-slate-400' : 'border-gray-300 text-gray-600 hover:border-gray-500')
+                        : (isDarkMode ? 'border-slate-600 text-slate-500 hover:border-slate-400' : 'border-gray-200 text-gray-400 hover:border-gray-400')">
+                <span class="w-1.5 h-1.5 rounded-full flex-shrink-0"
+                      :class="user.is_active ? 'bg-green-500' : 'bg-gray-400'"></span>
                 {{ user.is_active ? '啟用' : '停用' }}
               </button>
             </td>
@@ -126,43 +124,56 @@
 
     <!-- Add user modal -->
     <div v-if="showAddModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div class="w-96 rounded-xl shadow-2xl p-6 transition-colors duration-300"
-           :class="isDarkMode ? 'bg-slate-800 border border-slate-700' : 'bg-white'">
-        <h2 class="text-lg font-semibold mb-4">新增使用者</h2>
-        <div v-if="addError" class="mb-3 text-sm text-red-600 bg-red-50 px-3 py-2 rounded">{{ addError }}</div>
-        <div class="space-y-3">
+      <div class="w-88 rounded border p-5 transition-colors duration-300"
+           :class="isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'">
+        <h2 class="text-sm font-semibold mb-4" :class="isDarkMode ? 'text-white' : 'text-gray-900'">新增使用者</h2>
+        <div v-if="addError" class="mb-3 text-xs border px-3 py-2 rounded"
+             :class="isDarkMode ? 'text-red-400 border-red-800 bg-red-900/20' : 'text-red-600 border-red-200 bg-red-50'">{{ addError }}</div>
+        <div class="space-y-2.5">
           <input v-model="addForm.username" type="text" placeholder="帳號"
-                 class="w-full px-3 py-2 rounded-lg border text-sm outline-none focus:ring-2 focus:ring-brand-300 focus:border-brand"
-                 :class="isDarkMode ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-500' : 'bg-white border-surface-300 text-gray-900 placeholder-surface-400'" />
+                 class="w-full px-3 py-1.5 rounded border text-sm outline-none focus:border-brand transition-colors"
+                 :class="isDarkMode ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-500' : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400'" />
           <input v-model="addForm.email" type="email" placeholder="Email"
-                 class="w-full px-3 py-2 rounded-lg border text-sm outline-none focus:ring-2 focus:ring-brand-300 focus:border-brand"
-                 :class="isDarkMode ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-500' : 'bg-white border-surface-300 text-gray-900 placeholder-surface-400'" />
+                 class="w-full px-3 py-1.5 rounded border text-sm outline-none focus:border-brand transition-colors"
+                 :class="isDarkMode ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-500' : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400'" />
           <input v-model="addForm.display_name" type="text" placeholder="顯示名稱（選填）"
-                 class="w-full px-3 py-2 rounded-lg border text-sm outline-none focus:ring-2 focus:ring-brand-300 focus:border-brand"
-                 :class="isDarkMode ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-500' : 'bg-white border-surface-300 text-gray-900 placeholder-surface-400'" />
+                 class="w-full px-3 py-1.5 rounded border text-sm outline-none focus:border-brand transition-colors"
+                 :class="isDarkMode ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-500' : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400'" />
           <input v-model="addForm.password" type="password" placeholder="密碼（至少 6 字元）"
-                 class="w-full px-3 py-2 rounded-lg border text-sm outline-none focus:ring-2 focus:ring-brand-300 focus:border-brand"
-                 :class="isDarkMode ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-500' : 'bg-white border-surface-300 text-gray-900 placeholder-surface-400'" />
+                 class="w-full px-3 py-1.5 rounded border text-sm outline-none focus:border-brand transition-colors"
+                 :class="isDarkMode ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-500' : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400'" />
           <select v-model="addForm.role"
-                  class="w-full px-3 py-2 rounded-lg border text-sm outline-none focus:ring-2 focus:ring-brand-300 focus:border-brand"
-                  :class="isDarkMode ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-surface-300 text-gray-900'">
+                  class="w-full px-3 py-1.5 rounded border text-sm outline-none focus:border-brand transition-colors"
+                  :class="isDarkMode ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'">
             <option value="viewer">瀏覽者</option>
             <option value="editor">編輯者</option>
             <option value="admin">管理員</option>
           </select>
         </div>
-        <div class="flex gap-3 mt-5">
-          <button @click="showAddModal = false; addError = ''"
-                  class="flex-1 py-2 rounded-lg border text-sm transition-colors font-medium"
-                  :class="isDarkMode ? 'border-slate-600 text-slate-300 hover:border-slate-400' : 'border-surface-300 text-surface-600 hover:border-surface-400'">
+        <!-- 重設密碼輸入（顯示於 resetPasswordTarget 時） -->
+        <template v-if="resetPasswordTarget">
+          <div class="mt-4 pt-4 border-t" :class="isDarkMode ? 'border-slate-700' : 'border-gray-100'">
+            <p class="text-xs mb-2" :class="isDarkMode ? 'text-slate-400' : 'text-gray-500'">
+              重設 <strong>{{ resetPasswordTarget.username }}</strong> 的密碼
+            </p>
+            <input v-model="resetPwdValue" type="password" placeholder="新密碼（至少 6 字元）"
+                   class="w-full px-3 py-1.5 rounded border text-sm outline-none focus:border-brand transition-colors"
+                   :class="isDarkMode ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-500' : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400'" />
+          </div>
+        </template>
+        <div class="flex gap-2 mt-4">
+          <button @click="cancelModal"
+                  class="flex-1 py-1.5 rounded border text-xs font-medium transition-colors"
+                  :class="isDarkMode ? 'border-slate-600 text-slate-300 hover:border-slate-400' : 'border-gray-300 text-gray-600 hover:border-gray-500'">
             取消
           </button>
-          <button @click="createUser" :disabled="addLoading"
-                  class="flex-1 py-2 rounded-lg text-white text-sm font-medium transition-colors disabled:opacity-60"
-                  style="background-color:#1e5c8a"
-                  @mouseover="e=>!addLoading&&(e.currentTarget.style.backgroundColor='#153f62')"
-                  @mouseout="e=>e.currentTarget.style.backgroundColor='#1e5c8a'">
+          <button v-if="!resetPasswordTarget" @click="createUser" :disabled="addLoading"
+                  class="flex-1 py-1.5 rounded text-white text-xs font-medium transition-colors disabled:opacity-60 bg-brand border border-brand hover:bg-brand-700">
             {{ addLoading ? '建立中...' : '建立帳號' }}
+          </button>
+          <button v-else @click="submitResetPassword" :disabled="addLoading"
+                  class="flex-1 py-1.5 rounded text-white text-xs font-medium transition-colors disabled:opacity-60 bg-brand border border-brand hover:bg-brand-700">
+            {{ addLoading ? '更新中...' : '確認重設' }}
           </button>
         </div>
       </div>
@@ -173,6 +184,7 @@
 
 <script>
 import { authAPI } from '@/services/api.js'
+import { alert as showAlert, success as showSuccess, error as showError } from '@/utils/simpleAlertService'
 
 const ROLE_COLORS = { admin: '#153f62', editor: '#1e5c8a', viewer: '#78716c' }
 
@@ -187,17 +199,27 @@ export default {
       showAddModal: false,
       addLoading: false,
       addError: '',
-      addForm: { username: '', email: '', display_name: '', password: '', role: 'editor' }
+      addForm: { username: '', email: '', display_name: '', password: '', role: 'editor' },
+      resetPasswordTarget: null,
+      resetPwdValue: ''
     }
   },
   methods: {
-    roleColor(role) { return ROLE_COLORS[role] || 'bg-slate-500' },
+    roleColor(role) { return ROLE_COLORS[role] || '#78716c' },
 
     formatDate(dateStr) {
       return new Date(dateStr).toLocaleString('zh-TW', {
         year: 'numeric', month: '2-digit', day: '2-digit',
         hour: '2-digit', minute: '2-digit'
       })
+    },
+
+    cancelModal() {
+      this.showAddModal = false
+      this.addError = ''
+      this.resetPasswordTarget = null
+      this.resetPwdValue = ''
+      this.addForm = { username: '', email: '', display_name: '', password: '', role: 'editor' }
     },
 
     async fetchUsers() {
@@ -218,7 +240,7 @@ export default {
         await authAPI.updateUser(user.user_id, { is_active: !user.is_active })
         user.is_active = !user.is_active
       } catch (err) {
-        alert(err.response?.data?.message || '操作失敗')
+        await showError(err.response?.data?.message || '操作失敗', '操作失敗', this.isDarkMode)
       }
     },
 
@@ -227,16 +249,31 @@ export default {
         await authAPI.updateUser(user.user_id, { role: newRole })
         user.role = newRole
       } catch (err) {
-        alert(err.response?.data?.message || '操作失敗')
+        await showError(err.response?.data?.message || '操作失敗', '操作失敗', this.isDarkMode)
       }
     },
 
     resetPasswordModal(user) {
-      const newPwd = prompt(`重設 ${user.username} 的密碼（輸入新密碼）:`)
-      if (!newPwd || newPwd.length < 6) { if (newPwd !== null) alert('密碼至少 6 個字元'); return }
-      authAPI.updateUser(user.user_id, { password: newPwd })
-        .then(() => alert('密碼已更新'))
-        .catch(err => alert(err.response?.data?.message || '操作失敗'))
+      this.resetPasswordTarget = user
+      this.resetPwdValue = ''
+      this.addError = ''
+      this.showAddModal = true
+    },
+
+    async submitResetPassword() {
+      if (!this.resetPwdValue || this.resetPwdValue.length < 6) {
+        this.addError = '密碼至少 6 個字元'; return
+      }
+      this.addLoading = true
+      try {
+        await authAPI.updateUser(this.resetPasswordTarget.user_id, { password: this.resetPwdValue })
+        this.cancelModal()
+        await showSuccess('密碼已更新', '完成', this.isDarkMode)
+      } catch (err) {
+        this.addError = err.response?.data?.message || '操作失敗'
+      } finally {
+        this.addLoading = false
+      }
     },
 
     async createUser() {
@@ -249,10 +286,8 @@ export default {
       }
       this.addLoading = true
       try {
-        await authAPI.register(this.addForm)
-        await authAPI.updateUser
-        this.showAddModal = false
-        this.addForm = { username: '', email: '', display_name: '', password: '', role: 'editor' }
+        await authAPI.createUser(this.addForm)
+        this.cancelModal()
         await this.fetchUsers()
       } catch (err) {
         this.addError = err.response?.data?.message || '建立失敗'

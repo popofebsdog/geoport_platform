@@ -12,13 +12,15 @@
       
       <!-- 進度條（可選） -->
       <div v-if="showProgress && progress >= 0" class="mt-4 w-64 mx-auto">
-        <div class="bg-gray-700 rounded-full h-2 overflow-hidden">
+        <div class="rounded-full h-2 overflow-hidden"
+             :class="isDarkMode ? 'bg-slate-700' : 'bg-gray-700'">
           <div 
-            class="bg-blue-600 h-full transition-all duration-300 ease-out"
+            class="bg-blue-500 h-full transition-all duration-300 ease-out"
             :style="{ width: `${Math.min(100, Math.max(0, progress))}%` }"
           ></div>
         </div>
-        <div class="text-gray-300 text-xs mt-2">{{ Math.round(progress) }}%</div>
+        <div class="text-xs mt-2"
+             :class="isDarkMode ? 'text-slate-400' : 'text-gray-300'">{{ Math.round(progress) }}%</div>
       </div>
     </div>
   </div>
@@ -27,6 +29,9 @@
 <script>
 export default {
   name: 'FullScreenLoader',
+  inject: {
+    isDarkMode: { default: false }
+  },
   props: {
     show: {
       type: Boolean,

@@ -170,7 +170,7 @@
 </template>
 
 <script>
-import axios from 'axios'
+import api from '@/services/api'
 import RoutineInspectionModal from './RoutineInspectionModal.vue'
 import SpecialInspectionModal from './SpecialInspectionModal.vue'
 import { confirm as showConfirm, alert as showAlert, error as showError } from '@/utils/simpleAlertService'
@@ -254,18 +254,18 @@ export default {
       
       try {
         
-        const response = await axios.get(
-          `/api/warning-regions/${this.regionCode}/inspection-records`
+        const response = await api.get(
+          `/warning-regions/${this.regionCode}/inspection-records`
         )
         
         
-        if (response.data.success) {
+        if (response.success) {
           // 過濾出該里程數和類型的記錄
           // 注意：里程數格式可能不同，需要精確匹配
           const pointMileage = String(this.pointInfo.mileage || '').trim()
           
           
-          this.records = response.data.data.filter(record => {
+          this.records = response.data.filter(record => {
             const recordMileage = String(record.mileage || '').trim()
             const typeMatch = record.inspection_type === this.inspectionType
             
@@ -390,11 +390,11 @@ export default {
       }
       
       try {
-        const response = await axios.delete(`/api/warning-regions/${this.regionCode}/inspection-records/${recordId}`)
-        if (response.data.success) {
+        const response = await api.delete(`/warning-regions/${this.regionCode}/inspection-records/${recordId}`)
+        if (response.success) {
           await this.loadRecords()
         } else {
-          throw new Error(response.data.message || '刪除失敗')
+          throw new Error(response.message || '刪除失敗')
         }
       } catch (error) {
         console.error('刪除記錄失敗:', error)

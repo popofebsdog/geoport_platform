@@ -1,265 +1,110 @@
 <template>
-  <!-- 展開按鈕（面板收起時顯示） -->
-  <button
-    v-if="!isVisible"
-    @click.stop="$emit('expand')"
-    class="absolute left-0 top-1/2 -translate-y-1/2 z-[1001] bg-white dark:bg-gray-800 rounded-r-lg shadow-lg p-2 border-r border-y border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors pointer-events-auto"
-    title="展開告警燈號狀態"
+  <!-- ── 面板容器（slide-in 動畫）── 把手跟著面板一起移動 -->
+  <div
+    class="absolute left-0 top-0 bottom-0 z-[1000] transition-transform duration-300 ease-in-out"
+    style="width: 252px;"
+    :style="isVisible ? 'transform: translateX(0)' : 'transform: translateX(-100%)'"
   >
-    <svg class="w-5 h-5 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7"></path>
-    </svg>
-  </button>
-  
-  <!-- 面板容器（包含面板和收合按鈕） -->
-  <div 
-    class="absolute left-0 top-0 bottom-0 w-[21rem] z-[1000] transition-transform duration-300 ease-in-out"
-    :style="isVisible ? 'transform: translateX(0);' : 'transform: translateX(-100%);'"
-  >
-    <!-- 面板 -->
-    <div 
-      class="absolute left-0 top-0 bottom-0 w-80 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 shadow-xl overflow-hidden flex flex-col"
-    >
-      <!-- 標題欄 -->
-      <div class="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
-        <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">告警燈號狀態</h3>
-      </div>
-      
-      <!-- 內容區域 -->
-      <div class="flex-1 overflow-y-auto p-4 flex flex-col items-center justify-center">
-        <div v-if="alertLights.length === 0" class="text-center py-8 w-full">
-          <div class="text-gray-400 dark:text-gray-500">
-            <svg class="w-16 h-16 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path>
-            </svg>
-            <p class="text-sm">暫無告警燈號設置</p>
-          </div>
+    <!-- 面板主體 -->
+    <div class="absolute inset-0 flex flex-col
+                bg-white dark:bg-slate-900
+                border-r border-gray-200 dark:border-slate-700/70
+                shadow-2xl">
+
+      <!-- 標頭 -->
+      <div class="flex items-center justify-between px-4 py-3.5
+                  border-b border-gray-100 dark:border-slate-800 flex-shrink-0">
+        <div class="min-w-0">
+          <h3 class="text-sm font-semibold text-gray-900 dark:text-slate-100 leading-tight truncate">
+            告警燈號狀態
+          </h3>
+          <p class="text-[10px] text-gray-400 dark:text-slate-500 mt-0.5">
+            {{ alertLights.length > 0 ? `${alertLights.length} 個監測點` : '暫無設置' }}
+          </p>
         </div>
-        
-        <!-- 收起狀態：2x2 網格 -->
-        <template v-else-if="chartPanelCollapsed">
-          <div class="grid grid-cols-2 gap-4 w-full">
-            <div
-              v-for="(item, index) in collapsedDisplayItems"
-              :key="item.key || index"
-              class="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4 border border-gray-200 dark:border-gray-600 transition-shadow"
-              :class="item.light ? 'hover:shadow-md cursor-pointer' : 'opacity-30'"
-              @click="item.light && handleLightClick(item.light)"
-            >
-              <template v-if="item.light">
-                <!-- 里程數（居中，樣式與標題一致） -->
-                <div class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3 text-center">
-                  {{ item.light.mileage || '-' }}
-                </div>
-                
-                <!-- 紅綠燈顯示 -->
-                <div class="flex justify-center mb-2">
-                  <div class="bg-gray-800 dark:bg-gray-900 rounded-lg p-2 border-2"
-                       :class="getLightBorderClass(item.light.current_level)">
-                    <!-- 紅燈 (上) -->
-                    <div class="mb-1">
-                      <div 
-                        class="w-8 h-8 rounded-full border-2 mx-auto"
-                        :class="getLightClass('red', item.light)"
-                      ></div>
-                    </div>
-                    
-                    <!-- 黃燈 (中) -->
-                    <div class="mb-1">
-                      <div 
-                        class="w-8 h-8 rounded-full border-2 mx-auto"
-                        :class="getLightClass('yellow', item.light)"
-                      ></div>
-                    </div>
-                    
-                    <!-- 綠燈 (下) -->
-                    <div>
-                      <div 
-                        class="w-8 h-8 rounded-full border-2 mx-auto"
-                        :class="getLightClass('green', item.light)"
-                      ></div>
-                    </div>
-                  </div>
-                </div>
-                
-                <!-- 燈號說明 -->
-                <div class="text-xs text-center font-medium"
-                     :class="getLevelTextClass(item.light.current_level)">
-                  {{ getLevelText(item.light.current_level) }}
-                </div>
-              </template>
-              <!-- 空位（完整容器） -->
-              <template v-else>
-                <!-- 里程數（佔位） -->
-                <div class="text-lg font-semibold text-gray-300 dark:text-gray-600 mb-3 text-center">
-                  -
-                </div>
-                
-                <!-- 紅綠燈顯示（佔位） -->
-                <div class="flex justify-center mb-2">
-                  <div class="bg-gray-800 dark:bg-gray-900 rounded-lg p-2 border-2 border-gray-600 dark:border-gray-700">
-                    <!-- 紅燈 (上) -->
-                    <div class="mb-1">
-                      <div class="w-8 h-8 rounded-full border-2 mx-auto bg-gray-700 dark:bg-gray-800 border-gray-600 dark:border-gray-700"></div>
-                    </div>
-                    
-                    <!-- 黃燈 (中) -->
-                    <div class="mb-1">
-                      <div class="w-8 h-8 rounded-full border-2 mx-auto bg-gray-700 dark:bg-gray-800 border-gray-600 dark:border-gray-700"></div>
-                    </div>
-                    
-                    <!-- 綠燈 (下) -->
-                    <div>
-                      <div class="w-8 h-8 rounded-full border-2 mx-auto bg-gray-700 dark:bg-gray-800 border-gray-600 dark:border-gray-700"></div>
-                    </div>
-                  </div>
-                </div>
-                
-                <!-- 燈號說明（佔位） -->
-                <div class="text-xs text-center font-medium text-gray-400 dark:text-gray-500">
-                  -
-                </div>
-              </template>
-            </div>
+      </div>
+
+      <!-- 捲動內容區 -->
+      <div class="flex-1 overflow-y-auto panel-scroll">
+
+        <!-- 無資料 -->
+        <div v-if="alertLights.length === 0"
+             class="flex flex-col items-center justify-center h-40 gap-3 px-4 text-center">
+          <div class="w-9 h-9 rounded-full flex items-center justify-center
+                      bg-gray-100 dark:bg-slate-800">
+            <svg class="w-5 h-5 text-gray-300 dark:text-slate-600"
+                 fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
+            </svg>
           </div>
-        </template>
-        
-        <!-- 展開狀態：1x2 水平佈局，帶分頁 -->
-        <template v-else>
-          <div class="w-full flex flex-col items-center">
-            <!-- 卡片區域 -->
-            <div class="grid grid-cols-2 gap-4 w-full mb-4">
-              <div
-                v-for="(item, index) in expandedDisplayItems"
-                :key="item.key || index"
-                class="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4 border border-gray-200 dark:border-gray-600 transition-shadow"
-                :class="item.light ? 'hover:shadow-md cursor-pointer' : 'opacity-30'"
-                @click="item.light && handleLightClick(item.light)"
-              >
-                <template v-if="item.light">
-                  <!-- 里程數（居中，樣式與標題一致） -->
-                  <div class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3 text-center">
-                    {{ item.light.mileage || '-' }}
-                  </div>
-                  
-                  <!-- 紅綠燈顯示 -->
-                  <div class="flex justify-center mb-2">
-                    <div class="bg-gray-800 dark:bg-gray-900 rounded-lg p-2 border-2"
-                         :class="getLightBorderClass(item.light.current_level)">
-                      <!-- 紅燈 (上) -->
-                      <div class="mb-1">
-                        <div 
-                          class="w-8 h-8 rounded-full border-2 mx-auto"
-                          :class="getLightClass('red', item.light)"
-                        ></div>
-                      </div>
-                      
-                      <!-- 黃燈 (中) -->
-                      <div class="mb-1">
-                        <div 
-                          class="w-8 h-8 rounded-full border-2 mx-auto"
-                          :class="getLightClass('yellow', item.light)"
-                        ></div>
-                      </div>
-                      
-                      <!-- 綠燈 (下) -->
-                      <div>
-                        <div 
-                          class="w-8 h-8 rounded-full border-2 mx-auto"
-                          :class="getLightClass('green', item.light)"
-                        ></div>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <!-- 燈號說明 -->
-                  <div class="text-xs text-center font-medium"
-                       :class="getLevelTextClass(item.light.current_level)">
-                    {{ getLevelText(item.light.current_level) }}
-                  </div>
-                </template>
-                <!-- 空位（完整容器） -->
-                <template v-else>
-                  <!-- 里程數（佔位） -->
-                  <div class="text-lg font-semibold text-gray-300 dark:text-gray-600 mb-3 text-center">
-                    -
-                  </div>
-                  
-                  <!-- 紅綠燈顯示（佔位） -->
-                  <div class="flex justify-center mb-2">
-                    <div class="bg-gray-800 dark:bg-gray-900 rounded-lg p-2 border-2 border-gray-600 dark:border-gray-700">
-                      <!-- 紅燈 (上) -->
-                      <div class="mb-1">
-                        <div class="w-8 h-8 rounded-full border-2 mx-auto bg-gray-700 dark:bg-gray-800 border-gray-600 dark:border-gray-700"></div>
-                      </div>
-                      
-                      <!-- 黃燈 (中) -->
-                      <div class="mb-1">
-                        <div class="w-8 h-8 rounded-full border-2 mx-auto bg-gray-700 dark:bg-gray-800 border-gray-600 dark:border-gray-700"></div>
-                      </div>
-                      
-                      <!-- 綠燈 (下) -->
-                      <div>
-                        <div class="w-8 h-8 rounded-full border-2 mx-auto bg-gray-700 dark:bg-gray-800 border-gray-600 dark:border-gray-700"></div>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <!-- 燈號說明（佔位） -->
-                  <div class="text-xs text-center font-medium text-gray-400 dark:text-gray-500">
-                    -
-                  </div>
-                </template>
-              </div>
-            </div>
-            
-            <!-- 分頁控制（僅在展開狀態且超過2個時顯示） -->
-            <div v-if="totalPages > 1" class="flex items-center gap-2 mt-2">
-              <button
-                @click.stop="currentPage = Math.max(1, currentPage - 1)"
-                :disabled="currentPage === 1"
-                class="p-1.5 rounded border transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                :class="currentPage === 1 
-                  ? 'bg-gray-100 dark:bg-gray-700 text-gray-400 border-gray-300 dark:border-gray-600' 
-                  : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'"
-                title="上一頁"
-              >
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
-                </svg>
-              </button>
-              <span class="text-xs text-gray-600 dark:text-gray-400 px-2">
-                {{ currentPage }} / {{ totalPages }}
+          <p class="text-xs text-gray-400 dark:text-slate-600">暫無告警燈號設置</p>
+        </div>
+
+        <!-- 燈號卡片列表 -->
+        <div v-else class="p-3 space-y-2">
+          <button
+            v-for="(light, index) in alertLights"
+            :key="light.id || index"
+            @click.stop="handleLightClick(light)"
+            class="w-full text-left px-3 py-3 rounded-xl border transition-all duration-150
+                   active:scale-[0.985] focus:outline-none"
+            :class="getLightCardClass(light)"
+          >
+            <!-- 里程 + 風險標籤 -->
+            <div class="flex items-center justify-between mb-2.5">
+              <span class="text-xs font-semibold text-gray-800 dark:text-slate-200 truncate mr-2">
+                {{ light.mileage || '未命名' }}
               </span>
-              <button
-                @click.stop="currentPage = Math.min(totalPages, currentPage + 1)"
-                :disabled="currentPage === totalPages"
-                class="p-1.5 rounded border transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                :class="currentPage === totalPages 
-                  ? 'bg-gray-100 dark:bg-gray-700 text-gray-400 border-gray-300 dark:border-gray-600' 
-                  : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'"
-                title="下一頁"
-              >
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
-                </svg>
-              </button>
+              <span class="flex-shrink-0 text-[9px] font-bold uppercase tracking-wide
+                           px-1.5 py-0.5 rounded-md"
+                    :class="getLevelBadgeClass(light.current_level)">
+                {{ getLevelShortText(light.current_level) }}
+              </span>
             </div>
-          </div>
-        </template>
+
+            <!-- 橫排三燈 -->
+            <div class="flex items-center gap-2 mb-2">
+              <span
+                v-for="lv in ['red', 'yellow', 'green']"
+                :key="lv"
+                class="w-3.5 h-3.5 rounded-full flex-shrink-0 transition-all duration-200"
+                :class="getDotClass(lv, light)"
+              ></span>
+            </div>
+
+            <!-- 狀態說明 -->
+            <p class="text-[11px] font-medium leading-none"
+               :class="getLevelTextClass(light.current_level)">
+              {{ getLevelText(light.current_level) }}
+            </p>
+          </button>
+        </div>
       </div>
     </div>
-    
-    <!-- 收合按鈕（跟隨面板一起動畫） -->
+
+    <!-- ── 統一展開/收合把手（固定於頂部，與面板起點一致）── -->
     <button
-      v-if="isVisible"
-      @click.stop="handleClose"
-      class="absolute left-[20rem] top-1/2 -translate-y-1/2 z-[1001] bg-white dark:bg-gray-800 rounded-r-lg shadow-lg p-2 border-r border-y border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-      style="pointer-events: auto;"
-      title="收合面板"
+      @click.stop="isVisible ? handleClose() : $emit('expand')"
+      class="absolute top-5 z-10 flex flex-col items-center justify-center gap-1
+             w-5 rounded-r-xl shadow-md transition-colors duration-150
+             bg-white dark:bg-slate-900
+             border border-l-0 border-gray-200 dark:border-slate-700
+             hover:bg-gray-50 dark:hover:bg-slate-800"
+      style="left: 100%; height: 56px; padding: 6px 0;"
+      :title="isVisible ? '收合面板' : '展開告警燈號'"
     >
-      <svg class="w-5 h-5 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"></path>
+      <!-- 迷你三燈指示（收合時才顯示，提示內容） -->
+      <span v-if="!isVisible" class="flex flex-col items-center gap-[3px]">
+        <span class="w-1.5 h-1.5 rounded-full bg-red-400/40"></span>
+        <span class="w-1.5 h-1.5 rounded-full bg-yellow-400/40"></span>
+        <span class="w-1.5 h-1.5 rounded-full bg-green-500 shadow-[0_0_4px_rgba(34,197,94,0.6)]"></span>
+      </span>
+      <!-- 箭頭（方向隨狀態切換） -->
+      <svg class="w-2.5 h-2.5 text-gray-400 dark:text-slate-500 transition-transform duration-300"
+           :class="isVisible ? '' : 'rotate-180'"
+           fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7"/>
       </svg>
     </button>
   </div>
@@ -277,90 +122,13 @@ export default {
       type: Array,
       default: () => []
     },
+    // kept for parent compat – no longer used in template
     chartPanelCollapsed: {
       type: Boolean,
       default: false
     }
   },
   emits: ['close', 'light-click', 'expand'],
-  data() {
-    return {
-      currentPage: 1 // 當前頁碼（展開狀態下使用）
-    };
-  },
-  computed: {
-    // 收起狀態下的顯示項目（2x2，最多4個，不足用空位填充）
-    collapsedDisplayItems() {
-      const items = [];
-      const maxItems = 4; // 2x2 = 4個
-      
-      // 填充實際的燈號
-      for (let i = 0; i < Math.min(this.alertLights.length, maxItems); i++) {
-        items.push({
-          key: `light-${i}`,
-          light: this.alertLights[i]
-        });
-      }
-      
-      // 填充空位
-      while (items.length < maxItems) {
-        items.push({
-          key: `empty-${items.length}`,
-          light: null
-        });
-      }
-      
-      return items;
-    },
-    // 展開狀態下的顯示項目（1x2，每頁2個）
-    expandedDisplayItems() {
-      const itemsPerPage = 2;
-      const startIndex = (this.currentPage - 1) * itemsPerPage;
-      const endIndex = startIndex + itemsPerPage;
-      const items = [];
-      
-      // 獲取當前頁的燈號
-      const currentPageLights = this.alertLights.slice(startIndex, endIndex);
-      
-      // 填充實際的燈號
-      currentPageLights.forEach((light, index) => {
-        items.push({
-          key: `light-${startIndex + index}`,
-          light: light
-        });
-      });
-      
-      // 如果當前頁不足2個，填充空位
-      while (items.length < itemsPerPage) {
-        items.push({
-          key: `empty-${items.length}`,
-          light: null
-        });
-      }
-      
-      return items;
-    },
-    // 總頁數（展開狀態下）
-    totalPages() {
-      if (this.chartPanelCollapsed) return 1;
-      return Math.ceil(this.alertLights.length / 2);
-    }
-  },
-  watch: {
-    // 當面板狀態改變時，重置頁碼
-    chartPanelCollapsed() {
-      this.currentPage = 1;
-    },
-    // 當燈號數量改變時，調整頁碼
-    alertLights: {
-      handler() {
-        if (this.currentPage > this.totalPages) {
-          this.currentPage = Math.max(1, this.totalPages);
-        }
-      },
-      deep: true
-    }
-  },
   methods: {
     handleClose() {
       this.$emit('close');
@@ -368,57 +136,64 @@ export default {
     handleLightClick(light) {
       this.$emit('light-click', light);
     },
-    getLightClass(level, light) {
-      const currentLevel = light.current_level || 'green';
-      const isRedLightOn = light.is_red_light_on || false;
-      
+
+    getLightCardClass(light) {
+      const level = light.current_level || 'green';
       if (level === 'red') {
-        if (currentLevel === 'red' || isRedLightOn) {
-          return 'bg-red-500 border-red-300 shadow-lg shadow-red-500/50';
-        }
-        return 'bg-gray-700 border-gray-600';
-      } else if (level === 'yellow') {
-        if (currentLevel === 'yellow') {
-          return 'bg-yellow-400 border-yellow-300 shadow-lg shadow-yellow-400/50';
-        }
-        return 'bg-gray-700 border-gray-600';
-      } else if (level === 'green') {
-        if (currentLevel === 'green') {
-          return 'bg-green-500 border-green-300 shadow-lg shadow-green-500/50';
-        }
-        return 'bg-gray-700 border-gray-600';
+        return 'bg-red-50 border-red-200 hover:border-red-300 dark:bg-red-950/20 dark:border-red-900/40 dark:hover:border-red-700/60';
       }
-      return 'bg-gray-700 border-gray-600';
+      if (level === 'yellow') {
+        return 'bg-yellow-50 border-yellow-200 hover:border-yellow-300 dark:bg-yellow-950/20 dark:border-yellow-900/40 dark:hover:border-yellow-700/60';
+      }
+      return 'bg-green-50 border-green-200 hover:border-green-300 dark:bg-green-950/20 dark:border-green-900/40 dark:hover:border-green-700/60';
     },
-    getLightBorderClass(level) {
-      const levelMap = {
-        'red': 'border-red-500',
-        'yellow': 'border-yellow-400',
-        'green': 'border-green-500'
-      };
-      return levelMap[level] || 'border-gray-600';
+
+    getLevelBadgeClass(level) {
+      if (level === 'red') return 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400';
+      if (level === 'yellow') return 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400';
+      return 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400';
     },
+
+    getLevelShortText(level) {
+      return { red: '高風險', yellow: '中風險', green: '低風險' }[level] || '低風險';
+    },
+
+    getDotClass(dotLevel, light) {
+      const currentLevel = light.current_level || 'green';
+      const isActive = dotLevel === currentLevel || (dotLevel === 'red' && light.is_red_light_on);
+      if (!isActive) return 'bg-gray-200 dark:bg-slate-700';
+      if (dotLevel === 'red') return 'bg-red-500 shadow-[0_0_6px_rgba(239,68,68,0.65)]';
+      if (dotLevel === 'yellow') return 'bg-yellow-400 shadow-[0_0_6px_rgba(250,204,21,0.65)]';
+      return 'bg-green-500 shadow-[0_0_6px_rgba(34,197,94,0.65)]';
+    },
+
     getLevelText(level) {
-      const textMap = {
-        'red': '高機率發生落石',
-        'yellow': '中機率發生落石',
-        'green': '低機率發生落石'
-      };
-      return textMap[level] || '低機率發生落石';
+      return {
+        red: '高機率發生落石',
+        yellow: '中機率發生落石',
+        green: '低機率發生落石'
+      }[level] || '低機率發生落石';
     },
+
     getLevelTextClass(level) {
-      const classMap = {
-        'red': 'text-red-600 dark:text-red-400',
-        'yellow': 'text-yellow-600 dark:text-yellow-400',
-        'green': 'text-green-600 dark:text-green-400'
-      };
-      return classMap[level] || 'text-green-600 dark:text-green-400';
+      return {
+        red: 'text-red-600 dark:text-red-400',
+        yellow: 'text-yellow-600 dark:text-yellow-400',
+        green: 'text-green-600 dark:text-green-400'
+      }[level] || 'text-green-600 dark:text-green-400';
     }
   }
 };
 </script>
 
 <style scoped>
-/* 確保面板在正確的 z-index 層級 */
+/* 隱藏 scrollbar 但保持滾動功能 */
+.panel-scroll::-webkit-scrollbar {
+  width: 0;
+  display: none;
+}
+.panel-scroll {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
 </style>
-

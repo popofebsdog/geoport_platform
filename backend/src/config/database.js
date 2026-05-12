@@ -12,6 +12,10 @@ if (process.env.NODE_ENV === 'production') {
   if (missing.length > 0) {
     throw new Error(`缺少必要的環境變數: ${missing.join(', ')}`);
   }
+  const unsafePasswords = new Set(['replace-with-strong-password', 'your-postgres-password', 'password']);
+  if (unsafePasswords.has(process.env.DB_PASSWORD)) {
+    throw new Error('DB_PASSWORD must be set to a strong value in production');
+  }
 }
 
 // PostgreSQL 資料庫配置

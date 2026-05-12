@@ -7,6 +7,7 @@ import { pool } from '../config/database.js';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs/promises';
+import { createMulterFileFilter, createStoredFilename, maxUploadSize } from '../config/uploadPolicy.js';
 
 // 配置 multer 用於上傳媒體文件
 const storage = multer.diskStorage({
@@ -26,26 +27,16 @@ const storage = multer.diskStorage({
     }
   },
   filename: (req, file, cb) => {
-    // 保存原始文件名（UTF-8编码）用于数据库存储
-    // 但实际存储的文件名使用安全格式避免编码问题
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    const ext = path.extname(file.originalname);
-    cb(null, `disaster-${uniqueSuffix}${ext}`);
+    cb(null, createStoredFilename('disaster', file.originalname));
   }
 });
 
 export const upload = multer({
   storage: storage,
   limits: {
-    fileSize: 100 * 1024 * 1024 // 100MB
+    fileSize: maxUploadSize('media')
   },
-  fileFilter: (req, file, cb) => {
-    if (file.mimetype.startsWith('image/') || file.mimetype.startsWith('video/')) {
-      cb(null, true);
-    } else {
-      cb(new Error('只允許上傳圖片或影片檔案'), false);
-    }
-  },
+  fileFilter: createMulterFileFilter('media'),
   // 保持原始文件名，用於處理 UTF-8 編碼
   preservePath: false
 });
@@ -428,9 +419,6 @@ export const createDisasterPoint = async (req, res) => {
 export const updateDisasterPoint = async (req, res) => {
   try {
     const { id } = req.params;
-    console.log('更新災點紀錄 - ID:', id);
-    console.log('請求體:', req.body);
-    console.log('文件:', req.files ? req.files.length : 0);
     
     // 支持 FormData 和 JSON
     // 如果是 FormData，req.body 的字段是字符串，需要解析
@@ -464,15 +452,6 @@ export const updateDisasterPoint = async (req, res) => {
       ({ name, description, disaster_time, latitude, longitude, project_id } = req.body);
     }
     
-    console.log('解析後的數據:', { 
-      name, 
-      description, 
-      latitude, 
-      longitude, 
-      isFormData,
-      latitudeType: typeof latitude,
-      longitudeType: typeof longitude
-    });
 
     // 檢查災點是否存在
     const checkResult = await pool.query(`
@@ -546,11 +525,6 @@ export const updateDisasterPoint = async (req, res) => {
     values.push(id);
     const whereParamIndex = paramIndex;
 
-    console.log('更新SQL參數:', {
-      updates: updates,
-      values: values,
-      whereParamIndex: whereParamIndex
-    });
 
     const result = await pool.query(`
       UPDATE disaster_points
@@ -736,7 +710,6 @@ export const deleteDisasterPoint = async (req, res) => {
             await fs.access(fullPath);
             // 文件存在，刪除它
             await fs.unlink(fullPath);
-            console.log('已刪除物理文件:', fullPath);
           } catch (fileError) {
             // 文件不存在，跳過
             console.warn('文件不存在，跳過刪除:', fullPath);
@@ -845,7 +818,6 @@ export const deleteDisasterPointMedia = async (req, res) => {
         try {
           await fs.access(fullPath);
           await fs.unlink(fullPath);
-          console.log('已刪除物理文件:', fullPath);
         } catch (fileError) {
           console.warn('文件不存在，跳過刪除:', fullPath);
         }
@@ -873,4 +845,3 @@ export const deleteDisasterPointMedia = async (req, res) => {
     });
   }
 };
-

@@ -2,27 +2,27 @@
   <Teleport to="body">
     <div v-if="isVisible" class="fixed inset-0 z-[1300] flex items-center justify-center bg-black bg-opacity-50 p-4"
          @click.self="closeModal">
-      <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col"
-           :class="isDarkMode ? 'bg-slate-800' : 'bg-white'"
+      <div class="rounded border w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col"
+           :class="isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'"
            @click.stop>
-        
+
         <!-- 標題欄 -->
-        <div class="flex items-center justify-between p-6 border-b"
+        <div class="flex items-center justify-between px-5 py-3 border-b"
              :class="isDarkMode ? 'border-slate-700' : 'border-gray-200'">
-          <div class="flex items-center space-x-3">
-            <div class="p-2 rounded-lg"
-                 :class="isDarkMode ? 'bg-purple-600/20 text-purple-400' : 'bg-purple-100 text-purple-600'">
-              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div class="flex items-center space-x-2">
+            <div class="p-1.5 rounded"
+                 :class="isDarkMode ? 'bg-slate-700 text-slate-300' : 'bg-surface-100 text-gray-600'">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
               </svg>
             </div>
             <div>
-              <h2 class="text-xl font-semibold transition-colors duration-300"
+              <h2 class="text-sm font-semibold transition-colors duration-300"
                   :class="isDarkMode ? 'text-white' : 'text-gray-900'">
                 事件詳情
               </h2>
-              <p class="text-sm mt-0.5"
-                 :class="isDarkMode ? 'text-gray-400' : 'text-gray-500'">
+              <p class="text-xs"
+                 :class="isDarkMode ? 'text-slate-400' : 'text-gray-500'">
                 查看事件紀錄的完整資訊
               </p>
             </div>

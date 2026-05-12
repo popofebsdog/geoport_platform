@@ -1,121 +1,93 @@
 <template>
-  <div class="chart-data-panel relative">
-    <!-- 收合按鈕 - 懸浮於右上角 -->
-    <button 
-      @click="panelCollapsed = !panelCollapsed"
-      class="absolute -top-2 right-0 z-10 p-2 rounded-lg bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700/50 shadow-md hover:shadow-lg transition-all border border-gray-200 dark:border-gray-700"
-      :title="panelCollapsed ? '展開' : '收合'"
-    >
-      <svg 
-        class="w-5 h-5 text-gray-600 dark:text-gray-400 transition-transform duration-200"
-        :class="{ 'rotate-180': panelCollapsed }"
-        fill="none" 
-        stroke="currentColor" 
-        viewBox="0 0 24 24"
+  <div class="chart-data-panel">
+    <!-- 頂部列：收合按鈕 -->
+    <div class="flex justify-end mb-1.5">
+      <button
+        @click="panelCollapsed = !panelCollapsed"
+        class="flex items-center gap-1 px-2 py-0.5 text-[11px] font-medium border rounded transition-colors"
+        :class="panelCollapsed
+          ? 'bg-brand text-white border-brand'
+          : 'bg-white dark:bg-slate-900 text-gray-400 dark:text-slate-600 border-gray-200 dark:border-slate-800 hover:text-gray-700 dark:hover:text-slate-300'"
+        :title="panelCollapsed ? '展開' : '收合'"
       >
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-      </svg>
-    </button>
+        <svg
+          class="w-3 h-3 transition-transform duration-200"
+          :class="{ 'rotate-180': panelCollapsed }"
+          fill="none" stroke="currentColor" viewBox="0 0 24 24"
+        >
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+        </svg>
+        {{ panelCollapsed ? '展開' : '收合' }}
+      </button>
+    </div>
     
-    <!-- 收合狀態：顯示簡化的三個圖卡（標題+文字描述） -->
-    <div v-if="panelCollapsed" class="flex gap-4">
-      <!-- 微地動 -->
-      <div class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex flex-col shadow-md flex-1 min-w-[100px]">
-        <div class="flex items-center justify-between p-4 border-b border-gray-100 dark:border-gray-700">
-          <div class="flex flex-col">
-            <h5 class="font-semibold text-gray-800 dark:text-gray-200 text-sm whitespace-nowrap">微地動</h5>
-            <div class="h-px bg-gray-300 dark:bg-gray-600 mt-1"></div>
-          </div>
-        </div>
-        <div class="p-4">
-          <p class="text-xs text-gray-600 dark:text-gray-400">監測微地動事件，包括 TYPE I、TYPE II、TYPE III 等類型</p>
-        </div>
-      </div>
-      
-      <!-- 雨量 -->
-      <div class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex flex-col shadow-md flex-1 min-w-[100px]">
-        <div class="flex items-center justify-between p-4 border-b border-gray-100 dark:border-gray-700">
-          <div class="flex flex-col">
-            <h5 class="font-semibold text-gray-800 dark:text-gray-200 text-sm whitespace-nowrap">雨量</h5>
-            <div class="h-px bg-gray-300 dark:bg-gray-600 mt-1"></div>
-          </div>
-        </div>
-        <div class="p-4">
-          <p class="text-xs text-gray-600 dark:text-gray-400">監測累積雨量與時雨量，追蹤降雨趨勢</p>
-        </div>
-      </div>
-      
-      <!-- 強地動 -->
-      <div class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex flex-col shadow-md flex-1 min-w-[100px]">
-        <div class="flex items-center justify-between p-4 border-b border-gray-100 dark:border-gray-700">
-          <div class="flex flex-col">
-            <h5 class="font-semibold text-gray-800 dark:text-gray-200 text-sm whitespace-nowrap">強地動</h5>
-            <div class="h-px bg-gray-300 dark:bg-gray-600 mt-1"></div>
-          </div>
-        </div>
-        <div class="p-4">
-          <p class="text-xs text-gray-600 dark:text-gray-400">監測 PGA 與最大加速度，評估地震強度</p>
-        </div>
+    <!-- 收合狀態：簡化三欄摘要 -->
+    <div v-if="panelCollapsed" class="flex gap-3">
+      <div v-for="item in [
+        { label: '微地動', desc: '監測 TYPE I / II / III 事件' },
+        { label: '雨量',   desc: '累積雨量與時雨量趨勢' },
+        { label: '強地動', desc: 'PGA 與最大加速度評估' }
+      ]" :key="item.label"
+        class="flex-1 border rounded px-4 py-3 flex items-center gap-3 transition-colors"
+        :class="isDarkMode
+          ? 'border-slate-800 bg-slate-900/60'
+          : 'border-gray-200 bg-white'"
+      >
+        <span class="text-xs font-semibold tracking-tight"
+              :class="isDarkMode ? 'text-slate-300' : 'text-gray-700'">{{ item.label }}</span>
+        <span class="text-[11px]"
+              :class="isDarkMode ? 'text-slate-600' : 'text-gray-400'">{{ item.desc }}</span>
       </div>
     </div>
     
-    <Transition name="slide-vertical">
-      <div v-show="!panelCollapsed" class="flex gap-4 h-[350px]">
+      <div v-if="!panelCollapsed" class="flex gap-4 h-[clamp(390px,42vh,520px)] min-h-[390px]">
       <!-- 圖表區域 1 -->
-      <div 
-        class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex flex-col shadow-md hover:shadow-lg hover:border-gray-300 dark:hover:border-gray-600 transition-all duration-300 overflow-hidden flex-1 min-w-[100px] hover:-translate-y-0.5 active:translate-y-0 active:shadow-md h-full"
+      <div
+        class="border rounded overflow-hidden flex flex-col flex-1 min-w-[100px] h-full transition-colors"
+        :class="isDarkMode ? 'border-slate-800 bg-slate-900/60' : 'border-gray-200 bg-white'"
       >
-        <div 
-          class="flex items-center justify-between p-5 pb-3 border-b border-gray-100 dark:border-gray-700 w-full"
-        >
-          <div class="flex items-center gap-2 flex-shrink-0">
-            <div class="flex flex-col">
-              <h5 class="font-semibold text-gray-800 dark:text-gray-200 text-sm whitespace-nowrap">
-                微地動
-              </h5>
-              <div class="h-px bg-gray-300 dark:bg-gray-600 mt-1"></div>
-            </div>
-          </div>
+        <div class="flex items-center justify-between px-4 py-2.5 border-b transition-colors"
+             :class="isDarkMode ? 'border-slate-800' : 'border-gray-100'">
           <div class="flex items-center gap-2">
-            <!-- 圖卡/圖表模式切換按鈕（現在控制展開/收起） -->
+            <span class="text-xs font-semibold tracking-tight"
+                  :class="isDarkMode ? 'text-slate-300' : 'text-gray-700'">微地動</span>
             <button
-              @click.stop="toggleChart('chart1')"
-              class="p-1.5 rounded border transition-colors flex-shrink-0"
-              :class="viewMode.chart1 === 'chart' 
-                ? 'bg-blue-500 text-white border-blue-500 hover:bg-blue-600' 
-                : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600'"
-              :title="viewMode.chart1 === 'chart' ? '切換到圖卡模式' : '切換到圖表模式'"
-            >
-              <!-- 圖表模式圖標 -->
-              <svg 
-                v-if="viewMode.chart1 === 'chart'"
-                class="w-4 h-4" 
-                fill="none" 
-                stroke="currentColor" 
-                viewBox="0 0 24 24"
-              >
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
-              </svg>
-              <!-- 圖卡模式圖標 -->
-              <svg 
-                v-else
-                class="w-4 h-4" 
-                fill="none" 
-                stroke="currentColor" 
-                viewBox="0 0 24 24"
-              >
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h4a1 1 0 011 1v7a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM14 5a1 1 0 011-1h4a1 1 0 011 1v7a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 16a1 1 0 011-1h4a1 1 0 011 1v3a1 1 0 01-1 1H5a1 1 0 01-1-1v-3zM14 16a1 1 0 011-1h4a1 1 0 011 1v3a1 1 0 01-1 1h-4a1 1 0 01-1-1v-3z"></path>
-              </svg>
-            </button>
+              v-if="regionId"
+              @click.stop="openApiPanel = 'microseismic'"
+              class="px-2 py-0.5 text-[11px] font-medium border rounded transition-colors"
+              :class="isDarkMode
+                ? 'border-slate-700 text-slate-400 hover:border-slate-500 hover:text-slate-200'
+                : 'border-gray-200 text-gray-400 hover:border-gray-400 hover:text-gray-600'"
+              title="API 路由管理"
+            >路由</button>
+          </div>
+          <div class="flex rounded overflow-hidden border"
+               :class="isDarkMode ? 'border-slate-700' : 'border-gray-200'">
+            <button @click.stop="viewMode.chart1 = 'card'"
+              class="px-2 py-0.5 text-[11px] font-medium transition-colors"
+              :class="viewMode.chart1 === 'card'
+                ? 'bg-brand text-white'
+                : (isDarkMode ? 'text-slate-500 hover:text-slate-200' : 'text-gray-400 hover:text-gray-700')"
+            >圖卡</button>
+            <button @click.stop="viewMode.chart1 = 'chart'"
+              class="px-2 py-0.5 text-[11px] font-medium transition-colors border-l"
+              :class="[
+                isDarkMode ? 'border-slate-700' : 'border-gray-200',
+                viewMode.chart1 === 'chart'
+                  ? 'bg-brand text-white'
+                  : (isDarkMode ? 'text-slate-500 hover:text-slate-200' : 'text-gray-400 hover:text-gray-700')
+              ]"
+            >圖表</button>
           </div>
         </div>
         <Transition name="slide-horizontal">
-          <div v-show="expanded.chart1" class="flex-1 flex items-center justify-center p-5 overflow-hidden chart-content">
+          <div v-show="expanded.chart1" class="flex-1 flex items-center justify-center p-3 md:p-4 overflow-auto chart-content">
           <!-- 圖卡模式 -->
           <div v-if="viewMode.chart1 === 'card'" class="w-full h-full">
             <MicroseismicCard 
               :data="chartData.chart1" 
               :loading="loading"
+              :isDarkMode="isDarkMode"
             />
           </div>
           <!-- 圖表模式 -->
@@ -126,6 +98,7 @@
               :loading="loading"
               :regionCode="regionCode"
               :regionId="regionId"
+              :isDarkMode="isDarkMode"
             />
           </div>
           </div>
@@ -133,70 +106,86 @@
       </div>
       
       <!-- 圖表區域 2 -->
-      <div 
-        class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex flex-col shadow-md hover:shadow-lg hover:border-gray-300 dark:hover:border-gray-600 transition-all duration-300 overflow-hidden flex-1 min-w-[100px] hover:-translate-y-0.5 active:translate-y-0 active:shadow-md h-full"
+      <div
+        class="border rounded overflow-hidden flex flex-col flex-1 min-w-[100px] h-full transition-colors"
+        :class="isDarkMode ? 'border-slate-800 bg-slate-900/60' : 'border-gray-200 bg-white'"
       >
-        <div 
-          class="flex items-center justify-between p-5 pb-3 border-b border-gray-100 dark:border-gray-700 w-full"
-        >
+        <div class="flex items-center gap-2 px-4 py-2.5 border-b transition-colors"
+             :class="isDarkMode ? 'border-slate-800' : 'border-gray-100'">
           <div class="flex items-center gap-2 flex-shrink-0">
-            <div class="flex flex-col">
-              <h5 class="font-semibold text-gray-800 dark:text-gray-200 text-sm whitespace-nowrap">
-                雨量
-              </h5>
-              <div class="h-px bg-gray-300 dark:bg-gray-600 mt-1"></div>
-            </div>
-          </div>
-          <div class="flex items-center gap-2">
-            <!-- 圖卡/圖表模式切換按鈕（現在控制展開/收起） -->
+            <span class="text-xs font-semibold tracking-tight"
+                  :class="isDarkMode ? 'text-slate-300' : 'text-gray-700'">雨量</span>
             <button
-              @click.stop="toggleChart('chart2')"
-              class="p-1.5 rounded border transition-colors flex-shrink-0"
-              :class="viewMode.chart2 === 'chart' 
-                ? 'bg-blue-500 text-white border-blue-500 hover:bg-blue-600' 
-                : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600'"
-              :title="viewMode.chart2 === 'chart' ? '切換到圖卡模式' : '切換到圖表模式'"
-            >
-              <!-- 圖表模式圖標 -->
-              <svg 
-                v-if="viewMode.chart2 === 'chart'"
-                class="w-4 h-4" 
-                fill="none" 
-                stroke="currentColor" 
-                viewBox="0 0 24 24"
-              >
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
-              </svg>
-              <!-- 圖卡模式圖標 -->
-              <svg 
-                v-else
-                class="w-4 h-4" 
-                fill="none" 
-                stroke="currentColor" 
-                viewBox="0 0 24 24"
-              >
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h4a1 1 0 011 1v7a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM14 5a1 1 0 011-1h4a1 1 0 011 1v7a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 16a1 1 0 011-1h4a1 1 0 011 1v3a1 1 0 01-1 1H5a1 1 0 01-1-1v-3zM14 16a1 1 0 011-1h4a1 1 0 011 1v3a1 1 0 01-1 1h-4a1 1 0 01-1-1v-3z"></path>
-              </svg>
-            </button>
+              v-if="regionId"
+              @click.stop="openApiPanel = 'rainfall'"
+              class="px-2 py-0.5 text-[11px] font-medium border rounded transition-colors"
+              :class="isDarkMode
+                ? 'border-slate-700 text-slate-400 hover:border-slate-500 hover:text-slate-200'
+                : 'border-gray-200 text-gray-400 hover:border-gray-400 hover:text-gray-600'"
+              title="API 路由管理"
+            >路由</button>
+          </div>
+          <!-- 日期選擇器（僅圖表模式顯示） -->
+          <div v-if="viewMode.chart2 === 'chart'" class="flex items-center gap-1 flex-1 justify-center">
+            <button @click.stop="rainfallPrevDay"
+                    class="px-1.5 py-0.5 text-[11px] border rounded transition-colors"
+                    :class="isDarkMode ? 'border-slate-700 text-slate-400 hover:border-slate-500' : 'border-gray-200 text-gray-500 hover:border-gray-400'"
+                    title="前一天">←</button>
+            <input type="date" v-model="rainfallDate" @change.stop="onRainfallDateChange"
+                   :max="rainfallMaxDate"
+                   class="px-1.5 py-0.5 text-[11px] border rounded outline-none"
+                   :class="isDarkMode ? 'border-slate-700 bg-slate-800 text-slate-300 focus:border-brand' : 'border-gray-200 bg-white text-gray-700 focus:border-brand'" />
+            <button @click.stop="rainfallNextDay" :disabled="rainfallIsToday"
+                    class="px-1.5 py-0.5 text-[11px] border rounded transition-colors disabled:opacity-40"
+                    :class="isDarkMode ? 'border-slate-700 text-slate-400 hover:border-slate-500' : 'border-gray-200 text-gray-500 hover:border-gray-400'"
+                    title="後一天">→</button>
+            <button @click.stop="rainfallGoToday" :disabled="rainfallIsToday"
+                    class="px-1.5 py-0.5 text-[11px] border rounded transition-colors border-brand text-brand hover:bg-brand hover:text-white disabled:opacity-40"
+                    title="今天">今天</button>
+          </div>
+          <div v-else class="flex-1"></div>
+          <div class="flex rounded overflow-hidden border flex-shrink-0"
+               :class="isDarkMode ? 'border-slate-700' : 'border-gray-200'">
+            <button @click.stop="viewMode.chart2 = 'card'"
+              class="px-2 py-0.5 text-[11px] font-medium transition-colors"
+              :class="viewMode.chart2 === 'card'
+                ? 'bg-brand text-white'
+                : (isDarkMode ? 'text-slate-500 hover:text-slate-200' : 'text-gray-400 hover:text-gray-700')"
+            >圖卡</button>
+            <button @click.stop="viewMode.chart2 = 'chart'"
+              class="px-2 py-0.5 text-[11px] font-medium transition-colors border-l"
+              :class="[
+                isDarkMode ? 'border-slate-700' : 'border-gray-200',
+                viewMode.chart2 === 'chart'
+                  ? 'bg-brand text-white'
+                  : (isDarkMode ? 'text-slate-500 hover:text-slate-200' : 'text-gray-400 hover:text-gray-700')
+              ]"
+            >圖表</button>
           </div>
         </div>
         <Transition name="slide-horizontal">
-          <div v-show="expanded.chart2" class="flex-1 flex items-center justify-center p-5 overflow-hidden chart-content">
+          <div v-show="expanded.chart2" class="flex-1 flex items-center justify-center p-3 md:p-4 overflow-auto chart-content">
           <!-- 圖卡模式 -->
           <div v-if="viewMode.chart2 === 'card'" class="w-full h-full">
-            <RainfallCard 
-              :data="chartData.chart2" 
+            <RainfallCard
+              :data="chartData.chart2"
               :loading="loading"
+              :isDarkMode="isDarkMode"
+              :thresholds="rainfallThresholds"
             />
           </div>
           <!-- 圖表模式 -->
           <div v-else class="w-full h-full">
-            <RainfallChart 
+            <RainfallChart
               :key="`chart2-${viewMode.chart2}-${regionId || regionCode}`"
-              :data="chartData.chart2" 
+              :data="chartData.chart2"
               :loading="loading"
               :regionCode="regionCode"
               :regionId="regionId"
+              :isDarkMode="isDarkMode"
+              :selectedDate="rainfallDate"
+              :thresholds="rainfallThresholds"
+              @threshold-change="onRainfallThresholdChange"
             />
           </div>
           </div>
@@ -204,55 +193,46 @@
       </div>
       
       <!-- 圖表區域 3 -->
-      <div 
-        class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex flex-col shadow-md hover:shadow-lg hover:border-gray-300 dark:hover:border-gray-600 transition-all duration-300 overflow-hidden flex-1 min-w-[100px] hover:-translate-y-0.5 active:translate-y-0 active:shadow-md h-full"
+      <div
+        class="border rounded overflow-hidden flex flex-col flex-1 min-w-[100px] h-full transition-colors"
+        :class="isDarkMode ? 'border-slate-800 bg-slate-900/60' : 'border-gray-200 bg-white'"
       >
-        <div 
-          class="flex items-center justify-between p-5 pb-3 border-b border-gray-100 dark:border-gray-700 w-full"
-        >
-          <div class="flex items-center gap-2 flex-shrink-0">
-            <div class="flex flex-col">
-              <h5 class="font-semibold text-gray-800 dark:text-gray-200 text-sm whitespace-nowrap">
-                強地動
-              </h5>
-              <div class="h-px bg-gray-300 dark:bg-gray-600 mt-1"></div>
-            </div>
-          </div>
+        <div class="flex items-center justify-between px-4 py-2.5 border-b transition-colors"
+             :class="isDarkMode ? 'border-slate-800' : 'border-gray-100'">
           <div class="flex items-center gap-2">
-            <!-- 圖卡/圖表模式切換按鈕（現在控制展開/收起） -->
+            <span class="text-xs font-semibold tracking-tight"
+                  :class="isDarkMode ? 'text-slate-300' : 'text-gray-700'">強地動</span>
             <button
-              @click.stop="toggleChart('chart3')"
-              class="p-1.5 rounded border transition-colors flex-shrink-0"
-              :class="viewMode.chart3 === 'chart' 
-                ? 'bg-blue-500 text-white border-blue-500 hover:bg-blue-600' 
-                : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600'"
-              :title="viewMode.chart3 === 'chart' ? '切換到圖卡模式' : '切換到圖表模式'"
-            >
-              <!-- 圖表模式圖標 -->
-              <svg 
-                v-if="viewMode.chart3 === 'chart'"
-                class="w-4 h-4" 
-                fill="none" 
-                stroke="currentColor" 
-                viewBox="0 0 24 24"
-              >
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
-              </svg>
-              <!-- 圖卡模式圖標 -->
-              <svg 
-                v-else
-                class="w-4 h-4" 
-                fill="none" 
-                stroke="currentColor" 
-                viewBox="0 0 24 24"
-              >
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h4a1 1 0 011 1v7a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM14 5a1 1 0 011-1h4a1 1 0 011 1v7a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 16a1 1 0 011-1h4a1 1 0 011 1v3a1 1 0 01-1 1H5a1 1 0 01-1-1v-3zM14 16a1 1 0 011-1h4a1 1 0 011 1v3a1 1 0 01-1 1h-4a1 1 0 01-1-1v-3z"></path>
-              </svg>
-            </button>
+              v-if="regionId"
+              @click.stop="openApiPanel = 'earthquake'"
+              class="px-2 py-0.5 text-[11px] font-medium border rounded transition-colors"
+              :class="isDarkMode
+                ? 'border-slate-700 text-slate-400 hover:border-slate-500 hover:text-slate-200'
+                : 'border-gray-200 text-gray-400 hover:border-gray-400 hover:text-gray-600'"
+              title="API 路由管理"
+            >路由</button>
+          </div>
+          <div class="flex rounded overflow-hidden border"
+               :class="isDarkMode ? 'border-slate-700' : 'border-gray-200'">
+            <button @click.stop="viewMode.chart3 = 'card'"
+              class="px-2 py-0.5 text-[11px] font-medium transition-colors"
+              :class="viewMode.chart3 === 'card'
+                ? 'bg-brand text-white'
+                : (isDarkMode ? 'text-slate-500 hover:text-slate-200' : 'text-gray-400 hover:text-gray-700')"
+            >圖卡</button>
+            <button @click.stop="viewMode.chart3 = 'chart'"
+              class="px-2 py-0.5 text-[11px] font-medium transition-colors border-l"
+              :class="[
+                isDarkMode ? 'border-slate-700' : 'border-gray-200',
+                viewMode.chart3 === 'chart'
+                  ? 'bg-brand text-white'
+                  : (isDarkMode ? 'text-slate-500 hover:text-slate-200' : 'text-gray-400 hover:text-gray-700')
+              ]"
+            >圖表</button>
           </div>
         </div>
         <Transition name="slide-horizontal">
-          <div v-show="expanded.chart3" class="flex-1 flex items-center justify-center p-5 overflow-hidden chart-content">
+          <div v-show="expanded.chart3" class="flex-1 flex items-center justify-center p-3 md:p-4 overflow-auto chart-content">
           <!-- 非台7地區：顯示暫無數據 -->
           <div v-if="!shouldShowStrongMotion" class="flex items-center justify-center h-full">
             <div class="text-center text-gray-400 dark:text-gray-500">
@@ -269,6 +249,7 @@
               <StrongMotionCard 
                 :data="chartData.chart3" 
                 :loading="loading"
+                :isDarkMode="isDarkMode"
               />
             </div>
             <!-- 圖表模式 -->
@@ -279,6 +260,7 @@
                 :loading="loading"
                 :regionCode="regionCode"
                 :regionId="regionId"
+                :isDarkMode="isDarkMode"
               />
             </div>
           </template>
@@ -286,12 +268,24 @@
         </Transition>
       </div>
       </div>
-    </Transition>
   </div>
+
+  <!-- API 端點設定面板 -->
+  <ApiUrlConfigPanel
+    v-if="openApiPanel"
+    :category="openApiPanel"
+    :regionId="regionId"
+    :regionCode="regionCode"
+    :regionName="regionName"
+    :isDarkMode="isDarkMode"
+    @close="openApiPanel = null"
+    @saved="onApiSaved"
+  />
 </template>
 
 <script>
-import axios from 'axios';
+import api from '@/services/api';
+import ApiUrlConfigPanel from './ApiUrlConfigPanel.vue';
 import MicroseismicCard from './charts/MicroseismicCard.vue';
 import MicroseismicChart from './charts/MicroseismicChart.vue';
 import RainfallCard from './charts/RainfallCard.vue';
@@ -303,6 +297,7 @@ import StrongMotionChart from './charts/StrongMotionChart.vue';
 export default {
   name: 'ChartDataPanel',
   components: {
+    ApiUrlConfigPanel,
     MicroseismicCard,
     MicroseismicChart,
     RainfallCard,
@@ -311,6 +306,7 @@ export default {
     StrongMotionChart
     // ApiStatusChecker
   },
+  inject: ['isDarkMode'],
   props: {
     regionCode: {
       type: String,
@@ -327,6 +323,8 @@ export default {
   },
   emits: ['panel-collapsed-changed'],
   data() {
+    const _d = new Date();
+    const today = `${_d.getFullYear()}-${String(_d.getMonth()+1).padStart(2,'0')}-${String(_d.getDate()).padStart(2,'0')}`;
     return {
       chartData: {
         chart1: null,
@@ -339,27 +337,37 @@ export default {
         chart2: true,
         chart3: true
       },
-      panelCollapsed: false, // 面板收合狀態
+      panelCollapsed: false,
       viewMode: {
-        chart1: 'card', // 'card' 或 'chart'
+        chart1: 'card',
         chart2: 'card',
         chart3: 'card'
       },
       refreshIntervals: {
-        chart1: null, // 微地動刷新定時器
-        chart2: null, // 雨量刷新定時器
-        chart3: null  // 強地動刷新定時器
+        chart1: null,
+        chart2: null,
+        chart3: null
       },
-      // 當前加載請求的標識（用於防止異步競態）
-      currentLoadRequestId: 0
+      currentLoadRequestId: 0,
+      // 雨量日期選擇
+      rainfallDate: today,
+      rainfallMaxDate: today,
+      // API 端點設定面板
+      openApiPanel: null,   // null | 'microseismic' | 'rainfall' | 'earthquake'
+      // 雨量警戒閾值（per region, persisted to localStorage）
+      rainfallThresholds: { yellow: 20, red: 40 },
     };
   },
   computed: {
-    // 判断是否应该显示强地动图卡（只有台7显示）
     shouldShowStrongMotion() {
       const name = this.regionName || ''
       return name.includes('臺7線') || name.includes('台7線') || 
              name.includes('台7') || name.includes('臺7')
+    },
+    rainfallIsToday() {
+      const d = new Date();
+      const local = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+      return this.rainfallDate === local;
     }
   },
   watch: {
@@ -367,6 +375,7 @@ export default {
     regionId: {
       immediate: true,
       handler(newVal, oldVal) {
+        if (newVal) this.loadRainfallThresholds(newVal);
         
         // 當 regionId 改變時（包括從有到無），先清除舊數據和定時器
         if (oldVal !== newVal) {
@@ -433,33 +442,33 @@ export default {
         
         // 根据是否有 regionId 选择不同的 API 路径
         const apiBasePath = this.regionId 
-          ? `/api/warning-regions/id/${this.regionId}/data`
-          : `/api/warning-regions/${this.regionCode}/data`;
+          ? `/warning-regions/id/${this.regionId}/data`
+          : `/warning-regions/${this.regionCode}/data`;
         
         // 並行載入圖表的數據（優先使用外部API）
         // 只有台7地區才加載強地動數據
         const requests = [
-          axios.get(apiBasePath, {
+          api.get(apiBasePath, {
             params: { dataType: 'chart1', useExternalApi: 'true' }
-          }).catch(() => ({ data: { success: false, data: null } })),
-          axios.get(apiBasePath, {
+          }).catch(() => ({ success: false, data: null })),
+          api.get(apiBasePath, {
             params: { dataType: 'chart2', useExternalApi: 'true' }
-          }).catch(() => ({ data: { success: false, data: null } }))
+          }).catch(() => ({ success: false, data: null }))
         ];
         
         // 只有台7地區才加載強地動數據
         if (this.shouldShowStrongMotion) {
           requests.push(
-            axios.get(apiBasePath, {
+            api.get(apiBasePath, {
               params: { dataType: 'chart3', useExternalApi: 'true' }
-            }).catch(() => ({ data: { success: false, data: null } }))
+            }).catch(() => ({ success: false, data: null }))
           );
         }
         
         const results = await Promise.all(requests);
         const chart1Res = results[0];
         const chart2Res = results[1];
-        const chart3Res = this.shouldShowStrongMotion ? results[2] : { data: { success: false, data: null } };
+        const chart3Res = this.shouldShowStrongMotion ? results[2] : { success: false, data: null };
         
         // 檢查這是否還是最新的請求（防止異步競態）
         if (requestId !== this.currentLoadRequestId) {
@@ -469,10 +478,10 @@ export default {
         
         // 處理返回的數據
         // 如果從外部API獲取，data是對象；如果從數據庫獲取，data是數組
-        if (chart1Res.data.success) {
-          if (chart1Res.data.source === 'external_api') {
+        if (chart1Res.success) {
+          if (chart1Res.source === 'external_api') {
             // 外部API返回的數據格式
-            const data = chart1Res.data.data;
+            const data = chart1Res.data;
             // 對於外部API，只要 dataDensity !== 'none'，就認為API調用成功
             // 即使當天沒有記錄（records為空），也應該顯示空圖表
             if (data && data.dataDensity !== 'none') {
@@ -483,9 +492,9 @@ export default {
               // 只有當 dataDensity === 'none' 時才認為沒有數據
               this.chartData.chart1 = null;
             }
-          } else if (Array.isArray(chart1Res.data.data) && chart1Res.data.data.length > 0) {
+          } else if (Array.isArray(chart1Res.data) && chart1Res.data.length > 0) {
             // 數據庫返回的數據格式
-            this.chartData.chart1 = chart1Res.data.data[0].data_content;
+            this.chartData.chart1 = chart1Res.data[0].data_content;
           } else {
             this.chartData.chart1 = null;
           }
@@ -493,19 +502,19 @@ export default {
           this.chartData.chart1 = null;
         }
         
-        if (chart2Res.data.success) {
-          if (chart2Res.data.source === 'external_api') {
-            const data = chart2Res.data.data;
-            // 檢查是否為有效數據
-            if (data && data.dataDensity !== 'none' && this.hasValidChartData(data)) {
+        if (chart2Res.success) {
+          if (chart2Res.source === 'external_api') {
+            const data = chart2Res.data;
+            // 只要 dataDensity !== 'none' 就代表端點已設定，顯示圖表（即使今日無降雨）
+            if (data && data.dataDensity !== 'none') {
               this.chartData.chart2 = data;
               // 雨量更新較慢，預設10分鐘
               this.setupAutoRefresh('chart2', data?.updateInterval || 600);
             } else {
               this.chartData.chart2 = null;
             }
-          } else if (Array.isArray(chart2Res.data.data) && chart2Res.data.data.length > 0) {
-            this.chartData.chart2 = chart2Res.data.data[0].data_content;
+          } else if (Array.isArray(chart2Res.data) && chart2Res.data.length > 0) {
+            this.chartData.chart2 = chart2Res.data[0].data_content;
           } else {
             this.chartData.chart2 = null;
           }
@@ -515,9 +524,9 @@ export default {
         
         // 只有台7地區才處理強地動數據
         if (this.shouldShowStrongMotion) {
-          if (chart3Res.data.success) {
-            if (chart3Res.data.source === 'external_api') {
-              const data = chart3Res.data.data;
+          if (chart3Res.success) {
+            if (chart3Res.source === 'external_api') {
+              const data = chart3Res.data;
               // 檢查是否為有效數據
               if (data && data.dataDensity !== 'none' && this.hasValidChartData(data)) {
                 this.chartData.chart3 = data;
@@ -526,8 +535,8 @@ export default {
               } else {
                 this.chartData.chart3 = null;
               }
-            } else if (Array.isArray(chart3Res.data.data) && chart3Res.data.data.length > 0) {
-              this.chartData.chart3 = chart3Res.data.data[0].data_content;
+            } else if (Array.isArray(chart3Res.data) && chart3Res.data.length > 0) {
+              this.chartData.chart3 = chart3Res.data[0].data_content;
             } else {
               this.chartData.chart3 = null;
             }
@@ -574,15 +583,15 @@ export default {
         
         // 根据是否有 regionId 选择不同的 API 路径
         const apiBasePath = this.regionId 
-          ? `/api/warning-regions/id/${this.regionId}/data`
-          : `/api/warning-regions/${this.regionCode}/data`;
+          ? `/warning-regions/id/${this.regionId}/data`
+          : `/warning-regions/${this.regionCode}/data`;
         
-        const response = await axios.get(apiBasePath, {
+        const response = await api.get(apiBasePath, {
           params: { dataType: dataTypeMap[chartKey], useExternalApi: 'true' }
-        }).catch(() => ({ data: { success: false, data: null } }));
+        }).catch(() => ({ success: false, data: null }));
         
-        if (response.data.success && response.data.source === 'external_api') {
-          this.chartData[chartKey] = response.data.data;
+        if (response.success && response.source === 'external_api') {
+          this.chartData[chartKey] = response.data;
         }
       } catch (error) {
         console.error(`載入 ${chartKey} 數據失敗:`, error);
@@ -631,12 +640,48 @@ export default {
     // 切換圖表展開狀態（獨立切換：每個圖表可獨立展開/收起）
     // 同時切換顯示模式（圖卡/圖表）
     toggleChart(chartKey) {
-      // 切換顯示模式（圖卡/圖表）
       this.viewMode[chartKey] = this.viewMode[chartKey] === 'card' ? 'chart' : 'card';
-      // 確保在切換模式時，內容區域是展開的
       if (!this.expanded[chartKey]) {
         this.expanded[chartKey] = true;
       }
+    },
+    rainfallPrevDay() {
+      const d = new Date(this.rainfallDate);
+      d.setDate(d.getDate() - 1);
+      this.rainfallDate = d.toISOString().split('T')[0];
+    },
+    rainfallNextDay() {
+      if (this.rainfallIsToday) return;
+      const d = new Date(this.rainfallDate);
+      d.setDate(d.getDate() + 1);
+      const next = d.toISOString().split('T')[0];
+      if (next <= this.rainfallMaxDate) this.rainfallDate = next;
+    },
+    rainfallGoToday() {
+      const d = new Date();
+      this.rainfallDate = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    },
+    onRainfallDateChange() {
+      // 日期改變由 RainfallChart 的 watch:selectedDate 處理
+    },
+    loadRainfallThresholds(regionId) {
+      try {
+        const saved = localStorage.getItem(`rainfall_thresholds_${regionId}`);
+        if (saved) this.rainfallThresholds = JSON.parse(saved);
+        else this.rainfallThresholds = { yellow: 20, red: 40 };
+      } catch { this.rainfallThresholds = { yellow: 20, red: 40 }; }
+    },
+    onRainfallThresholdChange(thresholds) {
+      this.rainfallThresholds = { ...thresholds };
+      if (this.regionId) {
+        localStorage.setItem(`rainfall_thresholds_${this.regionId}`, JSON.stringify(thresholds));
+      }
+    },
+    onApiSaved({ category }) {
+      // URL 更新後重新載入對應圖表
+      const keyMap = { microseismic: 'chart1', rainfall: 'chart2', earthquake: 'chart3' }
+      const key = keyMap[category]
+      if (key) this.loadSingleChartData(key)
     },
   },
   beforeUnmount() {
@@ -659,46 +704,6 @@ export default {
 pre {
   font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
   line-height: 1.5;
-}
-
-/* 橫向展開/收合動畫 */
-.slide-horizontal-enter-active,
-.slide-horizontal-leave-active {
-  transition: all 0.3s ease;
-  overflow: hidden;
-}
-
-.slide-horizontal-enter-from,
-.slide-horizontal-leave-to {
-  max-width: 0;
-  opacity: 0;
-  padding-left: 0;
-  padding-right: 0;
-}
-
-.slide-horizontal-enter-to,
-.slide-horizontal-leave-from {
-  max-width: 100%;
-  opacity: 1;
-}
-
-/* 垂直展開/收合動畫 */
-.slide-vertical-enter-active,
-.slide-vertical-leave-active {
-  transition: max-height 0.3s ease, opacity 0.3s ease;
-  overflow: hidden;
-}
-
-.slide-vertical-enter-from,
-.slide-vertical-leave-to {
-  max-height: 0 !important;
-  opacity: 0;
-}
-
-.slide-vertical-enter-to,
-.slide-vertical-leave-from {
-  max-height: 350px;
-  opacity: 1;
 }
 
 /* 隱藏滾動條 */

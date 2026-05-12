@@ -126,54 +126,74 @@
       
       <!-- 示警說明 -->
       <div>
-        <h3 class="text-lg font-semibold text-gray-900 mb-4">示警說明</h3>
-        <div class="space-y-3">
-          <div class="flex items-center gap-3 p-2 bg-green-50 rounded">
-            <div class="w-4 h-4 rounded-full bg-green-500"></div>
+        <h3 class="text-sm font-semibold uppercase tracking-wider mb-3 transition-colors duration-300"
+            :class="isDarkMode ? 'text-slate-400' : 'text-gray-500'">示警說明</h3>
+        <div class="space-y-1.5">
+          <div class="flex items-center gap-3 p-2 rounded transition-colors duration-300"
+               :class="isDarkMode ? 'bg-green-950/40' : 'bg-green-50'">
+            <div class="w-3 h-3 rounded-full flex-shrink-0 bg-green-500"></div>
             <div>
-              <div class="font-medium text-green-800">預警綠燈</div>
-              <div class="text-green-600 text-xs">低落石風險 小心通行</div>
+              <div class="text-sm font-medium transition-colors duration-300"
+                   :class="isDarkMode ? 'text-green-300' : 'text-green-800'">預警綠燈</div>
+              <div class="text-xs transition-colors duration-300"
+                   :class="isDarkMode ? 'text-green-500' : 'text-green-600'">低落石風險 小心通行</div>
             </div>
           </div>
           
-          <div class="flex items-center gap-3 p-2 bg-yellow-50 rounded">
-            <div class="w-4 h-4 rounded-full bg-yellow-400"></div>
+          <div class="flex items-center gap-3 p-2 rounded transition-colors duration-300"
+               :class="isDarkMode ? 'bg-yellow-950/40' : 'bg-yellow-50'">
+            <div class="w-3 h-3 rounded-full flex-shrink-0 bg-yellow-400"></div>
             <div>
-              <div class="font-medium text-yellow-800">預警黃燈</div>
-              <div class="text-yellow-600 text-xs">低落石風險 快速通行</div>
+              <div class="text-sm font-medium transition-colors duration-300"
+                   :class="isDarkMode ? 'text-yellow-300' : 'text-yellow-800'">預警黃燈</div>
+              <div class="text-xs transition-colors duration-300"
+                   :class="isDarkMode ? 'text-yellow-500' : 'text-yellow-600'">低落石風險 快速通行</div>
             </div>
           </div>
           
-          <div class="flex items-center gap-3 p-2 bg-red-50 rounded">
-            <div class="w-4 h-4 rounded-full bg-red-500"></div>
+          <div class="flex items-center gap-3 p-2 rounded transition-colors duration-300"
+               :class="isDarkMode ? 'bg-red-950/40' : 'bg-red-50'">
+            <div class="w-3 h-3 rounded-full flex-shrink-0 bg-red-500"></div>
             <div>
-              <div class="font-medium text-red-800">預警紅燈</div>
-              <div class="text-red-600 text-xs">低落石風險 管制通行</div>
+              <div class="text-sm font-medium transition-colors duration-300"
+                   :class="isDarkMode ? 'text-red-300' : 'text-red-800'">預警紅燈</div>
+              <div class="text-xs transition-colors duration-300"
+                   :class="isDarkMode ? 'text-red-400' : 'text-red-600'">低落石風險 管制通行</div>
             </div>
           </div>
           
-          <div class="flex items-center gap-3 p-2 bg-red-100 rounded">
-            <div class="w-4 h-4 rounded-full bg-red-600 animate-pulse"></div>
+          <div class="flex items-center gap-3 p-2 rounded transition-colors duration-300"
+               :class="isDarkMode ? 'bg-red-950/60' : 'bg-red-100'">
+            <div class="w-3 h-3 rounded-full flex-shrink-0 bg-red-600 animate-pulse"></div>
             <div>
-              <div class="font-medium text-red-900">告警紅燈</div>
-              <div class="text-red-700 text-xs">前有落石 禁止通行</div>
-              <div class="text-red-500 text-xs">(警示1分鐘)</div>
+              <div class="text-sm font-medium transition-colors duration-300"
+                   :class="isDarkMode ? 'text-red-200' : 'text-red-900'">告警紅燈</div>
+              <div class="text-xs transition-colors duration-300"
+                   :class="isDarkMode ? 'text-red-400' : 'text-red-700'">前有落石 禁止通行</div>
+              <div class="text-xs transition-colors duration-300"
+                   :class="isDarkMode ? 'text-red-500' : 'text-red-500'">(警示1分鐘)</div>
             </div>
           </div>
           
-          <div class="flex items-center gap-3 p-2 bg-red-100 rounded">
-            <div class="w-4 h-4 rounded-full bg-red-600"></div>
+          <div class="flex items-center gap-3 p-2 rounded transition-colors duration-300"
+               :class="isDarkMode ? 'bg-red-950/60' : 'bg-red-100'">
+            <div class="w-3 h-3 rounded-full flex-shrink-0 bg-red-600"></div>
             <div>
-              <div class="font-medium text-red-900">告警紅燈</div>
-              <div class="text-red-700 text-xs">前有落石 禁止通行</div>
+              <div class="text-sm font-medium transition-colors duration-300"
+                   :class="isDarkMode ? 'text-red-200' : 'text-red-900'">告警紅燈</div>
+              <div class="text-xs transition-colors duration-300"
+                   :class="isDarkMode ? 'text-red-400' : 'text-red-700'">前有落石 禁止通行</div>
             </div>
           </div>
           
-          <div class="flex items-center gap-3 p-2 bg-gray-100 rounded">
-            <div class="w-4 h-4 rounded-full bg-red-700"></div>
+          <div class="flex items-center gap-3 p-2 rounded transition-colors duration-300"
+               :class="isDarkMode ? 'bg-slate-800' : 'bg-gray-100'">
+            <div class="w-3 h-3 rounded-full flex-shrink-0 bg-red-700"></div>
             <div>
-              <div class="font-medium text-gray-800">夜間紅燈</div>
-              <div class="text-gray-600 text-xs">落石風險區，夜間禁止通行</div>
+              <div class="text-sm font-medium transition-colors duration-300"
+                   :class="isDarkMode ? 'text-slate-300' : 'text-gray-800'">夜間紅燈</div>
+              <div class="text-xs transition-colors duration-300"
+                   :class="isDarkMode ? 'text-slate-400' : 'text-gray-600'">落石風險區，夜間禁止通行</div>
             </div>
           </div>
         </div>
@@ -185,6 +205,7 @@
 <script>
 export default {
   name: 'WarningLightContent',
+  inject: ['isDarkMode'],
   props: {
     routeName: {
       type: String,

@@ -44,6 +44,10 @@ export default {
     height: {
       type: Number,
       default: 100
+    },
+    isDarkMode: {
+      type: Boolean,
+      default: false
     }
   },
   data() {
@@ -60,6 +64,13 @@ export default {
       handler() {
         this.updateChart()
       }
+    },
+    isDarkMode() {
+      if (this.chart) {
+        this.chart.destroy()
+        this.chart = null
+      }
+      this.createChart()
     }
   },
   beforeUnmount() {
@@ -68,75 +79,54 @@ export default {
     }
   },
   methods: {
-    createChart() {
-      const ctx = this.$refs.chartCanvas.getContext('2d')
-      
-      const defaultOptions = {
+    buildDefaultOptions() {
+      const dark = this.isDarkMode
+      const gridColor = dark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'
+      const tickColor = dark ? '#94a3b8' : '#9ca3af'
+      return {
         responsive: true,
         maintainAspectRatio: false,
         plugins: {
-          legend: {
-            display: false
-          },
+          legend: { display: false },
           tooltip: {
             mode: 'index',
             intersect: false,
-            backgroundColor: 'rgba(0, 0, 0, 0.8)',
-            titleColor: '#fff',
-            bodyColor: '#fff',
-            borderColor: '#e5e7eb',
-            borderWidth: 1
+            backgroundColor: dark ? '#1e293b' : '#ffffff',
+            borderColor: dark ? '#334155' : '#e5e7eb',
+            borderWidth: 1,
+            titleColor: dark ? '#f1f5f9' : '#111827',
+            bodyColor: dark ? '#cbd5e1' : '#374151',
+            cornerRadius: 4,
+            padding: { x: 10, y: 8 }
           }
         },
         scales: {
           x: {
             display: true,
-            grid: {
-              display: true,
-              color: '#e5e7eb',
-              lineWidth: 0.5
-            },
-            ticks: {
-              color: '#6b7280',
-              font: {
-                size: 10
-              }
-            }
+            grid: { color: gridColor, tickColor: 'transparent' },
+            border: { color: 'transparent' },
+            ticks: { color: tickColor, font: { size: 10 } }
           },
           y: {
             display: true,
-            grid: {
-              display: true,
-              color: '#e5e7eb',
-              lineWidth: 0.5
-            },
-            ticks: {
-              color: '#6b7280',
-              font: {
-                size: 10
-              }
-            }
+            grid: { color: gridColor, tickColor: 'transparent' },
+            border: { color: 'transparent' },
+            ticks: { color: tickColor, font: { size: 10 } }
           }
         },
         elements: {
-          line: {
-            tension: 0.3
-          },
-          point: {
-            radius: 3,
-            hoverRadius: 5
-          }
+          line: { tension: 0.3 },
+          point: { radius: 3, hoverRadius: 5 }
         },
-        interaction: {
-          intersect: false,
-          mode: 'index'
-        }
+        interaction: { intersect: false, mode: 'index' }
       }
-
+    },
+    createChart() {
+      const ctx = this.$refs.chartCanvas.getContext('2d')
       this.chart = new ChartJS(ctx, {
         type: 'line',
         data: this.data,
-        options: { ...defaultOptions, ...this.options }
+        options: { ...this.buildDefaultOptions(), ...this.options }
       })
     },
     updateChart() {
@@ -147,4 +137,4 @@ export default {
     }
   }
 }
-</script> 
+</script>

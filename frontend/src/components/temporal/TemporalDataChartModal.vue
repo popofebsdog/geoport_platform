@@ -1,7 +1,7 @@
 <template>
   <Teleport to="body">
     <div v-if="isVisible" class="fixed inset-0 z-[1300] flex items-center justify-center bg-black bg-opacity-50">
-    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-6xl mx-4 max-h-[90vh] overflow-hidden"
+    <div class="rounded border w-full max-w-6xl mx-4 max-h-[90vh] overflow-hidden"
          :class="isDarkMode ? 'bg-slate-800' : 'bg-white'">
       
       <!-- 標題欄 -->
@@ -235,7 +235,7 @@
 
 <script>
 import { ref, watch, onMounted, onUnmounted, inject, nextTick } from 'vue'
-import axios from 'axios'
+import api from '@/services/api'
 
 export default {
   name: 'TemporalDataChartModal',
@@ -303,6 +303,56 @@ export default {
       }
     }
     
+    // 從 enhanced API 的 chartData 組建 ApexCharts 設定
+    const buildApexConfig = (chartData) => {
+      const dark = isDarkMode.value
+      const textColor = dark ? '#94a3b8' : '#6b7280'
+      const gridColor = dark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'
+      const bgColor = dark ? '#1e293b' : '#ffffff'
+
+      return {
+        chart: {
+          type: 'line',
+          height: '100%',
+          background: bgColor,
+          toolbar: { show: true },
+          zoom: { enabled: true },
+          animations: { enabled: false }
+        },
+        theme: { mode: dark ? 'dark' : 'light' },
+        series: chartData.datasets || [],
+        xaxis: {
+          type: chartData.xAxis?.type === 'datetime' ? 'datetime' : 'category',
+          labels: {
+            style: { colors: textColor, fontSize: '11px' },
+            datetimeUTC: false
+          },
+          title: { text: xAxisLabel.value, style: { color: textColor } }
+        },
+        yaxis: {
+          labels: { style: { colors: textColor, fontSize: '11px' } },
+          title: { text: yAxisLabel.value, style: { color: textColor } }
+        },
+        legend: {
+          show: showLegend.value,
+          labels: { colors: textColor }
+        },
+        grid: {
+          show: showGrid.value,
+          borderColor: gridColor
+        },
+        stroke: { curve: 'smooth', width: 2 },
+        tooltip: {
+          theme: dark ? 'dark' : 'light',
+          x: { format: 'yyyy-MM-dd HH:mm' }
+        },
+        title: {
+          text: chartTitle.value,
+          style: { color: textColor, fontSize: '13px', fontWeight: '600' }
+        }
+      }
+    }
+
     // 載入圖表
     const loadChart = async () => {
       if (!props.temporalData || !ApexCharts) return
@@ -311,22 +361,13 @@ export default {
       error.value = null
       
       try {
-        // 調用後端 API 生成 ApexCharts 配置
-        const response = await axios.post(`/api/temporal-data/${props.temporalData.temporal_id}/chart/apex`, {
-          chartType: 'line',
-          title: chartTitle.value,
-          xAxisLabel: xAxisLabel.value,
-          yAxisLabel: yAxisLabel.value,
-          showLegend: showLegend.value,
-          showGrid: showGrid.value,
-          theme: isDarkMode.value ? 'dark' : 'light'
-        })
+        const response = await api.get(`/temporal-data-enhanced/${props.temporalData.temporal_id}/chart`)
         
-        if (response.data.success) {
+        if (response.success) {
           await nextTick()
-          renderChart(response.data.data.apexConfig)
+          renderChart(buildApexConfig(response.data.chartData))
         } else {
-          throw new Error(response.data.message || '生成圖表配置失敗')
+          throw new Error(response.message || '生成圖表配置失敗')
         }
       } catch (err) {
         console.error('載入圖表失敗:', err)

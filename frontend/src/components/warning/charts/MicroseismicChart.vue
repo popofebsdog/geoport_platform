@@ -39,6 +39,10 @@ export default {
     regionId: {
       type: String,
       default: null
+    },
+    isDarkMode: {
+      type: Boolean,
+      default: false
     }
   },
   data() {
@@ -60,6 +64,9 @@ export default {
           }
         }
       }
+    },
+    isDarkMode() {
+      this.updateChart();
     },
     data: {
       deep: true,
@@ -131,11 +138,9 @@ export default {
       }
     },
     generateTimeLabels() {
-      // 固定生成當日00:00到23:59的標籤（每小時一個點）
       const labels = [];
       for (let hour = 0; hour < 24; hour++) {
-        const timeStr = `${String(hour).padStart(2, '0')}:00:00`;
-        labels.push(timeStr);
+        labels.push(`${String(hour).padStart(2, '0')}:00`);
       }
       return labels;
     },
@@ -194,132 +199,85 @@ export default {
       
       try {
         const { Chart, registerables } = await import('chart.js');
+        const { applyChartDefaults, baseChartOptions, axisScale } = await import('@/utils/chartDefaults.js');
         Chart.register(...registerables);
-        
+        applyChartDefaults(Chart);
+
         const chartData = this.prepareChartData();
-        
-        // 使用散點圖（scatter）來顯示不同類型的事件
+        const dark = this.isDarkMode;
+        const base = baseChartOptions(dark);
+
         this.chart = new Chart(this.$refs.chartCanvas, {
           type: 'scatter',
           data: chartData,
           options: {
-            responsive: true,
-            maintainAspectRatio: false,
+            ...base,
+            clip: false,
+            layout: {
+              padding: { bottom: 4, left: 0, right: 4, top: 2 }
+            },
             plugins: {
-              legend: {
-                display: true,
-                position: 'top',
-                labels: {
-                  font: {
-                    size: 12
-                  }
-                }
-              },
-              title: {
-                display: true,
-                text: `微地動監測數據 - ${this.getCurrentDateTitle()}`,
-                font: {
-                  size: 14,
-                  weight: 'bold'
-                },
-                padding: {
-                  bottom: 10
-                }
-              },
+              ...base.plugins,
               tooltip: {
+                ...base.plugins.tooltip,
                 mode: 'point',
                 intersect: true,
-                backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                padding: 10,
-                titleFont: {
-                  size: 12
-                },
-                bodyFont: {
-                  size: 11
-                },
                 callbacks: {
-                  title: function(context) {
+                  title(context) {
                     const point = context[0];
-                    const hour = Math.floor(point.parsed.x);
+                    const hour   = Math.floor(point.parsed.x);
                     const minute = Math.round((point.parsed.x - hour) * 60);
-                    return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+                    return `${String(hour).padStart(2,'0')}:${String(minute).padStart(2,'0')}`;
                   },
-                  label: function(context) {
-                    const typeMap = {
-                      1: 'TYPE I',
-                      2: 'TYPE II',
-                      3: 'TYPE III',
-                      4: 'TYPE NOISE',
-                      5: 'TYPE EARTHQUAKE'
-                    };
-                    return `類型: ${typeMap[context.parsed.y] || ''}`;
+                  label(context) {
+                    const typeMap = { 1:'TYPE I', 2:'TYPE II', 3:'TYPE III', 4:'TYPE NOISE', 5:'TYPE EARTHQUAKE' };
+                    return `類型: ${typeMap[Math.round(context.parsed.y)] || ''}`;
                   }
                 }
               }
             },
-            clip: false,
             scales: {
               x: {
+                ...axisScale('x', '', dark),
                 type: 'linear',
                 position: 'bottom',
-                display: true,
-                title: {
-                  display: true,
-                  text: '時間 (小時)',
-                  font: {
-                    size: 12,
-                    weight: 'bold'
-                  }
-                },
                 min: 0,
                 max: 24,
                 ticks: {
-                  font: {
-                    size: 10
-                  },
+                  ...axisScale('x', '', dark).ticks,
                   stepSize: 2,
-                  callback: function(value) {
-                    const hour = Math.floor(value);
-                    return `${String(hour).padStart(2, '0')}:00`;
+                  maxRotation: 0,
+                  minRotation: 0,
+                  padding: 4,
+                  callback(value) {
+                    return `${String(Math.floor(value)).padStart(2,'0')}:00`;
                   }
-                },
-                grid: {
-                  display: true,
-                  color: 'rgba(0, 0, 0, 0.05)'
                 }
               },
               y: {
-                type: 'linear',
                 display: true,
-                title: {
-                  display: true,
-                  text: '事件類型',
-                  font: {
-                    size: 12,
-                    weight: 'bold'
-                  }
-                },
+                type: 'linear',
+                position: 'left',
                 min: 0.5,
                 max: 5.5,
-                ticks: {
-                  font: {
-                    size: 10
-                  },
-                  stepSize: 1,
-                  callback: function(value) {
-                    const typeMap = {
-                      1: 'TYPE I',
-                      2: 'TYPE II',
-                      3: 'TYPE III',
-                      4: 'TYPE NOISE',
-                      5: 'TYPE EARTHQUAKE'
-                    };
-                    return typeMap[value] || '';
-                  }
+                afterBuildTicks(scale) {
+                  scale.ticks = [1, 2, 3, 4, 5].map(v => ({ value: v }));
                 },
                 grid: {
+                  color: dark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)',
+                  tickColor: 'transparent'
+                },
+                border: { display: false },
+                ticks: {
                   display: true,
-                  color: 'rgba(0, 0, 0, 0.05)'
+                  color: dark ? '#94a3b8' : '#9ca3af',
+                  font: { size: 10 },
+                  padding: 8,
+                  autoSkip: false,
+                  callback(value) {
+                    const map = { 1:'T-I', 2:'T-II', 3:'T-III', 4:'Noise', 5:'EQ' };
+                    return map[value] ?? '';
+                  }
                 }
               }
             }
@@ -345,13 +303,12 @@ export default {
         'TYPE EARTHQUAKE': 5
       };
       
-      // 定义颜色映射
       const colorMap = {
-        'TYPE I': { border: '#3b82f6', bg: 'rgba(59, 130, 246, 0.6)' },
-        'TYPE II': { border: '#f59e0b', bg: 'rgba(245, 158, 11, 0.6)' },
-        'TYPE III': { border: '#ef4444', bg: 'rgba(239, 68, 68, 0.6)' },
-        'TYPE NOISE': { border: '#9ca3af', bg: 'rgba(156, 163, 175, 0.6)' }, // 灰色
-        'TYPE EARTHQUAKE': { border: '#8b5cf6', bg: 'rgba(139, 92, 246, 0.6)' } // 紫色
+        'TYPE I':         { border: '#3b82f6', bg: 'rgba(59,130,246,0.55)' },
+        'TYPE II':        { border: '#d97706', bg: 'rgba(217,119,6,0.55)'  },
+        'TYPE III':       { border: '#dc2626', bg: 'rgba(220,38,38,0.55)'  },
+        'TYPE NOISE':     { border: '#9ca3af', bg: 'rgba(156,163,175,0.4)' },
+        'TYPE EARTHQUAKE':{ border: '#7c3aed', bg: 'rgba(124,58,237,0.55)' }
       };
       
       // 過濾並處理數據：保留當日的所有類型
@@ -379,8 +336,8 @@ export default {
             data: [],
             borderColor: colorMap[type].border,
             backgroundColor: colorMap[type].bg,
-            pointRadius: 5,
-            pointHoverRadius: 7,
+            pointRadius: 4,
+            pointHoverRadius: 6,
             borderWidth: 2
           }))
         };
@@ -451,8 +408,8 @@ export default {
         data: typeDatasets[type],
         borderColor: colorMap[type].border,
         backgroundColor: colorMap[type].bg,
-        pointRadius: 5,
-        pointHoverRadius: 7,
+        pointRadius: 4,
+        pointHoverRadius: 6,
         borderWidth: 2
       }));
       

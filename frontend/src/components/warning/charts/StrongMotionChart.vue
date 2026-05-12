@@ -39,6 +39,10 @@ export default {
     regionId: {
       type: String,
       default: null
+    },
+    isDarkMode: {
+      type: Boolean,
+      default: false
     }
   },
   data() {
@@ -59,6 +63,9 @@ export default {
           }
         }
       }
+    },
+    isDarkMode() {
+      this.updateChart();
     },
     data: {
       deep: true,
@@ -106,15 +113,10 @@ export default {
       }
     },
     generateTimeLabels() {
-      // 生成當日00:00到當前時間的標籤（每小時一個點）
       const labels = [];
-      const now = new Date();
-      const currentHour = now.getHours();
-      
-      // 只生成到當前小時
+      const currentHour = new Date().getHours();
       for (let hour = 0; hour <= currentHour; hour++) {
-        const timeStr = `${String(hour).padStart(2, '0')}:00:00`;
-        labels.push(timeStr);
+        labels.push(`${String(hour).padStart(2, '0')}:00`);
       }
       return labels;
     },
@@ -206,101 +208,52 @@ export default {
       
       try {
         const { Chart, registerables } = await import('chart.js');
+        const { applyChartDefaults, baseChartOptions, axisScale } = await import('@/utils/chartDefaults.js');
         Chart.register(...registerables);
-        
+        applyChartDefaults(Chart);
+
+        const dark = this.isDarkMode;
+        const base = baseChartOptions(dark);
         const chartData = this.prepareChartData();
-        
+
         this.chart = new Chart(this.$refs.chartCanvas, {
           type: 'line',
           data: chartData,
           options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-              legend: {
-                display: true,
-                position: 'top',
-                labels: {
-                  font: {
-                    size: 12
-                  }
-                }
-              },
-              title: {
-                display: true,
-                text: this.getChartTitle(),
-                font: {
-                  size: 14,
-                  weight: 'bold'
-                },
-                padding: {
-                  bottom: 10
-                }
-              },
-              tooltip: {
-                mode: 'index',
-                intersect: false,
-                backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                padding: 10,
-                titleFont: {
-                  size: 12
-                },
-                bodyFont: {
-                  size: 11
-                }
-              }
-            },
-            interaction: {
-              intersect: false,
-              mode: 'index'
-            },
-            elements: {
-              line: {
-                tension: 0.4
-              }
-            },
+            ...base,
             clip: false,
+            interaction: { intersect: false, mode: 'index' },
+            elements: {
+              line:  { tension: 0.2, borderWidth: 1.5 },
+              point: { radius: 0, hoverRadius: 3 }
+            },
+            plugins: {
+              ...base.plugins,
+              tooltip: {
+                ...base.plugins.tooltip,
+                mode: 'index',
+                intersect: false
+              }
+            },
             scales: {
               x: {
-                display: true,
-                title: {
-                  display: true,
-                  text: '時間',
-                  font: {
-                    size: 12,
-                    weight: 'bold'
-                  }
-                },
+                ...axisScale('x', '', dark),
                 ticks: {
-                  font: {
-                    size: 10
-                  },
+                  ...axisScale('x', '', dark).ticks,
                   maxRotation: 45,
-                  minRotation: 45
-                },
-                grid: {
-                  display: true,
-                  color: 'rgba(0, 0, 0, 0.05)'
+                  minRotation: 0,
+                  maxTicksLimit: 13,
+                  callback(value, index, ticks) {
+                    const lbl = this.getLabelForValue ? this.getLabelForValue(value) : String(value);
+                    return lbl.length > 5 ? lbl.substring(0, 5) : lbl;
+                  }
                 }
               },
               y: {
-                display: true,
-                title: {
-                  display: true,
-                  text: '加速度 (gal)',
-                  font: {
-                    size: 12,
-                    weight: 'bold'
-                  }
-                },
+                ...axisScale('y', 'gal', dark),
                 ticks: {
-                  font: {
-                    size: 10
-                  }
-                },
-                grid: {
-                  display: true,
-                  color: 'rgba(0, 0, 0, 0.05)'
+                  ...axisScale('y', 'gal', dark).ticks,
+                  maxTicksLimit: 6
                 }
               }
             }
@@ -321,12 +274,12 @@ export default {
           datasets: [{
             label: '加速度 (gal)',
             data: values,
-            borderColor: '#3b82f6',
-            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+            borderColor: '#1e5c8a',
+            backgroundColor: 'rgba(30,92,138,0.07)',
             tension: 0.4,
             fill: false,
-            pointRadius: 3,
-            pointHoverRadius: 5,
+            pointRadius: 0,
+            pointHoverRadius: 3,
             borderWidth: 2
           }]
         };
@@ -351,12 +304,12 @@ export default {
             datasets: [{
               label: '加速度 (gal)',
               data: values,
-              borderColor: '#3b82f6',
-              backgroundColor: 'rgba(59, 130, 246, 0.1)',
+              borderColor: '#1e5c8a',
+              backgroundColor: 'rgba(30,92,138,0.07)',
               tension: 0.4,
               fill: false,
-              pointRadius: 3,
-              pointHoverRadius: 5,
+              pointRadius: 0,
+              pointHoverRadius: 3,
               borderWidth: 2
             }]
           };
@@ -452,12 +405,12 @@ export default {
         datasets: [{
           label: '加速度 (gal)',
           data: values,
-          borderColor: '#3b82f6',
-          backgroundColor: 'rgba(59, 130, 246, 0.1)',
+          borderColor: '#1e5c8a',
+          backgroundColor: 'rgba(30,92,138,0.07)',
           tension: 0.4,
           fill: false,
-          pointRadius: 3,
-          pointHoverRadius: 5,
+          pointRadius: 0,
+          pointHoverRadius: 3,
           borderWidth: 2
         }]
       };
@@ -492,8 +445,8 @@ export default {
         datasets: [{
           label: `PGA (gal) - ${metadata.stationCode}`,
           data: values,
-          borderColor: '#ef4444',
-          backgroundColor: 'rgba(239, 68, 68, 0.1)',
+          borderColor: '#dc2626',
+          backgroundColor: 'rgba(220,38,38,0.07)',
           tension: 0.1,
           fill: true,
           pointRadius: 0,

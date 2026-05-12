@@ -1,5 +1,5 @@
 <template>
-  <div class="map-container">
+  <div class="map-container" :class="{ 'dark-map': isDarkMode }">
     <div 
       :id="mapId" 
       class="map-element"
@@ -661,6 +661,12 @@ export default {
       if (this.layers.numerical) {
         this.layers.numerical.clearLayers()
       }
+      // 清除 DoDshp 動態圖層及其 moveend 監聽
+      if (this._dodshpMoveHandler) {
+        this.map.off('moveend zoomend', this._dodshpMoveHandler)
+        this._dodshpMoveHandler = null
+      }
+      this._dodshpLayer = null
       
       // 重新初始化資料圖層
       this.initOrthophotoLayer()
@@ -949,80 +955,75 @@ export default {
       }
     },
     
-    // 初始化數值模擬圖層
+    // 初始化數值模擬圖層（PostGIS bbox 動態查詢）
     async initNumericalLayer() {
-      // 檢查是否有數值模擬資料
       if (!this.hasNumericalData) return
-      
-      // 台7線49.8K專案的數值模擬資料
-      if (this.selectedProject && this.selectedProject.id === 4) {
-        try {
-          // 載入 GeoJSON 資料
-          const response = await fetch('/data/geojson/DoDshp_numerical.geojson')
-          if (!response.ok) throw new Error('Failed to load numerical simulation data')
-          
-          const geojsonData = await response.json()
-          
-          // 使用 Leaflet 的 GeoJSON 圖層
-          const numericalLayer = L.geoJSON(geojsonData, {
-            style: (feature) => {
-              return this.getNumericalStyle(feature)
-            },
-            onEachFeature: (feature, layer) => {
-              // 為每個要素添加彈出視窗
-              const popupContent = `
-                <div class="numerical-popup">
-                  <h4 style="margin: 0 0 8px 0; color: #374151; font-size: 14px;">數值模擬結果</h4>
-                  <p style="margin: 4px 0; font-size: 12px;"><strong>要素ID:</strong> ${feature.properties.ID}</p>
-                  <p style="margin: 4px 0; font-size: 12px;"><strong>高程值:</strong> ${feature.properties.ELEV} m</p>
-                  <p style="margin: 4px 0; font-size: 12px;"><strong>分類:</strong> ${this.getElevationCategory(feature.properties.ELEV)}</p>
-                  <div style="margin: 8px 0; padding: 4px; background: ${this.getElevationColor(feature.properties.ELEV)}; border-radius: 4px;">
-                    <span style="color: white; font-weight: bold;">顏色代碼: ${this.getElevationColorName(feature.properties.ELEV)}</span>
-                  </div>
+      if (!(this.selectedProject && this.selectedProject.id === 4)) return
+
+      // 建立可增量更新的 GeoJSON 圖層
+      if (!this._dodshpLayer) {
+        this._dodshpLayer = L.geoJSON(null, {
+          style: (feature) => this.getNumericalStyle(feature),
+          onEachFeature: (feature, layer) => {
+            const elev = feature.properties.elev
+            const fid  = feature.properties.fid
+            const popupContent = `
+              <div class="numerical-popup">
+                <h4 style="margin:0 0 8px 0;color:#374151;font-size:14px;">數值模擬結果</h4>
+                <p style="margin:4px 0;font-size:12px;"><strong>要素ID:</strong> ${fid}</p>
+                <p style="margin:4px 0;font-size:12px;"><strong>高程值:</strong> ${elev} m</p>
+                <p style="margin:4px 0;font-size:12px;"><strong>分類:</strong> ${this.getElevationCategory(elev)}</p>
+                <div style="margin:8px 0;padding:4px;background:${this.getElevationColor(elev)};border-radius:4px;">
+                  <span style="color:white;font-weight:bold;">${this.getElevationColorName(elev)}</span>
                 </div>
-              `
-              layer.bindPopup(popupContent, {
-                maxWidth: 400,
-                className: 'numerical-popup'
-              })
-              
-              // 滑鼠懸停效果
-              layer.on('mouseover', function(e) {
-                this.setStyle({
-                  weight: 8,
-                  opacity: 1
-                })
-              })
-              
-              layer.on('mouseout', function(e) {
-                this.setStyle({
-                  weight: 4,
-                  opacity: 0.8
-                })
-              })
-            }
-          })
-          
-          // 添加到圖層組
-          this.layers.numerical.addLayer(numericalLayer)
-          
-          // 儲存圖層資訊供其他方法使用
-          this.numericalData = {
-            layer: numericalLayer,
-            bounds: numericalLayer.getBounds(),
-            featureCount: geojsonData.features.length
+              </div>`
+            layer.bindPopup(popupContent, { maxWidth: 400 })
+            layer.on('mouseover', function() { this.setStyle({ weight: 8, opacity: 1 }) })
+            layer.on('mouseout',  function() { this.setStyle({ weight: 4, opacity: 0.8 }) })
           }
-          
-          
-        } catch (error) {
-          console.error('載入數值模擬資料失敗:', error)
+        })
+        this.layers.numerical.addLayer(this._dodshpLayer)
+
+        // 每次視窗移動/縮放後重新載入範圍內的資料
+        this._dodshpMoveHandler = () => {
+          if (this.visibleLayers.numerical) this._loadDodshpByBBox()
         }
+        this.map.on('moveend zoomend', this._dodshpMoveHandler)
+      }
+
+      await this._loadDodshpByBBox()
+
+      this.numericalData = {
+        layer: this._dodshpLayer,
+        bounds: this._dodshpLayer.getBounds && this._dodshpLayer.getBounds()
+      }
+    },
+
+    // 根據目前視窗 bbox 向 PostGIS API 查詢 DoDshp features
+    async _loadDodshpByBBox() {
+      if (!this._dodshpLayer) return
+      try {
+        const b = this.map.getBounds()
+        const params = new URLSearchParams({
+          xmin: b.getWest().toFixed(6),
+          ymin: b.getSouth().toFixed(6),
+          xmax: b.getEast().toFixed(6),
+          ymax: b.getNorth().toFixed(6),
+          limit: 2000
+        })
+        const res = await fetch(`/api/spatial/dodshp/bbox?${params}`)
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+        const geojson = await res.json()
+        this._dodshpLayer.clearLayers()
+        this._dodshpLayer.addData(geojson)
+      } catch (err) {
+        console.error('[DoDshp] bbox 查詢失敗:', err.message)
       }
     },
     
-    // 根據ELEV值獲取樣式
+    // 根據 elev 值獲取樣式
     getNumericalStyle(feature) {
-      const elev = feature.properties.ELEV
+      const elev = feature.properties.elev
       return {
         color: this.getElevationColor(elev),
         weight: 4,
@@ -1145,7 +1146,7 @@ export default {
   font-size: 12px;
   cursor: pointer;
   transition: all 0.2s;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  color: #374151;
 }
 
 .control-btn:hover {
@@ -1159,16 +1160,41 @@ export default {
   border-color: #3b82f6;
 }
 
+/* Dark mode overrides */
+.dark-map .control-btn {
+  background: #1e293b;
+  border-color: #334155;
+  color: #cbd5e1;
+}
+
+.dark-map .control-btn:hover {
+  background: #334155;
+  border-color: #475569;
+}
+
+.dark-map .control-btn.active {
+  background: #3b82f6;
+  color: white;
+  border-color: #3b82f6;
+}
+
 .info-panel {
   position: absolute;
   bottom: 20px;
   left: 20px;
   right: 20px;
   background: white;
-  border-radius: 8px;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+  border-radius: 4px;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.12);
   z-index: 1000;
   max-width: 400px;
+}
+
+.dark-map .info-panel {
+  background: #1e293b;
+  border-color: #334155;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
 }
 
 .info-header {
@@ -1179,11 +1205,19 @@ export default {
   border-bottom: 1px solid #e5e7eb;
 }
 
+.dark-map .info-header {
+  border-color: #334155;
+}
+
 .info-title {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 600;
   color: #1f2937;
   margin: 0;
+}
+
+.dark-map .info-title {
+  color: #f1f5f9;
 }
 
 .close-btn {
@@ -1204,6 +1238,14 @@ export default {
   color: #374151;
 }
 
+.dark-map .close-btn {
+  color: #64748b;
+}
+
+.dark-map .close-btn:hover {
+  color: #cbd5e1;
+}
+
 .info-content {
   padding: 16px;
 }
@@ -1214,12 +1256,20 @@ export default {
   margin: 0 0 12px 0;
 }
 
+.dark-map .info-description {
+  color: #94a3b8;
+}
+
 .info-meta {
   display: flex;
   justify-content: space-between;
   align-items: center;
   font-size: 12px;
   color: #6b7280;
+}
+
+.dark-map .info-meta {
+  color: #64748b;
 }
 
 .info-time {

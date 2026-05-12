@@ -25,91 +25,82 @@
       </div>
       
       <!-- 時間軸內容卡片 -->
-      <div 
+      <div
         class="timeline-content"
-        :class="isDarkMode ? 'bg-slate-800/80 hover:bg-slate-700/80 border-slate-600/50' : 'bg-white hover:bg-gray-50 border-gray-200 shadow-sm hover:shadow-md'"
+        :class="isDarkMode ? 'bg-slate-800 hover:bg-slate-750 border-slate-700' : 'bg-white hover:bg-gray-50 border-gray-200'"
       >
         <!-- 卡片右上角操作按鈕 -->
-        <div class="flex items-center gap-2 absolute top-3 right-3 z-10">
-          <!-- 編輯按鈕 -->
+        <div class="flex items-center gap-1 absolute top-2.5 right-2.5 z-10">
           <button
             @click.stop="$emit('edit', child)"
-            class="p-1.5 rounded-md transition-all duration-300"
-            :class="isDarkMode ? 'text-gray-400 hover:text-blue-400 hover:bg-blue-400/10' : 'text-gray-500 hover:text-blue-600 hover:bg-blue-50'"
+            class="p-1 rounded transition-colors duration-150"
+            :class="isDarkMode ? 'text-slate-500 hover:text-slate-200 hover:bg-slate-700' : 'text-gray-400 hover:text-gray-700 hover:bg-gray-100'"
             title="編輯專案"
           >
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
             </svg>
           </button>
-          <!-- 刪除按鈕 -->
           <button
             @click.stop="handleDelete(child)"
-            class="p-1.5 rounded-md transition-all duration-300"
-            :class="isDarkMode ? 'text-gray-400 hover:text-red-400 hover:bg-red-400/10' : 'text-gray-500 hover:text-red-600 hover:bg-red-50'"
+            class="p-1 rounded transition-colors duration-150"
+            :class="isDarkMode ? 'text-slate-500 hover:text-red-400 hover:bg-slate-700' : 'text-gray-400 hover:text-red-600 hover:bg-red-50'"
             title="刪除專案"
           >
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
             </svg>
           </button>
         </div>
-        
-        <!-- 時間範圍標籤（卡片內） -->
+
+        <!-- 時間範圍標籤 -->
         <div class="time-range-badge" :class="getStatusBadgeClass(child.status)">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
           </svg>
-          <span class="ml-1.5 font-medium">{{ formatDateRange(child) }}</span>
+          <span class="ml-1 font-medium">{{ formatDateRange(child) }}</span>
         </div>
-        
+
         <!-- 專案名稱 -->
-        <h4 
-          class="text-lg font-bold mb-2 transition-colors duration-300 cursor-pointer group"
-          :class="isDarkMode ? 'text-white group-hover:text-blue-400' : 'text-gray-900 group-hover:text-blue-600'"
+        <h4
+          class="text-sm font-semibold mb-1.5 cursor-pointer transition-colors duration-150"
+          :class="isDarkMode ? 'text-white hover:text-brand-300' : 'text-gray-900 hover:text-brand'"
           @click="$emit('open', child)"
         >
           {{ child.name }}
-          <svg class="w-4 h-4 inline-block ml-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
-          </svg>
         </h4>
-        
+
         <!-- 描述 -->
-        <p 
-          v-if="child.description" 
-          class="text-sm mb-4 line-clamp-2 leading-relaxed"
-          :class="isDarkMode ? 'text-gray-400' : 'text-gray-600'"
+        <p
+          v-if="child.description"
+          class="text-xs mb-3 line-clamp-2 leading-relaxed"
+          :class="isDarkMode ? 'text-slate-400' : 'text-gray-500'"
         >
           {{ child.description }}
         </p>
-        
+
         <!-- 操作按鈕 -->
-        <div class="flex items-center justify-center space-x-2 pt-3 border-t"
-             :class="isDarkMode ? 'border-slate-700' : 'border-gray-200'">
-          <!-- 事件詳情 -->
+        <div class="flex items-center gap-1.5 pt-2.5 border-t"
+             :class="isDarkMode ? 'border-slate-700' : 'border-gray-100'">
           <button
             @click.stop="$emit('show-detail', child)"
-            class="px-3 py-2 rounded-lg text-xs font-semibold transition-all duration-300 transform hover:scale-105 shadow-sm whitespace-nowrap"
-            :class="isDarkMode ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-900/30' : 'bg-blue-500 hover:bg-blue-600 text-white shadow-blue-500/30'"
+            class="tl-btn tl-btn-primary whitespace-nowrap"
           >
             事件詳情
           </button>
-          
-          <!-- 影像紀錄 -->
+
           <button
             @click="$emit('disaster-record', child)"
-            class="px-3 py-2 rounded-lg text-xs font-semibold transition-all duration-300 transform hover:scale-105 shadow-sm whitespace-nowrap"
-            :class="isDarkMode ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-900/30' : 'bg-blue-500 hover:bg-blue-600 text-white shadow-blue-500/30'"
+            class="tl-btn tl-btn-ghost whitespace-nowrap"
+            :class="isDarkMode ? 'tl-btn-ghost-dark' : 'tl-btn-ghost-light'"
           >
             影像紀錄
           </button>
-          
-          <!-- 調查紀錄 -->
+
           <button
             @click="$emit('open', child)"
-            class="px-3 py-2 rounded-lg text-xs font-semibold transition-all duration-300 transform hover:scale-105 shadow-sm whitespace-nowrap"
-            :class="isDarkMode ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-900/30' : 'bg-blue-500 hover:bg-blue-600 text-white shadow-blue-500/30'"
+            class="tl-btn tl-btn-ghost whitespace-nowrap"
+            :class="isDarkMode ? 'tl-btn-ghost-dark' : 'tl-btn-ghost-light'"
           >
             調查紀錄
           </button>
@@ -451,44 +442,33 @@ export default {
   z-index: 10; /* 在連接線上方 */
 }
 
-/* 時間軸節點 - 美觀的藍色圓形 */
+/* 時間軸節點 - 簡潔品牌色 */
 .timeline-node {
   position: relative;
-  width: 24px;
-  height: 24px;
+  width: 22px;
+  height: 22px;
   border-radius: 50%;
-  background: linear-gradient(135deg, rgb(59, 130, 246) 0%, rgb(37, 99, 235) 100%);
-  box-shadow: 
-    0 0 0 3px rgba(255, 255, 255, 1),
-    0 2px 8px rgba(59, 130, 246, 0.4),
-    0 0 0 6px rgba(59, 130, 246, 0.1);
+  background: #1e5c8a;
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.9);
   z-index: 10;
-  transition: all 0.3s ease;
+  transition: background-color 0.15s, box-shadow 0.15s;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-/* 可點擊定位的節點 */
 .timeline-node-locatable {
   cursor: pointer;
 }
 
 .timeline-node-locatable:hover {
-  transform: scale(1.15);
-  box-shadow: 
-    0 0 0 3px rgba(255, 255, 255, 1),
-    0 4px 12px rgba(34, 197, 94, 0.6),
-    0 0 0 8px rgba(34, 197, 94, 0.2);
-  background: linear-gradient(135deg, rgb(34, 197, 94) 0%, rgb(22, 163, 74) 100%);
+  background: #16a34a;
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.9), 0 0 0 5px rgba(22,163,74,0.2);
 }
 
 .timeline-node-wrapper:hover .timeline-node:not(.timeline-node-locatable) {
-  transform: scale(1.15);
-  box-shadow: 
-    0 0 0 3px rgba(255, 255, 255, 1),
-    0 4px 12px rgba(59, 130, 246, 0.6),
-    0 0 0 8px rgba(59, 130, 246, 0.2);
+  background: #174d77;
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.9);
 }
 
 /* 定位圖標（hover 時顯示） */
@@ -527,33 +507,29 @@ export default {
 
 /* 時間軸內容卡片 */
 .timeline-content {
-  padding: 1.25rem;
-  border-radius: 0.75rem;
+  padding: 0.875rem 1rem;
+  border-radius: 4px;
   border-width: 1px;
-  transition: all 0.3s ease;
-  margin-left: 20px;
+  transition: background-color 0.15s;
+  margin-left: 18px;
   position: relative;
 }
 
-/* 卡片右上角編輯按鈕 */
+/* 卡片右上角編輯按鈕（已整合至 inline template） */
 .timeline-card-edit-btn {
   position: absolute;
-  top: 0.75rem;
-  right: 0.75rem;
-  padding: 0.375rem;
-  border-radius: 0.5rem;
+  top: 0.625rem;
+  right: 0.625rem;
+  padding: 0.25rem;
+  border-radius: 2px;
   border: none;
   background: transparent;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: background-color 0.15s, color 0.15s;
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 5;
-}
-
-.timeline-card-edit-btn:hover {
-  transform: scale(1.1);
 }
 
 .timeline-content::before {
@@ -585,40 +561,29 @@ export default {
   border-right-color: rgb(249, 250, 251);
 }
 
-/* 時間範圍標籤 - 統一藍色風格 */
+/* 時間範圍標籤 */
 .time-range-badge {
   display: inline-flex;
   align-items: center;
-  padding: 0.5rem 0.875rem;
-  border-radius: 0.5rem;
-  font-size: 0.875rem;
-  font-weight: 600;
-  margin-bottom: 0.75rem;
+  padding: 0.25rem 0.625rem;
+  border-radius: 2px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  margin-bottom: 0.5rem;
   border-width: 1px;
-  transition: all 0.2s ease;
+  transition: none;
 }
 
 .time-badge-blue {
-  background: linear-gradient(135deg, rgb(239, 246, 255) 0%, rgb(219, 234, 254) 100%);
-  color: rgb(30, 64, 175);
-  border-color: rgb(191, 219, 254);
-  box-shadow: 0 1px 3px rgba(59, 130, 246, 0.1);
+  background: #eff6ff;
+  color: #1e40af;
+  border-color: #bfdbfe;
 }
 
 :global(.dark) .time-badge-blue {
-  background: linear-gradient(135deg, rgb(30, 58, 138) 0%, rgb(30, 64, 175) 100%);
-  color: rgb(191, 219, 254);
-  border-color: rgb(59, 130, 246);
-  box-shadow: 0 1px 3px rgba(59, 130, 246, 0.3);
-}
-
-.time-badge-blue:hover {
-  box-shadow: 0 2px 6px rgba(59, 130, 246, 0.2);
-  transform: translateY(-1px);
-}
-
-:global(.dark) .time-badge-blue:hover {
-  box-shadow: 0 2px 6px rgba(59, 130, 246, 0.4);
+  background: rgba(30,58,138,0.3);
+  color: #bfdbfe;
+  border-color: #3b5a9a;
 }
 
 /* 文字截斷 */
@@ -1101,91 +1066,49 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  border: 2px solid rgba(255, 255, 255, 0.4);
-  background: rgba(255, 255, 255, 0.25);
-  backdrop-filter: blur(8px);
+  width: 28px;
+  height: 28px;
+  border-radius: 2px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.15);
   color: white;
   cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition: background-color 0.15s, border-color 0.15s;
   flex-shrink: 0;
-  box-shadow: 
-    0 2px 8px rgba(0, 0, 0, 0.15),
-    0 0 0 1px rgba(255, 255, 255, 0.1) inset;
 }
 
 .action-toggle-btn:hover {
-  background: rgba(255, 255, 255, 0.35);
-  border-color: rgba(255, 255, 255, 0.6);
-  transform: scale(1.15);
-  box-shadow: 
-    0 4px 12px rgba(0, 0, 0, 0.2),
-    0 0 0 2px rgba(255, 255, 255, 0.2) inset;
-}
-
-.action-toggle-btn:active {
-  transform: scale(1.05);
+  background: rgba(255, 255, 255, 0.28);
+  border-color: rgba(255, 255, 255, 0.55);
 }
 
 .toggle-icon {
-  width: 18px;
-  height: 18px;
-  transition: transform 0.3s ease;
+  width: 15px;
+  height: 15px;
 }
 
-.action-toggle-btn:hover .toggle-icon {
-  transform: rotate(90deg);
-}
-
-/* 動畫模式下的切換按鈕 */
-.toggle-animation {
-  background: rgba(255, 255, 255, 0.25);
-  border-color: rgba(255, 255, 255, 0.4);
-}
-
-.toggle-animation:hover {
-  background: rgba(255, 255, 255, 0.4);
-  border-color: rgba(255, 255, 255, 0.7);
-  box-shadow: 
-    0 4px 16px rgba(59, 130, 246, 0.5),
-    0 0 0 2px rgba(59, 130, 246, 0.2) inset;
-}
-
-/* 新增紀錄模式下的切換按鈕 */
+.toggle-animation,
 .toggle-add-record {
-  background: rgba(255, 255, 255, 0.25);
-  border-color: rgba(255, 255, 255, 0.4);
+  border-color: rgba(255, 255, 255, 0.35);
 }
 
-.toggle-add-record:hover {
-  background: rgba(255, 255, 255, 0.4);
-  border-color: rgba(255, 255, 255, 0.7);
-  box-shadow: 
-    0 4px 16px rgba(34, 197, 94, 0.5),
-    0 0 0 2px rgba(34, 197, 94, 0.2) inset;
-}
-
-/* Tooltip 樣式 */
+/* Tooltip */
 .toggle-tooltip {
   position: absolute;
-  right: calc(100% + 12px);
+  right: calc(100% + 10px);
   top: 50%;
   transform: translateY(-50%);
-  padding: 6px 12px;
-  background: rgba(0, 0, 0, 0.85);
-  backdrop-filter: blur(8px);
+  padding: 4px 10px;
+  background: rgba(15, 23, 42, 0.92);
   color: white;
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   font-weight: 500;
   white-space: nowrap;
-  border-radius: 6px;
+  border-radius: 2px;
   opacity: 0;
   pointer-events: none;
-  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition: opacity 0.15s;
   z-index: 100;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
 .toggle-tooltip::after {
@@ -1194,31 +1117,61 @@ export default {
   left: 100%;
   top: 50%;
   transform: translateY(-50%);
-  width: 0;
-  height: 0;
-  border-top: 6px solid transparent;
-  border-bottom: 6px solid transparent;
-  border-left: 6px solid rgba(0, 0, 0, 0.85);
+  border-top: 5px solid transparent;
+  border-bottom: 5px solid transparent;
+  border-left: 5px solid rgba(15, 23, 42, 0.92);
 }
 
 .action-toggle-wrapper:hover .toggle-tooltip {
   opacity: 1;
-  transform: translateY(-50%) translateX(-4px);
 }
 
 /* 圖標樣式 */
 .action-icon {
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
   color: white;
-  transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
   display: block;
-  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
 }
 
-.timeline-action-item:hover .action-icon {
-  transform: scale(1.15);
-  filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.4));
+/* 時間軸卡片操作按鈕 */
+.tl-btn {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.625rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  border-radius: 2px;
+  border: 1px solid transparent;
+  transition: background-color 0.15s, color 0.15s, border-color 0.15s;
+  cursor: pointer;
+}
+.tl-btn-primary {
+  background: #1e5c8a;
+  color: #fff;
+  border-color: #1e5c8a;
+}
+.tl-btn-primary:hover {
+  background: #174d77;
+}
+.tl-btn-ghost {
+  background: transparent;
+}
+.tl-btn-ghost-light {
+  color: #374151;
+  border-color: #d1d5db;
+}
+.tl-btn-ghost-light:hover {
+  background: #f9fafb;
+  border-color: #9ca3af;
+}
+.tl-btn-ghost-dark {
+  color: #d1d5db;
+  border-color: #475569;
+}
+.tl-btn-ghost-dark:hover {
+  background: #1e293b;
+  border-color: #64748b;
 }
 
 /* 響應式調整 */

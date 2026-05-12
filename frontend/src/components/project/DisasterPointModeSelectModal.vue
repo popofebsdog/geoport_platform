@@ -9,41 +9,25 @@
       ></div>
       
       <!-- 模態框內容 -->
-      <div 
-        class="relative w-full max-w-md rounded-2xl shadow-2xl transition-all duration-300 transform"
-        :class="isDarkMode ? 'bg-slate-800' : 'bg-white'"
+      <div
+        class="relative w-full max-w-md rounded border transition-all duration-300"
+        :class="isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'"
       >
         <!-- 標題列 -->
-        <div 
-          class="flex items-center justify-between p-6 border-b"
+        <div
+          class="flex items-center justify-between px-6 py-4 border-b"
           :class="isDarkMode ? 'border-slate-700' : 'border-gray-200'"
         >
-          <div class="flex items-center space-x-3">
-            <!-- 災點圖標 -->
-            <div class="p-2 rounded-lg" :class="isDarkMode ? 'bg-red-600/20' : 'bg-red-100'">
-              <svg class="w-6 h-6 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
-              </svg>
-            </div>
-            <div>
-              <h3 class="text-xl font-semibold transition-colors duration-300"
-                  :class="isDarkMode ? 'text-white' : 'text-gray-900'">
-                新增災點紀錄
-              </h3>
-              <p class="text-sm" :class="isDarkMode ? 'text-gray-400' : 'text-gray-600'">
-                選擇輸入座標的方式
-              </p>
-            </div>
-          </div>
-          
-          <!-- 關閉按鈕 -->
+          <h3 class="text-lg font-semibold transition-colors duration-300"
+              :class="isDarkMode ? 'text-white' : 'text-gray-900'">
+            新增災點紀錄
+          </h3>
           <button
             @click="handleClose"
-            class="p-2 rounded-lg transition-all duration-300"
+            class="p-1.5 rounded-lg transition-all duration-300"
             :class="isDarkMode ? 'text-gray-400 hover:text-white hover:bg-slate-700' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'"
           >
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
             </svg>
           </button>

@@ -10,7 +10,7 @@
       
       <!-- 模態框內容 -->
       <div 
-        class="relative w-full max-w-md rounded-2xl shadow-2xl transition-all duration-300 transform"
+        class="relative w-full max-w-md rounded border transition-all duration-300 transform"
         :class="isDarkMode ? 'bg-slate-800' : 'bg-white'"
       >
         <!-- 標題列 -->

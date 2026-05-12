@@ -1,4 +1,12 @@
-// 移除不必要的 COG 服務導入
+import proj4 from 'proj4'
+import { logger } from '@/utils/logger.js'
+
+const log = logger.scoped('BaseMapService')
+
+proj4.defs('EPSG:3826', '+proj=tmerc +lat_0=0 +lon_0=121 +k=0.9999 +x_0=250000 +y_0=0 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs')
+proj4.defs('EPSG:4326', '+proj=longlat +datum=WGS84 +no_defs')
+
+const TRANSPARENT_TILE = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=='
 
 /**
  * 底圖管理服務
@@ -43,14 +51,15 @@ export class BaseMapService {
    * @param {Object} baseMap - 底圖資訊
    * @returns {L.TileLayer} TiTiler 瓦片圖層
    */
-  createTiTilerLayer(imageUrl, baseMap) {
+  createTiTilerLayer(imageUrl, baseMap, boundsArray = null) {
     if (!this.map) {
       throw new Error('地圖未準備好')
     }
 
     // 構建 TiTiler 瓦片 URL (使用 WebMercatorQuad 瓦片矩陣集)
-    const titilerUrl = `http://localhost:8000/cog/tiles/WebMercatorQuad/{z}/{x}/{y}?url=${encodeURIComponent(imageUrl)}`
-    
+    const titilerBase = import.meta.env.VITE_TITILER_URL
+    const titilerUrl = `${titilerBase}/cog/tiles/WebMercatorQuad/{z}/{x}/{y}?url=${encodeURIComponent(imageUrl)}`
+    const layerBounds = boundsArray ? L.latLngBounds(boundsArray) : null
     
     // 創建自定義瓦片圖層，實現全瓦片載入
     const layer = L.tileLayer(titilerUrl, {
@@ -59,41 +68,32 @@ export class BaseMapService {
       maxZoom: 22,
       opacity: 0.8,
       // 使用完全透明的錯誤瓦片
-      errorTileUrl: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
+      errorTileUrl: TRANSPARENT_TILE,
       // 添加 CSS 類來處理藍色瓦片
       className: 'cog-tile-layer',
-      // 添加超時設置
-      timeout: 10000,
-      // 添加重試設置
-      retry: 3,
       // 設置跨域屬性
       crossOrigin: true,
-      // 關鍵配置：讓瓦片圖層載入所有瓦片
-      keepBuffer: 20, // 增加緩衝區，預載入更多瓦片
-      updateWhenZooming: true, // 縮放時更新瓦片
-      updateWhenIdle: true, // 空閒時更新瓦片
+      keepBuffer: 1,
+      updateWhenZooming: false,
+      updateWhenIdle: true,
       // 設置瓦片大小
       tileSize: 256,
-      // 禁用瓦片邊界檢查
-      bounds: null
-    })
-
-    // 添加地圖事件監聽，確保瓦片持續載入
-    layer.on('add', () => {
-      
-      // 監聽地圖移動和縮放事件，確保瓦片持續載入
-      this.map.on('moveend', () => {
-        layer.redraw()
-      })
-      
-      this.map.on('zoomend', () => {
-        layer.redraw()
-      })
+      bounds: layerBounds,
+      noWrap: true
     })
     
-    // 重寫瓦片載入邏輯，確保載入所有瓦片
+    // 重寫瓦片載入邏輯，避免對 COG 範圍外的 tile 發出請求
     const originalCreateTile = layer.createTile
     layer.createTile = function(coords, done) {
+      if (layerBounds && !BaseMapService.tileIntersectsBounds(coords, layerBounds)) {
+        const emptyTile = document.createElement('img')
+        emptyTile.alt = ''
+        emptyTile.setAttribute('role', 'presentation')
+        emptyTile.src = TRANSPARENT_TILE
+        if (done) setTimeout(() => done(null, emptyTile), 0)
+        return emptyTile
+      }
+
       const tile = originalCreateTile.call(this, coords, done)
       
       // 為瓦片添加載入完成事件
@@ -105,7 +105,10 @@ export class BaseMapService {
 
     // 添加錯誤處理
     layer.on('tileerror', (error) => {
-      console.warn('TiTiler 瓦片載入錯誤:', error)
+      if (error?.tile) {
+        error.tile.src = TRANSPARENT_TILE
+        error.tile.style.opacity = '0'
+      }
     })
 
     layer.on('tileload', () => {
@@ -194,12 +197,53 @@ export class BaseMapService {
           }
         } catch (error) {
           // 跨域錯誤，無法檢測瓦片顏色，跳過
-          console.debug('無法檢測瓦片顏色（跨域限制）:', error.message)
+          log.debug('無法檢測瓦片顏色（跨域限制）:', error.message)
         }
       }
     })
 
     return layer
+  }
+
+  static tileIntersectsBounds(coords, bounds) {
+    const n = 2 ** coords.z
+    const west = coords.x / n * 360 - 180
+    const east = (coords.x + 1) / n * 360 - 180
+    const north = Math.atan(Math.sinh(Math.PI * (1 - 2 * coords.y / n))) * 180 / Math.PI
+    const south = Math.atan(Math.sinh(Math.PI * (1 - 2 * (coords.y + 1) / n))) * 180 / Math.PI
+    const tileBounds = L.latLngBounds([south, west], [north, east])
+
+    return tileBounds.intersects(bounds)
+  }
+
+  parseTiTilerBounds(result) {
+    if (result?.success && result.bounds) {
+      return [
+        [result.bounds.minLat, result.bounds.minLon],
+        [result.bounds.maxLat, result.bounds.maxLon]
+      ]
+    }
+
+    if (Array.isArray(result?.bounds) && result.bounds.length === 4) {
+      const [minX, minY, maxX, maxY] = result.bounds
+      const crs = String(result.crs || '')
+
+      if (crs.includes('3826')) {
+        const [minLon, minLat] = proj4('EPSG:3826', 'EPSG:4326', [minX, minY])
+        const [maxLon, maxLat] = proj4('EPSG:3826', 'EPSG:4326', [maxX, maxY])
+        return [
+          [Math.min(minLat, maxLat), Math.min(minLon, maxLon)],
+          [Math.max(minLat, maxLat), Math.max(minLon, maxLon)]
+        ]
+      }
+
+      return [
+        [minY, minX],
+        [maxY, maxX]
+      ]
+    }
+
+    return null
   }
 
   // 移除 loadCOGBaseMap 方法，因為已經有 createTiTilerLayer 處理 COG
@@ -223,23 +267,25 @@ export class BaseMapService {
    * @returns {Promise<Object>} GeoRasterLayer 實例
    */
   async loadGeoTIFF(imageUrl, baseMap) {
-    if (this.isCOGFile(baseMap.storagePath || baseMap.originalName)) {
-      
-      // 檢查 TiTiler 服務器是否可用
-      const healthCheck = await fetch('http://localhost:8000/health', { 
-        method: 'GET',
-        timeout: 5000 
-      }).catch(() => null)
-      
-      if (!healthCheck || !healthCheck.ok) {
-        throw new Error('TiTiler 服務器不可用，請確保服務器正在運行')
+    // 只有明確設定 VITE_TITILER_URL 才嘗試 TiTiler，避免無謂的 ERR_CONNECTION_REFUSED
+    const titilerBase = import.meta.env.VITE_TITILER_URL
+    if (titilerBase && this.isCOGFile(baseMap.storagePath || baseMap.originalName)) {
+      try {
+        const boundsResponse = await fetch(`${titilerBase}/cog/bounds?url=${encodeURIComponent(imageUrl)}`, {
+          signal: AbortSignal.timeout(5000)
+        })
+        const boundsResult = await boundsResponse.json()
+        const bounds = this.parseTiTilerBounds(boundsResult)
+
+        if (boundsResponse.ok && bounds) {
+          return this.createTiTilerLayer(imageUrl, baseMap, bounds)
+        }
+      } catch (error) {
+        log.warn('TiTiler COG bounds 檢查失敗，改用 GeoRaster:', error)
       }
-      
-      const layer = this.createTiTilerLayer(imageUrl, baseMap)
-      return layer
     }
 
-    // 對於非 COG 文件，直接載入（不再使用暫存）
+    // TiTiler 未設定或不可用 → georaster 直接讀取（COG 也是合法 GeoTIFF）
     return this._loadGeoTIFFInternal(imageUrl, baseMap)
   }
 
@@ -261,12 +307,12 @@ export class BaseMapService {
       // 解析 GeoTIFF（可能會出現一些警告，但不影響最終結果）
       
       // 暫時抑制 console.error 來避免顯示 georaster 的內部警告
-      const originalConsoleError = console.error
-      console.error = (...args) => {
+      const originalConsoleError = globalThis.console.error
+      globalThis.console.error = (...args) => {
         // 過濾掉 georaster 的 EOI_CODE 警告
         const message = args.join(' ')
         if (!message.includes('EOI_CODE') && !message.includes('ran off the end of the buffer')) {
-          originalConsoleError.apply(console, args)
+          originalConsoleError.apply(globalThis.console, args)
         }
       }
       
@@ -275,7 +321,7 @@ export class BaseMapService {
         georaster = await parseGeoraster(arrayBuffer)
       } finally {
         // 恢復原始的 console.error
-        console.error = originalConsoleError
+        globalThis.console.error = originalConsoleError
       }
       
       
@@ -308,7 +354,7 @@ export class BaseMapService {
       return layer
       
     } catch (error) {
-      console.error(`載入 GeoTIFF 失敗: ${baseMap.name}`, error)
+      log.error(`載入 GeoTIFF 失敗: ${baseMap.name}`, error)
       throw error
     }
   }
@@ -348,32 +394,32 @@ export class BaseMapService {
    */
   async calculateTifBounds(filename, imageUrl = null) {
     try {
-      // 如果有 imageUrl，嘗試從 TiTiler 服務器獲取邊界
-      if (imageUrl) {
+      // 如果有 imageUrl 且明確設定了 TiTiler，嘗試從 TiTiler 獲取邊界
+      const titilerBase = import.meta.env.VITE_TITILER_URL
+      if (imageUrl && titilerBase) {
         try {
-          const response = await fetch(`http://localhost:8000/cog/bounds?url=${encodeURIComponent(imageUrl)}`)
+          const response = await fetch(`${titilerBase}/cog/bounds?url=${encodeURIComponent(imageUrl)}`, {
+            signal: AbortSignal.timeout(3000)
+          })
           const result = await response.json()
-          
-          if (result.success && result.bounds) {
-            const bounds = [
-              [result.bounds.minLat, result.bounds.minLon], // 西南角
-              [result.bounds.maxLat, result.bounds.maxLon]  // 東北角
-            ]
+
+          const bounds = this.parseTiTilerBounds(result)
+          if (bounds) {
             return bounds
           }
         } catch (error) {
-          console.warn('無法從 TiTiler 獲取邊界:', error)
+          log.warn('無法從 TiTiler 獲取邊界:', error)
         }
       }
       
     // 如果 API 和文件名解析都失敗，返回一個合理的預設邊界
-    console.warn('無法獲取 COG 文件邊界，使用預設邊界')
+    log.warn('無法獲取 COG 文件邊界，使用預設邊界')
     return [
       [24.67, 121.40], // 西南角 [lat, lng] - 台灣中部山區
       [24.68, 121.41]  // 東北角 [lat, lng] - 台灣中部山區
     ]
   } catch (error) {
-    console.warn('無法獲取 COG 文件邊界:', error)
+    log.warn('無法獲取 COG 文件邊界:', error)
     // 返回預設邊界而不是拋出錯誤
     return [
       [24.67, 121.40], // 西南角 [lat, lng] - 台灣中部山區
@@ -404,7 +450,7 @@ export class BaseMapService {
         }, 100)
       }
     } catch (error) {
-      console.error('調整地圖視圖時發生錯誤:', error)
+      log.error('調整地圖視圖時發生錯誤:', error)
     }
   }
 
@@ -437,8 +483,12 @@ export class BaseMapService {
       const staticBase = import.meta.env.VITE_STATIC_URL || 'http://localhost:3001'
       const baseMapUrl = `${staticBase}/${baseMap.storagePath.replace(/^\//, '')}`
       
-      // 根據檔案類型創建不同的圖層
-      if (baseMap.fileType === 'orthophoto' || baseMap.originalName?.toLowerCase().endsWith('.tif')) {
+      // 根據檔案類型判斷是否為 TIF（raster / orthophoto，或副檔名為 .tif/.tiff）
+      const nameLower = (baseMap.storagePath || baseMap.originalName || '').toLowerCase()
+      const isTif = ['raster', 'orthophoto'].includes(baseMap.fileType) ||
+                    nameLower.endsWith('.tif') || nameLower.endsWith('.tiff')
+
+      if (isTif) {
         await this.createTifBaseMapLayer(baseMapUrl, baseMap, onLoadingStart, onLoadingEnd)
       } else {
         this.createTileBaseMapLayer(baseMapUrl, baseMap)
@@ -448,7 +498,7 @@ export class BaseMapService {
       this.isCustomBaseMapActive = true
       
     } catch (error) {
-      console.error('切換自定義底圖失敗:', error)
+      log.error('切換自定義底圖失敗:', error)
       if (onLoadingEnd) onLoadingEnd()
       this.switchToDefaultBaseMap()
       throw error
@@ -517,7 +567,7 @@ export class BaseMapService {
       }
       
     } catch (error) {
-      console.error('創建 TIF 底圖圖層失敗:', error)
+      log.error('創建 TIF 底圖圖層失敗:', error)
       
       // 備用方案：使用計算的邊界創建簡單的圖片覆蓋層
       try {
@@ -550,7 +600,7 @@ export class BaseMapService {
         }
         
       } catch (fallbackError) {
-        console.error('備用方案也失敗:', fallbackError)
+        log.error('備用方案也失敗:', fallbackError)
         if (onLoadingEnd) {
           onLoadingEnd()
         }
@@ -606,7 +656,7 @@ export class BaseMapService {
       this.isCustomBaseMapActive = false
       
     } catch (error) {
-      console.warn('切換到預設底圖時發生錯誤:', error)
+      log.warn('切換到預設底圖時發生錯誤:', error)
       this.customBaseMapLayer = null
       this.isCustomBaseMapActive = false
     }
@@ -627,7 +677,7 @@ export class BaseMapService {
       this.isCustomBaseMapActive = false
       this.map = null
     } catch (error) {
-      console.warn('BaseMapService 清理時發生錯誤:', error)
+      log.warn('BaseMapService 清理時發生錯誤:', error)
     }
   }
 }

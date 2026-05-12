@@ -1,40 +1,35 @@
 <template>
   <div v-if="show" class="fixed inset-0 z-[1200] bg-black bg-opacity-60 backdrop-blur-sm flex items-center justify-center p-4">
-    <div class="w-[900px] max-w-[95vw] h-[85vh] max-h-[700px] mx-auto rounded-2xl shadow-2xl transition-all duration-300 flex flex-col transform"
-         :class="[
-           isDarkMode 
-             ? 'bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700' 
-             : 'bg-gradient-to-br from-white to-gray-50 border border-gray-200',
-           'animate-in fade-in-0 zoom-in-95 duration-300'
-         ]">
-      
+    <div class="w-[900px] max-w-[95vw] h-[85vh] max-h-[700px] mx-auto rounded border flex flex-col"
+         :class="isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'">
+
       <!-- 模態框標題 -->
-      <div class="flex items-center justify-between p-6 border-b transition-colors duration-300"
-           :class="isDarkMode ? 'border-slate-700 bg-slate-800/50' : 'border-gray-200 bg-white/50'">
-        <div class="flex items-center space-x-3">
-          <div class="flex items-center justify-center w-10 h-10 rounded-xl transition-colors duration-300"
-               :class="isDarkMode ? 'bg-blue-600/20 text-blue-400' : 'bg-blue-100 text-blue-600'">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div class="flex items-center justify-between px-5 py-3 border-b transition-colors duration-300"
+           :class="isDarkMode ? 'border-slate-700' : 'border-gray-200'">
+        <div class="flex items-center space-x-2.5">
+          <div class="flex items-center justify-center w-7 h-7 rounded transition-colors duration-300"
+               :class="isDarkMode ? 'bg-slate-700 text-slate-300' : 'bg-surface-100 text-gray-600'">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path>
             </svg>
           </div>
           <div>
-            <h3 class="text-xl font-bold transition-colors duration-300"
+            <h3 class="text-sm font-semibold transition-colors duration-300"
                 :class="isDarkMode ? 'text-white' : 'text-gray-900'">
               關聯資料管理
             </h3>
-            <p class="text-sm transition-colors duration-300 mt-1"
-               :class="isDarkMode ? 'text-gray-400' : 'text-gray-600'">
+            <p class="text-xs transition-colors duration-300"
+               :class="isDarkMode ? 'text-slate-400' : 'text-gray-500'">
               {{ associateTargetData?.file_name || '未命名圖層' }}
             </p>
           </div>
         </div>
-        <button @click="closeModal" 
-                class="flex items-center justify-center w-10 h-10 rounded-xl transition-all duration-300 hover:scale-105"
-                :class="isDarkMode 
-                  ? 'text-gray-400 hover:text-white hover:bg-slate-700' 
-                  : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <button @click="closeModal"
+                class="flex items-center justify-center w-7 h-7 rounded border transition-colors duration-150"
+                :class="isDarkMode
+                  ? 'border-slate-600 text-slate-400 hover:text-slate-200 hover:bg-slate-700'
+                  : 'border-gray-200 text-gray-500 hover:text-gray-700 hover:bg-gray-100'">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
           </svg>
         </button>
@@ -44,17 +39,11 @@
       <div class="flex-1 overflow-y-auto p-6">
         <!-- Feature 上傳器列表 -->
         <div class="space-y-6">
-          <div v-for="feature in availableFeatures" :key="feature.id" 
-               class="rounded-2xl border transition-all duration-300 hover:shadow-lg"
-               :class="[
-                 isDarkMode 
-                   ? (featureUploads[feature.id] && featureUploads[feature.id].length > 0 
-                      ? 'bg-gradient-to-br from-slate-700 to-slate-800 border-slate-600 shadow-slate-900/20' 
-                      : 'bg-gradient-to-br from-slate-800 to-slate-900 border-slate-700')
-                   : (featureUploads[feature.id] && featureUploads[feature.id].length > 0 
-                      ? 'bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200 shadow-blue-100/50' 
-                      : 'bg-gradient-to-br from-gray-50 to-gray-100 border-gray-200')
-               ]">
+          <div v-for="feature in availableFeatures" :key="feature.id"
+               class="rounded border transition-colors duration-150"
+               :class="isDarkMode
+                 ? (featureUploads[feature.id]?.length > 0 ? 'bg-slate-750 border-slate-600' : 'bg-slate-800 border-slate-700')
+                 : (featureUploads[feature.id]?.length > 0 ? 'bg-brand-light/30 border-brand-200' : 'bg-surface-50 border-gray-200')">
             
             <!-- Feature 標題（可點擊展開/收縮） -->
             <button @click="toggleFeatureExpanded(feature.id)" 
@@ -113,7 +102,7 @@
                     v-model="featureUploadForms[feature.id].name"
                     type="text"
                     required
-                    class="w-full px-4 py-3 text-sm border rounded-xl transition-all duration-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    class="w-full px-4 py-3 text-sm border rounded border transition-colors duration-150 focus:border-brand"
                     :class="isDarkMode 
                       ? 'bg-slate-700 border-slate-600 text-white placeholder-gray-400 focus:bg-slate-600' 
                       : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500 focus:bg-gray-50'"
@@ -130,7 +119,7 @@
                   <textarea
                     v-model="featureUploadForms[feature.id].description"
                     rows="3"
-                    class="w-full px-4 py-3 text-sm border rounded-xl transition-all duration-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                    class="w-full px-4 py-3 text-sm border rounded border transition-colors duration-150 focus:border-brand resize-none"
                     :class="isDarkMode 
                       ? 'bg-slate-700 border-slate-600 text-white placeholder-gray-400 focus:bg-slate-600' 
                       : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500 focus:bg-gray-50'"
@@ -150,7 +139,7 @@
                       type="file"
                       @change="handleFeatureFileSelect(feature.id, $event)"
                       accept=".jpg,.jpeg,.png,.gif,.webp,.tiff,.pdf,.txt"
-                      class="w-full px-4 py-3 text-sm border rounded-xl transition-all duration-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium"
+                      class="w-full px-4 py-3 text-sm border rounded border transition-colors duration-150 focus:border-brand file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium"
                       :class="isDarkMode 
                         ? 'bg-slate-700 border-slate-600 text-white file:bg-slate-600 file:text-white' 
                         : 'bg-white border-gray-300 text-gray-900 file:bg-gray-100 file:text-gray-700'"
@@ -179,7 +168,7 @@
                   <button
                     type="submit"
                     :disabled="!featureUploadForms[feature.id].name || !featureUploadForms[feature.id].file"
-                    class="px-6 py-3 text-sm font-semibold text-white bg-gradient-to-r from-blue-600 to-blue-700 rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl transform hover:scale-105 disabled:hover:scale-100 flex items-center justify-center space-x-2"
+                    class="px-4 py-2 text-xs font-medium text-white bg-brand border border-brand rounded transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-brand-700 flex items-center justify-center space-x-1.5"
                   >
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
@@ -210,10 +199,10 @@
                 </div>
                 <div class="space-y-4">
                   <div v-for="upload in featureUploads[feature.id]" :key="upload.upload_id" 
-                       class="rounded-xl border transition-all duration-300 overflow-hidden hover:shadow-lg"
+                       class="rounded border overflow-hidden transition-colors duration-150"
                        :class="isDarkMode 
-                         ? 'bg-gradient-to-br from-slate-700 to-slate-800 border-slate-600 hover:border-slate-500' 
-                         : 'bg-gradient-to-br from-white to-gray-50 border-gray-200 hover:border-gray-300'">
+                         ? 'bg-slate-800 border-slate-600 hover:border-slate-500' 
+                         : 'bg-white border-gray-200 hover:border-gray-300'">
                     
                     <!-- 檔案標題和操作按鈕 -->
                     <div class="flex items-center justify-between p-4 border-b transition-colors duration-300"
@@ -245,11 +234,11 @@
                           <span>{{ formatFileSize(upload.file_size) }}</span>
                         </div>
                       </div>
-                      <button @click="deleteFeatureUpload(upload.upload_id, feature.id)" 
-                              class="p-2 rounded-lg transition-all duration-300 hover:scale-105 ml-3"
-                              :class="isDarkMode 
-                                ? 'text-gray-400 hover:text-red-400 hover:bg-red-900/20' 
-                                : 'text-gray-500 hover:text-red-600 hover:bg-red-50'"
+                      <button @click="deleteFeatureUpload(upload.upload_id, feature.id)"
+                              class="p-1.5 rounded transition-colors duration-150 ml-3"
+                              :class="isDarkMode
+                                ? 'text-slate-500 hover:text-red-400 hover:bg-slate-700'
+                                : 'text-gray-400 hover:text-red-600 hover:bg-red-50'"
                               title="刪除檔案">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
@@ -265,13 +254,14 @@
                           <img 
                             :src="getFileUrl(upload.storage_path)" 
                             :alt="upload.upload_name || '上傳圖片'"
-                            class="max-w-full max-h-64 rounded-xl shadow-lg object-contain transition-transform duration-300 group-hover:scale-105"
+                            class="max-w-full max-h-64 rounded object-contain"
                             @error="handleImageError"
                             loading="lazy"
                           />
-                          <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 rounded-xl transition-all duration-300 flex items-center justify-center">
-                            <button @click="downloadFile(upload)" 
-                                    class="opacity-0 group-hover:opacity-100 px-3 py-1 text-xs bg-white text-gray-900 rounded-lg hover:bg-gray-100 transition-all duration-300 transform translate-y-2 group-hover:translate-y-0">
+                          <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 rounded transition-colors duration-150 flex items-center justify-center">
+                            <button @click="downloadFile(upload)"
+                                    class="opacity-0 group-hover:opacity-100 px-3 py-1 text-xs rounded border transition-colors duration-150"
+                                    :class="isDarkMode ? 'bg-slate-700 text-slate-200 border-slate-500 hover:bg-slate-600' : 'bg-white text-gray-900 border-gray-200 hover:bg-gray-50'">
                               下載
                             </button>
                           </div>
@@ -281,8 +271,8 @@
                       <!-- 其他檔案類型顯示 -->
                       <div v-else class="flex items-center justify-center p-8">
                         <div class="text-center">
-                          <div class="w-20 h-20 mx-auto mb-4 flex items-center justify-center rounded-2xl transition-colors duration-300 group"
-                               :class="isDarkMode ? 'bg-gradient-to-br from-slate-600 to-slate-700' : 'bg-gradient-to-br from-gray-100 to-gray-200'">
+                          <div class="w-16 h-16 mx-auto mb-4 flex items-center justify-center rounded transition-colors duration-150"
+                               :class="isDarkMode ? 'bg-slate-700' : 'bg-gray-100'">
                             <svg class="w-10 h-10 transition-colors duration-300"
                                  :class="isDarkMode ? 'text-gray-300' : 'text-gray-600'"
                                  fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -299,7 +289,7 @@
                             {{ upload.file_extension ? upload.file_extension.toUpperCase() : 'UNKNOWN' }} 檔案
                           </p>
                           <button @click="downloadFile(upload)" 
-                                  class="px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-blue-600 to-blue-700 rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all duration-300 shadow-md hover:shadow-lg transform hover:scale-105 flex items-center justify-center space-x-2 mx-auto">
+                                  class="px-3 py-1.5 text-xs font-medium text-white bg-brand border border-brand rounded transition-colors duration-150 hover:bg-brand-700 flex items-center justify-center space-x-1.5 mx-auto">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                             </svg>

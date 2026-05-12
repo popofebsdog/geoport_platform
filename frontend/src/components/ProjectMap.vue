@@ -54,7 +54,7 @@
              @click="closeInfoCard"></div>
         
         <!-- 資訊卡片 -->
-        <div class="relative w-full max-w-md rounded-2xl shadow-2xl transition-all duration-300 transform"
+        <div class="relative w-full max-w-md rounded border transition-all duration-300 transform"
              :class="isDarkMode ? 'bg-slate-800' : 'bg-white'">
           <!-- 標題列 -->
           <div class="flex items-center justify-between p-6 border-b"
@@ -530,20 +530,36 @@ export default {
     },
 
     updateMapStyle() {
-      if (this.map) {
-        // 清除現有圖層
-        this.map.eachLayer(layer => {
-          if (layer instanceof L.TileLayer) {
-            this.map.removeLayer(layer)
-          }
+      if (!this.map) return;
+
+      const tileUrl = this.isDarkMode
+        ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+        : 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
+      const attribution = this.isDarkMode
+        ? '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+        : '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+
+      // 收集舊 tile layers
+      const oldLayers = []
+      this.map.eachLayer(layer => {
+        if (layer instanceof L.TileLayer) oldLayers.push(layer)
+      })
+
+      // 新增新 layer（疊在舊 layer 上方）
+      const newLayer = L.tileLayer(tileUrl, { attribution, maxZoom: 18 }).addTo(this.map)
+
+      const removeOld = () => {
+        oldLayers.forEach(layer => {
+          if (this.map?.hasLayer(layer)) this.map.removeLayer(layer)
         })
-        
-        // 添加新的圖層
-        this.addTileLayer()
-        
-        // 更新控件樣式
-        this.updateControlStyles()
       }
+
+      // 新 tiles 載入完成後才移除舊 layer，不會閃白
+      newLayer.once('load', removeOld)
+      // 保底：2 秒後強制清除（避免網路慢時殘留）
+      setTimeout(removeOld, 2000)
+
+      this.updateControlStyles()
     },
 
     updateControlStyles() {

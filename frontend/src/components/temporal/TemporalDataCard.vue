@@ -1,6 +1,6 @@
 <template>
   <div
-    class="p-3 rounded-2xl border transition-all duration-300 hover:scale-[1.02] shadow-sm hover:shadow-lg backdrop-blur-sm cursor-move"
+    class="p-3 rounded border transition-all duration-300 transition-colors duration-150 cursor-move"
     :class="[
       isDarkMode ? 'bg-slate-700/80 border-slate-600/50 hover:bg-slate-600/80 hover:border-slate-500' : 'bg-white/90 border-gray-200/60 hover:bg-white hover:border-gray-300',
       isActive ? (isDarkMode ? 'ring-2 ring-blue-400/60 shadow-blue-400/20' : 'ring-2 ring-blue-500/60 shadow-blue-500/20') : ''
@@ -52,7 +52,8 @@
             :checked="isVisible"
             @change="toggleVisibility"
           >
-          <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+          <div class="w-11 h-6 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-400/40 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600 transition-colors duration-200"
+               :class="isDarkMode ? 'bg-slate-600 after:border-slate-500' : 'bg-gray-200 after:border-gray-300'"></div>
         </label>
         
         <!-- 操作按鈕 -->

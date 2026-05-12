@@ -2,26 +2,26 @@
   <div class="h-full flex flex-col transition-colors duration-300" :class="isDarkMode ? 'bg-slate-900' : 'bg-gray-50'">
     
     <!-- 標題欄 -->
-    <div class="px-6 py-4 border-b transition-colors duration-300"
+    <div class="px-6 py-3 border-b transition-colors duration-300"
          :class="isDarkMode ? 'border-slate-700 bg-slate-800' : 'border-gray-200 bg-white'">
       <div class="flex items-center justify-between">
-        <div class="flex items-center space-x-4">
-          <h1 class="text-2xl font-bold transition-colors duration-300"
+        <div class="flex items-center space-x-3">
+          <h1 class="text-base font-semibold transition-colors duration-300"
               :class="isDarkMode ? 'text-white' : 'text-gray-900'">
-            📊 災情資料搜集
+            災情資料搜集
           </h1>
-          <span class="text-sm transition-colors duration-300"
-                :class="isDarkMode ? 'text-gray-400' : 'text-gray-600'">
+          <span class="text-[11px] font-semibold uppercase tracking-widest transition-colors duration-300"
+                :class="isDarkMode ? 'text-slate-500' : 'text-gray-400'">
             Data Collection
           </span>
         </div>
         
-        <div class="flex items-center space-x-3 h-10">
-          <!-- 新增按鈕 - 根據當前模式顯示不同按鈕 -->
+        <div class="flex items-center space-x-3 h-9">
+          <!-- 新增按鈕 -->
           <button v-if="!showTrash && !showReports" @click="showCreateParentModal = true"
-                  class="flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors duration-300 shadow-sm">
-            <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M10 4H4c-1.11 0-2 .89-2 2v12c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2h-8l-2-2z"/>
+                  class="flex items-center px-3 py-1.5 text-xs font-medium bg-brand hover:bg-brand-700 text-white rounded transition-colors duration-150 border border-brand">
+            <svg class="w-3.5 h-3.5 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
             </svg>
             新增地點
           </button>
@@ -32,106 +32,102 @@
     <!-- 主要內容區域 -->
     <div class="flex-1 flex overflow-hidden">
       <!-- 左側邊欄 -->
-      <div class="w-64 border-r transition-colors duration-300"
+      <div class="w-56 border-r transition-colors duration-300 flex-shrink-0"
            :class="isDarkMode ? 'border-slate-700 bg-slate-800' : 'border-gray-200 bg-white'">
-        <div class="p-4">
-          <h3 class="text-sm font-medium mb-4 transition-colors duration-300"
-              :class="isDarkMode ? 'text-gray-300' : 'text-gray-700'">GeoPort專案</h3>
-          
+        <div class="p-3 pt-4">
           <!-- 專案分類 -->
-          <div class="space-y-2">
-            <button @click="showProjectList" class="w-full flex items-center px-3 py-2 text-sm rounded-lg transition-colors duration-300"
-                    :class="isDarkMode ? 
-                      (!showReports && !showTrash && !showBookmarkedOnly && !showBookmarkedReportsOnly ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700') : 
-                      (!showReports && !showTrash && !showBookmarkedOnly && !showBookmarkedReportsOnly ? 'bg-gray-200 text-gray-900' : 'text-gray-700 hover:bg-gray-100')">
-              <svg class="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <p class="section-label mb-2 px-2"
+             :class="isDarkMode ? 'text-slate-500' : 'text-gray-400'">專案</p>
+          <div class="space-y-0.5">
+            <button @click="showProjectList"
+                    class="dc-nav-item w-full"
+                    :class="[isDarkMode ? 'dc-nav-dark' : 'dc-nav-light',
+                             !showReports && !showTrash && !showBookmarkedOnly && !showBookmarkedReportsOnly ? 'dc-nav-active' : '']">
+              <svg class="w-3.5 h-3.5 mr-2.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z"></path>
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5a2 2 0 012-2h4a2 2 0 012 2v2H8V5z"></path>
               </svg>
-              專案清單
-              <span v-if="parentProjects.length > 0" 
-                    class="ml-auto px-2 py-1 text-xs rounded-full transition-colors duration-300"
-                    :class="isDarkMode ? 'bg-blue-900 text-blue-300' : 'bg-blue-100 text-blue-600'">
+              <span class="flex-1 text-left">專案清單</span>
+              <span v-if="parentProjects.length > 0"
+                    class="text-xs tabular-nums transition-colors duration-300"
+                    :class="isDarkMode ? 'text-slate-400' : 'text-gray-400'">
                 {{ parentProjects.length }}
               </span>
             </button>
-            <button @click="showBookmarkedProjects" class="w-full flex items-center px-3 py-2 text-sm rounded-lg transition-colors duration-300"
-                    :class="isDarkMode ? 
-                      (showBookmarkedOnly ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700') : 
-                      (showBookmarkedOnly ? 'bg-gray-200 text-gray-900' : 'text-gray-700 hover:bg-gray-100')">
-              <svg class="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <button @click="showBookmarkedProjects"
+                    class="dc-nav-item w-full"
+                    :class="[isDarkMode ? 'dc-nav-dark' : 'dc-nav-light',
+                             showBookmarkedOnly ? 'dc-nav-active' : '']">
+              <svg class="w-3.5 h-3.5 mr-2.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"></path>
               </svg>
-              已標記專案
-              <span v-if="bookmarkedProjectsCount > 0" 
-                    class="ml-auto px-2 py-1 text-xs rounded-full transition-colors duration-300"
-                    :class="isDarkMode ? 'bg-yellow-900 text-yellow-300' : 'bg-yellow-100 text-yellow-600'">
+              <span class="flex-1 text-left">已標記</span>
+              <span v-if="bookmarkedProjectsCount > 0"
+                    class="text-xs tabular-nums transition-colors duration-300"
+                    :class="isDarkMode ? 'text-slate-400' : 'text-gray-400'">
                 {{ bookmarkedProjectsCount }}
               </span>
             </button>
           </div>
-          
+
           <!-- 分隔線 -->
-          <div class="my-4 h-px transition-colors duration-300"
-               :class="isDarkMode ? 'bg-slate-700' : 'bg-gray-200'"></div>
-          
-          <!-- GeoPort報告分類 -->
-          <h3 class="text-sm font-medium mb-4 transition-colors duration-300"
-              :class="isDarkMode ? 'text-gray-300' : 'text-gray-700'">GeoPort報告</h3>
-          
-          <div class="space-y-2">
+          <div class="my-3 h-px transition-colors duration-300"
+               :class="isDarkMode ? 'bg-slate-700' : 'bg-gray-100'"></div>
+
+          <!-- GeoPort報告 -->
+          <p class="section-label mb-2 px-2"
+             :class="isDarkMode ? 'text-slate-500' : 'text-gray-400'">報告</p>
+          <div class="space-y-0.5">
             <button @click="toggleReports"
-                    class="w-full flex items-center px-3 py-2 text-sm rounded-lg transition-colors duration-300"
-                    :class="isDarkMode ? 
-                      (showReports ? 'bg-slate-700 text-white' : 'text-gray-300 hover:bg-slate-700') : 
-                      (showReports ? 'bg-gray-200 text-gray-900' : 'text-gray-700 hover:bg-gray-100')">
-              <svg class="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    class="dc-nav-item w-full"
+                    :class="[isDarkMode ? 'dc-nav-dark' : 'dc-nav-light',
+                             showReports ? 'dc-nav-active' : '']">
+              <svg class="w-3.5 h-3.5 mr-2.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
               </svg>
-              GeoPort 報告
+              <span class="flex-1 text-left">GeoPort 報告</span>
             </button>
           </div>
-          
+
           <!-- 分隔線 -->
-          <div class="my-4 h-px transition-colors duration-300"
-               :class="isDarkMode ? 'bg-slate-700' : 'bg-gray-200'"></div>
-          
-          <!-- 垃圾桶分類 -->
-          <h3 class="text-sm font-medium mb-4 transition-colors duration-300"
-              :class="isDarkMode ? 'text-gray-300' : 'text-gray-700'">垃圾桶</h3>
-          
-          <div class="space-y-2">
+          <div class="my-3 h-px transition-colors duration-300"
+               :class="isDarkMode ? 'bg-slate-700' : 'bg-gray-100'"></div>
+
+          <!-- 垃圾桶 -->
+          <p class="section-label mb-2 px-2"
+             :class="isDarkMode ? 'text-slate-500' : 'text-gray-400'">垃圾桶</p>
+          <div class="space-y-0.5">
             <button @click="toggleTrashContent('projects')"
-                    class="w-full flex items-center px-3 py-2 text-sm rounded-lg transition-colors duration-300"
-                      :class="(showTrash && showTrashContent === 'projects') ? 
-                      (isDarkMode ? 'bg-slate-700 text-white' : 'bg-gray-200 text-gray-900') :
-                      (isDarkMode ? 'text-gray-300 hover:bg-slate-700' : 'text-gray-700 hover:bg-gray-100')">
-                <svg class="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                </svg>
-              已刪除專案
-                <span v-if="trashProjects.length > 0" 
-                      class="ml-auto px-2 py-1 text-xs rounded-full transition-colors duration-300"
-                      :class="isDarkMode ? 'bg-red-900 text-red-300' : 'bg-red-100 text-red-600'">
-                  {{ trashProjects.length }}
-                </span>
-              </button>
+                    class="dc-nav-item w-full"
+                    :class="[(showTrash && showTrashContent === 'projects') ?
+                             (isDarkMode ? 'dc-nav-dark dc-nav-active' : 'dc-nav-light dc-nav-active') :
+                             (isDarkMode ? 'dc-nav-dark' : 'dc-nav-light')]">
+              <svg class="w-3.5 h-3.5 mr-2.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+              </svg>
+              <span class="flex-1 text-left">已刪除專案</span>
+              <span v-if="trashProjects.length > 0"
+                    class="text-xs tabular-nums"
+                    :class="isDarkMode ? 'text-slate-500' : 'text-gray-400'">
+                {{ trashProjects.length }}
+              </span>
+            </button>
             <button @click="toggleTrashContent('data')"
-                      class="w-full flex items-center px-3 py-2 text-sm rounded-lg transition-colors duration-300"
-                      :class="(showTrash && showTrashContent === 'data') ? 
-                      (isDarkMode ? 'bg-slate-700 text-white' : 'bg-gray-200 text-gray-900') :
-                      (isDarkMode ? 'text-gray-300 hover:bg-slate-700' : 'text-gray-700 hover:bg-gray-100')">
-                <svg class="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10a2 2 0 002 2h12a2 2 0 002-2V9a2 2 0 00-2-2H6a2 2 0 00-2-2z"></path>
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5a2 2 0 012-2h4a2 2 0 012 2v2H8V5z"></path>
-                </svg>
-              已刪除資料
-                <span v-if="trashData.length > 0" 
-                      class="ml-auto px-2 py-1 text-xs rounded-full transition-colors duration-300"
-                      :class="isDarkMode ? 'bg-red-900 text-red-300' : 'bg-red-100 text-red-600'">
-                  {{ trashData.length }}
-                </span>
-              </button>
+                    class="dc-nav-item w-full"
+                    :class="[(showTrash && showTrashContent === 'data') ?
+                             (isDarkMode ? 'dc-nav-dark dc-nav-active' : 'dc-nav-light dc-nav-active') :
+                             (isDarkMode ? 'dc-nav-dark' : 'dc-nav-light')]">
+              <svg class="w-3.5 h-3.5 mr-2.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10a2 2 0 002 2h12a2 2 0 002-2V9a2 2 0 00-2-2H6a2 2 0 00-2-2z"></path>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5a2 2 0 012-2h4a2 2 0 012 2v2H8V5z"></path>
+              </svg>
+              <span class="flex-1 text-left">已刪除資料</span>
+              <span v-if="trashData.length > 0"
+                    class="text-xs tabular-nums"
+                    :class="isDarkMode ? 'text-slate-500' : 'text-gray-400'">
+                {{ trashData.length }}
+              </span>
+            </button>
           </div>
         </div>
       </div>
@@ -154,47 +150,43 @@
             
             <!-- 所有按鈕置右 -->
             <div v-if="!showReports" class="flex items-center space-x-2">
-              <button v-if="!showTrash" class="p-2 rounded-lg transition-colors duration-300"
-                      :class="viewMode === 'map' ? 
-                        (isDarkMode ? 'bg-slate-700 text-white' : 'bg-gray-200 text-gray-900') : 
-                        (isDarkMode ? 'text-gray-400 hover:bg-slate-700' : 'text-gray-600 hover:bg-gray-100')"
+              <button v-if="!showTrash"
+                      class="toolbar-btn transition-colors duration-150"
+                      :class="[isDarkMode ? 'toolbar-btn-dark' : 'toolbar-btn-light',
+                               viewMode === 'map' ? 'toolbar-btn-active' : '']"
                       @click="viewMode = 'map'"
                       title="地圖視圖">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"></path>
                 </svg>
               </button>
-              
+
               <!-- 分隔線 -->
-              <div class="h-6 w-px transition-colors duration-300"
-                   :class="isDarkMode ? 'bg-slate-600' : 'bg-gray-300'"></div>
-              
+              <div class="h-4 w-px transition-colors duration-300"
+                   :class="isDarkMode ? 'bg-slate-600' : 'bg-gray-200'"></div>
+
               <!-- 搜尋按鈕 -->
               <button @click="toggleSearchPanel"
-                      class="p-2 rounded-lg transition-colors duration-300 relative"
-                      :class="isDarkMode ? 
-                        'text-gray-400 hover:text-white hover:bg-slate-700' : 
-                        'text-gray-500 hover:text-gray-700 hover:bg-gray-100'"
+                      class="toolbar-btn transition-colors duration-150 relative"
+                      :class="[isDarkMode ? 'toolbar-btn-dark' : 'toolbar-btn-light',
+                               showSearchPanel ? 'toolbar-btn-active' : '']"
                       :title="showSearchPanel ? '收起搜尋' : '展開搜尋'">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
                 </svg>
-                <!-- 搜尋狀態指示器 -->
-                <div v-if="searchQuery" class="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full"></div>
+                <div v-if="searchQuery" class="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 bg-brand rounded-full"></div>
               </button>
-              
+
               <!-- 篩選按鈕 -->
               <button @click="toggleFilterPanel"
-                      class="p-2 rounded-lg transition-colors duration-300 relative"
-                      :class="isDarkMode ? 
-                        'text-gray-400 hover:text-white hover:bg-slate-700' : 
-                        'text-gray-500 hover:text-gray-700 hover:bg-gray-100'"
+                      class="toolbar-btn transition-colors duration-150 relative"
+                      :class="[isDarkMode ? 'toolbar-btn-dark' : 'toolbar-btn-light',
+                               showFilterPanel ? 'toolbar-btn-active' : '']"
                       :title="showFilterPanel ? '收起篩選' : '展開篩選'">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path>
                 </svg>
-                <!-- 篩選狀態指示器 -->
-                <div v-if="hasActiveFilters" class="absolute -top-1 -right-1 w-3 h-3 bg-blue-500 rounded-full"></div>
+                <div v-if="hasActiveFilters" class="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 bg-brand rounded-full"></div>
               </button>
           </div>
         </div>
@@ -222,17 +214,14 @@
                   </div>
                 </div>
                 <button @click="clearSearch"
-                        class="px-3 py-1.5 text-xs font-medium rounded-md transition-colors duration-300"
-                        :class="isDarkMode ? 
-                          'text-gray-300 bg-slate-700 border border-slate-600 hover:bg-slate-600' : 
-                          'text-gray-700 bg-white border border-gray-300 hover:bg-gray-50'">
+                        class="px-3 py-1.5 text-xs font-medium rounded transition-colors duration-150 border"
+                        :class="isDarkMode ?
+                          'text-gray-300 border-slate-600 hover:bg-slate-700' :
+                          'text-gray-600 border-gray-300 hover:bg-gray-50'">
                   清除
                 </button>
                 <button @click="applySearch"
-                      class="px-3 py-1.5 text-xs font-medium rounded-md transition-colors duration-300"
-                      :class="isDarkMode ? 
-                        'text-white bg-blue-600 hover:bg-blue-700' : 
-                        'text-white bg-blue-600 hover:bg-blue-700'">
+                        class="px-3 py-1.5 text-xs font-medium rounded transition-colors duration-150 bg-brand border border-brand text-white hover:bg-brand-700">
                   搜尋
                 </button>
             </div>
@@ -337,16 +326,19 @@
               @map-ready="onMapReady" />
               
             <!-- 圖層操作面板 - 覆蓋在地圖上 -->
-            <div class="absolute left-0 top-0 bottom-0 w-80 bg-white border-r border-gray-300 shadow-xl z-[1100] transform transition-transform duration-300 ease-in-out"
-                 :class="showLayerPanel ? 'translate-x-0' : '-translate-x-full'">
+            <div class="absolute left-0 top-0 bottom-0 w-80 border-r shadow-xl z-[1100] transform transition-transform duration-300 ease-in-out"
+                 :class="[showLayerPanel ? 'translate-x-0' : '-translate-x-full',
+                          isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200']">
               <div class="p-4 h-full flex flex-col">
                 <!-- 面板標題 -->
                 <div class="flex items-center justify-between mb-4">
-                  <h3 class="text-lg font-semibold text-gray-900">
+                  <h3 class="text-base font-semibold transition-colors duration-300"
+                      :class="isDarkMode ? 'text-slate-100' : 'text-gray-900'">
                     專案詳情
                   </h3>
                   <button @click="closeLayerPanel"
-                          class="p-1 rounded-lg hover:bg-gray-100 text-gray-600">
+                          class="p-1 rounded transition-colors duration-300"
+                          :class="isDarkMode ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-gray-100 text-gray-500'">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                       </svg>
@@ -358,7 +350,7 @@
                   <!-- 專案基本信息 -->
                   <div class="mb-6">
                     <div class="flex items-center mb-3">
-                      <div class="w-10 h-10 rounded-lg flex items-center justify-center mr-3 transition-colors duration-300"
+                      <div class="w-10 h-10 rounded flex items-center justify-center mr-3 transition-colors duration-300"
                            :class="getProjectIconClass(selectedProject.roadType)">
                       <span class="text-sm font-bold transition-colors duration-300"
                               :class="getProjectIconTextClass(selectedProject.roadType)">
@@ -366,10 +358,12 @@
                     </span>
                     </div>
                     <div>
-                        <h4 class="text-lg font-semibold text-gray-900">
+                        <h4 class="text-base font-semibold transition-colors duration-300"
+                            :class="isDarkMode ? 'text-slate-100' : 'text-gray-900'">
                           {{ selectedProject.name }}
                         </h4>
-                        <p class="text-sm text-gray-500">
+                        <p class="text-sm transition-colors duration-300"
+                           :class="isDarkMode ? 'text-slate-400' : 'text-gray-500'">
                           {{ selectedProject.roadType === 'highway' ? '公路' : 
                               selectedProject.roadType === 'national' ? '國道' : 
                               selectedProject.roadType === 'railway' ? '鐵路' : '其他' }}
@@ -378,30 +372,31 @@
               </div>
                   </div>
                   
-                    <p class="text-sm text-gray-600 mb-4">
+                    <p class="text-sm mb-4 transition-colors duration-300"
+                       :class="isDarkMode ? 'text-slate-400' : 'text-gray-600'">
                       {{ selectedProject.description || '無描述' }}
                     </p>
                     
                     <!-- 專案詳情 -->
                     <div class="space-y-2 text-sm">
                       <div class="flex justify-between">
-                        <span class="text-gray-500">創建時間:</span>
-                        <span class="text-gray-700">
+                        <span :class="isDarkMode ? 'text-slate-400' : 'text-gray-500'">創建時間:</span>
+                        <span :class="isDarkMode ? 'text-slate-300' : 'text-gray-700'">
                           {{ formatDateTime(selectedProject.createdAt) }}
                     </span>
                     </div>
                       <div class="flex justify-between">
-                        <span class="text-gray-500">狀態:</span>
-                        <span class="px-2 py-1 rounded-full text-xs font-medium"
+                        <span :class="isDarkMode ? 'text-slate-400' : 'text-gray-500'">狀態:</span>
+                        <span class="px-2 py-0.5 rounded text-xs font-medium"
                               :class="selectedProject.status === 'active' ? 
-                                'bg-green-100 text-green-800' :
-                                'bg-gray-100 text-gray-800'">
+                                (isDarkMode ? 'bg-green-900/40 text-green-300' : 'bg-green-100 text-green-800') :
+                                (isDarkMode ? 'bg-slate-700 text-slate-300' : 'bg-gray-100 text-gray-700')">
                           {{ selectedProject.status === 'active' ? '進行中' : '已完成' }}
                     </span>
                   </div>
                       <div v-if="selectedProject.location" class="flex justify-between">
-                        <span class="text-gray-500">座標:</span>
-                        <span class="text-gray-700 text-xs">
+                        <span :class="isDarkMode ? 'text-slate-400' : 'text-gray-500'">座標:</span>
+                        <span class="text-xs" :class="isDarkMode ? 'text-slate-300' : 'text-gray-700'">
                           {{ selectedProject.location.lat.toFixed(6) }}, {{ selectedProject.location.lng.toFixed(6) }}
                   </span>
             </div>
@@ -409,18 +404,20 @@
           </div>
           
                   <!-- 圖層操作 -->
-                  <div class="border-t border-gray-200 pt-4">
-                    <h5 class="text-sm font-medium mb-3 text-gray-700">
+                  <div class="border-t pt-4 transition-colors duration-300"
+                       :class="isDarkMode ? 'border-slate-700' : 'border-gray-200'">
+                    <h5 class="text-xs font-semibold uppercase tracking-wider mb-3 transition-colors duration-300"
+                        :class="isDarkMode ? 'text-slate-500' : 'text-gray-400'">
                       圖層操作
                     </h5>
                     
-                    <div class="space-y-2">
+                    <div class="space-y-1">
                       <!-- 標記/取消標記 -->
                       <button @click="toggleBookmark(selectedProject)"
-                              class="w-full flex items-center px-3 py-2 rounded-lg transition-colors duration-300"
+                              class="w-full flex items-center px-3 py-2 rounded text-sm transition-colors duration-300"
                               :class="selectedProject.isBookmarked ? 
-                                'bg-yellow-100 text-yellow-800' :
-                                'hover:bg-gray-100 text-gray-700'">
+                                (isDarkMode ? 'bg-yellow-900/30 text-yellow-300' : 'bg-yellow-50 text-yellow-800') :
+                                (isDarkMode ? 'hover:bg-slate-700 text-slate-300' : 'hover:bg-gray-100 text-gray-700')">
                         <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"></path>
                           </svg>
@@ -429,7 +426,8 @@
                         
                       <!-- 編輯專案 -->
                       <button @click="editProject(selectedProject)"
-                              class="w-full flex items-center px-3 py-2 rounded-lg hover:bg-gray-100 text-gray-700">
+                              class="w-full flex items-center px-3 py-2 rounded text-sm transition-colors duration-300"
+                              :class="isDarkMode ? 'hover:bg-slate-700 text-slate-300' : 'hover:bg-gray-100 text-gray-700'">
                         <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
                           </svg>
@@ -438,7 +436,8 @@
                         
                       <!-- 刪除專案 -->
                       <button @click="deleteProject(selectedProject)"
-                              class="w-full flex items-center px-3 py-2 rounded-lg hover:bg-red-100 text-red-700">
+                              class="w-full flex items-center px-3 py-2 rounded text-sm transition-colors duration-300"
+                              :class="isDarkMode ? 'hover:bg-red-900/30 text-red-400' : 'hover:bg-red-50 text-red-700'">
                         <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
                           </svg>
@@ -1344,7 +1343,7 @@
          class="fixed inset-0 z-[2000] flex items-center justify-center"
          @click.self="closeReportLinkModal">
       <div class="absolute inset-0 bg-black bg-opacity-50"></div>
-      <div class="relative w-full max-w-xl mx-4 rounded-xl shadow-2xl transition-colors duration-300"
+      <div class="relative w-full max-w-xl mx-4 rounded border transition-colors duration-150"
            :class="isDarkMode ? 'bg-slate-800' : 'bg-white'">
         <!-- 標題 -->
         <div class="flex items-center justify-between px-6 py-4 border-b transition-colors duration-300"
@@ -1552,6 +1551,7 @@
 import dayjs from 'dayjs'
 import L from 'leaflet'
 import { alert, confirm, success } from '@/utils/simpleAlertService'
+import { projectAPI } from '@/services/api.js'
 import ActionButton from '@/components/ActionButton.vue'
 import ProjectMap from '@/components/ProjectMap.vue'
 import ProjectArea from '@/components/ProjectArea.vue'
@@ -2984,8 +2984,7 @@ export default {
       const confirmed = await confirm(`確定要永久刪除專案「${project.name}」嗎？此操作無法復原。`, '永久刪除', this.isDarkMode)
       if (confirmed) {
         try {
-          // 調用後端 API 永久刪除專案
-          const response = await this.$api.projectAPI.delete(project.projectId)
+          const response = await projectAPI.permanentDelete(project.projectId)
           
           if (response.success) {
             // 從垃圾桶中移除
@@ -3349,8 +3348,7 @@ export default {
         console.log('[DisasterCollection] 地圖縮放:', map.getZoom())
         
         // 載入 GeoJSON 文件
-        console.log('[DisasterCollection] 📡 開始 fetch: /data/uploads/geojson/alertRoad.geojson')
-        const response = await fetch('/data/uploads/geojson/alertRoad.geojson')
+        const response = await fetch('/uploads/monitoring/taiwan7/alertRoad.geojson')
         console.log('[DisasterCollection] 📥 Fetch 完成 - ok:', response.ok, 'status:', response.status)
         
         if (!response.ok) {
@@ -3643,7 +3641,7 @@ export default {
     // ===== 報告連結管理結束 =====
 
     // 處理開啟子專案
-    handleOpenChild(childProject) {
+    async handleOpenChild(childProject) {
       console.log('開啟子專案:', childProject)
       
       // 提取座標（從母專案資訊或子專案本身）
@@ -3691,7 +3689,7 @@ export default {
         }
       } else {
         console.warn('子專案沒有有效的座標資訊:', childProject)
-        alert('此時期專案沒有有效的座標資訊，無法顯示地圖')
+        await alert('此時期專案沒有有效的座標資訊，無法顯示地圖', '提示', this.isDarkMode)
         return
       }
       
@@ -4018,6 +4016,76 @@ export default {
 </script> 
 
 <style scoped>
+/* ── 左側導航項目 ─────────────────────── */
+.dc-nav-item {
+  display: flex;
+  align-items: center;
+  padding: 0.375rem 0.5rem;
+  font-size: 0.8125rem;
+  border-radius: 0;
+  border-left: 2px solid transparent;
+  transition: background-color 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.dc-nav-light {
+  color: #6b7280;
+}
+.dc-nav-light:hover {
+  background-color: #f9fafb;
+  color: #111827;
+}
+.dc-nav-dark {
+  color: #9ca3af;
+}
+.dc-nav-dark:hover {
+  background-color: #1e293b;
+  color: #f1f5f9;
+}
+.dc-nav-active {
+  border-left-color: #1e5c8a;
+  color: #111827;
+  font-weight: 500;
+}
+.dc-nav-dark.dc-nav-active {
+  border-left-color: #3378b5;
+  color: #f1f5f9;
+}
+
+/* ── 工具欄按鈕 ───────────────────────── */
+.toolbar-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 2px;
+  border: 1px solid transparent;
+}
+.toolbar-btn-light {
+  color: #6b7280;
+}
+.toolbar-btn-light:hover {
+  background-color: #f3f4f6;
+  color: #374151;
+}
+.toolbar-btn-dark {
+  color: #9ca3af;
+}
+.toolbar-btn-dark:hover {
+  background-color: #1e293b;
+  color: #e2e8f0;
+}
+.toolbar-btn-active {
+  background-color: #f3f4f6;
+  color: #1e5c8a;
+  border-color: #e5e7eb;
+}
+.toolbar-btn-dark.toolbar-btn-active {
+  background-color: #1e293b;
+  color: #3378b5;
+  border-color: #334155;
+}
+
 /* 里程數字標籤樣式（與預警模組一致） */
 :deep(.mileage-tooltip) {
   background-color: rgba(255, 255, 255, 0.95) !important;

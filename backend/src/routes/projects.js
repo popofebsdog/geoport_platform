@@ -5,6 +5,7 @@ import {
   createProject,
   updateProject,
   deleteProject,
+  permanentDeleteProject,
   toggleBookmark,
   getDeletedProjects,
   restoreProject
@@ -20,6 +21,7 @@ router.get('/:id', getProjectById);
 router.post('/', authenticate, createProject);
 router.put('/:id', authenticate, updateProject);
 router.delete('/:id', authenticate, deleteProject);
+router.delete('/:id/permanent', authenticate, permanentDeleteProject);
 router.patch('/:id/bookmark', authenticate, toggleBookmark);
 router.patch('/:id/restore', authenticate, restoreProject);
 

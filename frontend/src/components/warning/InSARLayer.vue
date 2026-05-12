@@ -69,7 +69,7 @@ export default {
     },
     dataPath: {
       type: String,
-      default: '/data/uploads/inSAR/INSAR.geojson'
+      default: null
     },
     showLegend: {
       type: Boolean,
@@ -152,8 +152,8 @@ export default {
     },
     
     async loadInSARData() {
-      if (!this.map || this.insarLayer) return
-      
+      if (!this.map || this.insarLayer || !this.dataPath) return
+
       try {
         const response = await fetch(this.dataPath)
         if (!response.ok) {

@@ -166,7 +166,7 @@
 </template>
 
 <script>
-import axios from 'axios'
+import api from '@/services/api'
 import { alert as showAlert, error as showError } from '@/utils/simpleAlertService'
 
 export default {
@@ -398,20 +398,20 @@ export default {
         let response
         if (this.editingRecord) {
           // 編輯模式：使用 PUT 請求
-          response = await axios.put(
-            `/api/warning-regions/${this.regionCode}/inspection-records/${this.editingRecord.record_id}`,
+          response = await api.put(
+            `/warning-regions/${this.regionCode}/inspection-records/${this.editingRecord.record_id}`,
             payload
           )
         } else {
           // 新增模式：使用 POST 請求
-          response = await axios.post(
-            `/api/warning-regions/${this.regionCode}/inspection-records`,
+          response = await api.post(
+            `/warning-regions/${this.regionCode}/inspection-records`,
             payload
           )
         }
         
-        if (response.data.success) {
-          this.$emit('success', response.data.data)
+        if (response.success) {
+          this.$emit('success', response.data)
           this.handleClose()
         }
       } catch (error) {

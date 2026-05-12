@@ -8,6 +8,9 @@ const JWT_SECRET = process.env.JWT_SECRET;
  */
 export function authenticate(req, res, next) {
   if (!JWT_SECRET) {
+    if (process.env.NODE_ENV === 'production') {
+      return res.status(500).json({ success: false, message: '伺服器設定錯誤' });
+    }
     return next();
   }
 

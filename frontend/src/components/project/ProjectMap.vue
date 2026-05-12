@@ -1,6 +1,9 @@
 <template>
-  <div class="w-full h-full relative">
-    <div ref="mapContainer" class="w-full h-full" style="min-height: 400px; pointer-events: auto;"></div>
+  <div class="w-full h-full relative overflow-hidden rounded"
+       :class="isDarkMode ? 'bg-slate-900' : 'bg-slate-100'">
+    <div ref="mapContainer"
+         class="w-full h-full"
+         style="min-height: 400px; pointer-events: auto;"></div>
     
     <!-- 紅綠燈設置面板 -->
     <WarningLightSettingsPanel
@@ -14,7 +17,6 @@
 
 <script>
 import L from 'leaflet'
-import * as omnivore from 'leaflet-omnivore'
 import proj4 from 'proj4'
 import 'proj4leaflet'
 import { BaseMapService } from '../../services/BaseMapService.js'
@@ -23,14 +25,14 @@ import TemporalDataMarker from '../temporal/TemporalDataMarker.vue'
 import WarningLightMarker from './WarningLightMarker.vue'
 import WarningLightSettingsPanel from './WarningLightSettingsPanel.vue'
 import { generateWarningLightHTML } from '@/utils/warningLightMarkerHelper.js'
+import { logger } from '@/utils/logger.js'
+
+const log = logger.scoped('ProjectMap')
 
 // 確保 proj4leaflet 正確加載
 if (typeof window !== 'undefined') {
   window.proj4 = proj4
 }
-
-// 手動將 omnivore 掛載到 L
-L.omnivore = omnivore
 
 // 定義坐標系統 - 使用標準的 TWD97/TM2 zone 121 定義
 proj4.defs('EPSG:3826', '+proj=tmerc +lat_0=0 +lon_0=121 +k=0.9999 +x_0=250000 +y_0=0 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs')
@@ -39,19 +41,19 @@ proj4.defs('EPSG:3826', '+proj=tmerc +lat_0=0 +lon_0=121 +k=0.9999 +x_0=250000 +
 proj4.defs('EPSG:4326', '+proj=longlat +datum=WGS84 +no_defs')
 
 // 測試坐標系統定義
-console.log('TWD97 坐標系統定義:', proj4.defs('EPSG:3826'))
-console.log('WGS84 坐標系統定義:', proj4.defs('EPSG:4326'))
+log.log('TWD97 坐標系統定義:', proj4.defs('EPSG:3826'))
+log.log('WGS84 坐標系統定義:', proj4.defs('EPSG:4326'))
 
 // 測試坐標轉換
 try {
   const testCoords = [291170.151664275676012, 2729797.045946272090077] // 用戶資料中的坐標
-  console.log('測試坐標轉換:')
-  console.log('輸入坐標 (TWD97):', testCoords)
+  log.log('測試坐標轉換:')
+  log.log('輸入坐標 (TWD97):', testCoords)
   const result = proj4('EPSG:3826', 'EPSG:4326', testCoords)
-  console.log('轉換結果 (WGS84):', result)
-  console.log('Leaflet 格式:', [result[1], result[0]])
+  log.log('轉換結果 (WGS84):', result)
+  log.log('Leaflet 格式:', [result[1], result[0]])
 } catch (error) {
-  console.error('坐標轉換測試失敗:', error)
+  log.error('坐標轉換測試失敗:', error)
 }
 
 // 創建 TWD97 坐標系統（簡化版本）
@@ -83,16 +85,13 @@ try {
     origin: [0, 0],
     bounds: L.bounds([0, 0], [500000, 3000000])
   })
-  console.log('TWD97 坐標系統創建成功')
+  log.log('TWD97 坐標系統創建成功')
 } catch (error) {
-  console.error('TWD97 坐標系統創建失敗:', error)
+  log.error('TWD97 坐標系統創建失敗:', error)
   TWD97 = L.CRS.EPSG4326 // 回退到 WGS84
 }
 
-// 確保 omnivore 正確加載
-console.log('Leaflet 版本:', L.version)
-console.log('omnivore 可用性:', !!L.omnivore)
-console.log('omnivore.kml 可用性:', !!omnivore.kml)
+log.log('Leaflet 版本:', L.version)
 
 // KML 顏色轉換函數（從 aabbggrr 格式轉換為 #rrggbb 格式）
 const convertKMLColor = (kmlColor) => {
@@ -104,6 +103,64 @@ const convertKMLColor = (kmlColor) => {
   const b = kmlColor.substring(2, 4)
   
   return `#${r}${g}${b}`
+}
+
+const readKmlText = (node, selector) => {
+  return node.querySelector(selector)?.textContent?.trim() || ''
+}
+
+const parseKmlCoordinates = (text) => {
+  return text
+    .trim()
+    .split(/\s+/)
+    .map(pair => pair.split(',').map(Number))
+    .filter(([lng, lat]) => Number.isFinite(lng) && Number.isFinite(lat))
+    .map(([lng, lat, alt]) => alt === undefined || Number.isNaN(alt) ? [lng, lat] : [lng, lat, alt])
+}
+
+const parseKmlToGeoJson = (kmlText) => {
+  const doc = new DOMParser().parseFromString(kmlText, 'application/xml')
+  const parserError = doc.querySelector('parsererror')
+  if (parserError) {
+    throw new Error(parserError.textContent || 'KML 解析失敗')
+  }
+
+  const features = Array.from(doc.querySelectorAll('Placemark')).flatMap((placemark) => {
+    const properties = {
+      name: readKmlText(placemark, 'name'),
+      description: readKmlText(placemark, 'description'),
+      styleUrl: readKmlText(placemark, 'styleUrl')
+    }
+    const geometries = []
+
+    placemark.querySelectorAll('Point').forEach((point) => {
+      const coordinates = parseKmlCoordinates(readKmlText(point, 'coordinates'))[0]
+      if (coordinates) geometries.push({ type: 'Point', coordinates })
+    })
+
+    placemark.querySelectorAll('LineString').forEach((line) => {
+      const coordinates = parseKmlCoordinates(readKmlText(line, 'coordinates'))
+      if (coordinates.length >= 2) geometries.push({ type: 'LineString', coordinates })
+    })
+
+    placemark.querySelectorAll('Polygon').forEach((polygon) => {
+      const rings = Array.from(polygon.querySelectorAll('LinearRing'))
+        .map(ring => parseKmlCoordinates(readKmlText(ring, 'coordinates')))
+        .filter(ring => ring.length >= 4)
+      if (rings.length > 0) geometries.push({ type: 'Polygon', coordinates: rings })
+    })
+
+    return geometries.map(geometry => ({
+      type: 'Feature',
+      properties,
+      geometry
+    }))
+  })
+
+  return {
+    type: 'FeatureCollection',
+    features
+  }
 }
 
 export default {
@@ -156,6 +213,10 @@ export default {
     mileageLabelVisible: {
       type: Boolean,
       default: false
+    },
+    mileageGeoJson: {
+      type: Object,
+      default: null  // 由父元件傳入（updateMapForRegion 載入後的 filteredGeoJSON）
     }
   },
   emits: [
@@ -187,6 +248,9 @@ export default {
         geology50k: null // 1/50000 地質圖
       },
       currentLayer: 'emap', // 默認使用台灣通用地圖
+      userSelectedLayer: 'emap', // 使用者主動選擇的圖層（用於自動切換後還原）
+      geologySwitchedToEmap: false, // 是否因縮放限制而自動切換離開地質圖
+      GEOLOGY_MAX_ZOOM: 16, // 地質圖最大可用縮放層級
       layerControl: null,
       highwayMileageControl: null, // 省道里程樁號控件
       zoomLevelControl: null, // 縮放層級滑動條控件
@@ -209,7 +273,7 @@ export default {
     // 監聽活躍子專案變化，重新渲染標記
     activeChildProjectId(newId, oldId) {
       if (newId !== oldId && this.isParentProject()) {
-        console.log('活躍子專案變化，重新渲染標記:', { newId, oldId })
+        log.log('活躍子專案變化，重新渲染標記:', { newId, oldId })
         this.addChildProjectMarkers()
       }
     },
@@ -221,7 +285,7 @@ export default {
         const oldProjectId = oldProject?.projectId || oldProject?.project_id
         
         if (this.map && newProject && newProjectId !== oldProjectId) {
-          console.log('專案改變，重置地圖視圖標記')
+          log.log('專案改變，重置地圖視圖標記')
           // 重置初始視圖標記，允許重新定位
           this._hasSetInitialView = false
           
@@ -233,9 +297,12 @@ export default {
       immediate: false
     },
     isDarkMode() {
-      if (this.map) {
-        this.updateMapStyle()
-      }
+      // nextTick 確保 Vue DOM patch 完成後再更新地圖，避免 Leaflet 在過渡期間讀到錯誤尺寸
+      this.$nextTick(() => {
+        if (this.map) {
+          this.map.invalidateSize()
+        }
+      })
     },
     // 禁用 geojsonData watcher，因為現在使用 loadedGeojsonLayers 系統
     // geojsonData: {
@@ -272,7 +339,7 @@ export default {
         if (this.map) {
           // 避免重複載入相同的底圖
           if (newBaseMap && oldBaseMap && newBaseMap.id === oldBaseMap.id) {
-            console.log('底圖未變更，跳過重新載入')
+            log.log('底圖未變更，跳過重新載入')
             return
           }
           this.switchToCustomBaseMap(newBaseMap)
@@ -281,22 +348,14 @@ export default {
     },
     highwayMileageVisible: {
       handler(newVisible) {
-        console.log('[ProjectMap Watcher] highwayMileageVisible 變化:', newVisible, 'map:', !!this.map)
         if (this.map) {
-          // ✅ 移除：不應該修改 prop 的值（單向數據流）
-          // this.highwayMileageVisible = newVisible
-          console.log('[ProjectMap Watcher] 開始切換圖層...')
-          // 切換圖層
           this.toggleHighwayMileageLayer(newVisible)
-          // 通知控件更新樣式
           this.map.fire('highway-mileage-visibility-changed')
-          // 如果控件有更新方法，直接調用
           if (this.highwayMileageControl && this.highwayMileageControl.updateButtonStyle) {
             this.highwayMileageControl.updateButtonStyle()
           }
-          console.log('[ProjectMap Watcher] 圖層切換完成')
         } else {
-          console.warn('[ProjectMap Watcher] 地圖未初始化，無法處理 highwayMileageVisible 變化')
+          log.warn('[ProjectMap Watcher] 地圖未初始化，無法處理 highwayMileageVisible 變化')
         }
       },
       immediate: false
@@ -315,17 +374,31 @@ export default {
         }
       },
       immediate: false
+    },
+    // 當路線資料更新時（換地區），清除舊圖層並在可見時重新渲染
+    mileageGeoJson(newData) {
+      if (this.map) {
+        if (this.highwayMileageLayer) {
+          if (this.map.hasLayer(this.highwayMileageLayer)) {
+            this.map.removeLayer(this.highwayMileageLayer)
+          }
+          this.highwayMileageLayer = null
+        }
+        if (newData && this.highwayMileageVisible) {
+          this.loadHighwayMileageData()
+        }
+      }
     }
   },
   mounted() {
-    console.log('ProjectMap 組件已掛載')
-    console.log('接收到的 project:', this.project)
+    log.log('ProjectMap 組件已掛載')
+    log.log('接收到的 project:', this.project)
     this.initMap()
   },
   
   created() {
-    console.log('ProjectMap 組件已創建')
-    console.log('接收到的 project:', this.project)
+    log.log('ProjectMap 組件已創建')
+    log.log('接收到的 project:', this.project)
   },
   beforeUnmount() {
     try {
@@ -354,7 +427,7 @@ export default {
             this.map.removeLayer(this.customBaseMapLayer)
           }
         } catch (error) {
-          console.warn('清理自定義底圖圖層時發生錯誤:', error)
+          log.warn('清理自定義底圖圖層時發生錯誤:', error)
         }
         this.customBaseMapLayer = null
       }
@@ -366,7 +439,7 @@ export default {
             this.map.removeLayer(this.highwayMileageLayer)
           }
         } catch (error) {
-          console.warn('清理省道里程樁號圖層時發生錯誤:', error)
+          log.warn('清理省道里程樁號圖層時發生錯誤:', error)
         }
         this.highwayMileageLayer = null
       }
@@ -378,7 +451,7 @@ export default {
             this.map.removeControl(this.highwayMileageControl)
           }
         } catch (error) {
-          console.warn('清理省道里程樁號控件時發生錯誤:', error)
+          log.warn('清理省道里程樁號控件時發生錯誤:', error)
         }
         this.highwayMileageControl = null
       }
@@ -390,7 +463,7 @@ export default {
             this.map.removeControl(this.warningLightControl)
           }
         } catch (error) {
-          console.warn('清理紅綠燈設置控件時發生錯誤:', error)
+          log.warn('清理紅綠燈設置控件時發生錯誤:', error)
         }
         this.warningLightControl = null
       }
@@ -412,7 +485,7 @@ export default {
               try {
                 this.map.removeLayer(layer)
               } catch (error) {
-                console.warn('移除圖層時發生錯誤:', error)
+                log.warn('移除圖層時發生錯誤:', error)
               }
             })
           }
@@ -422,12 +495,12 @@ export default {
       this.map.remove()
           }
         } catch (error) {
-          console.warn('清理地圖時發生錯誤:', error)
+          log.warn('清理地圖時發生錯誤:', error)
         }
         this.map = null
       }
     } catch (error) {
-      console.error('組件卸載時發生錯誤:', error)
+      log.error('組件卸載時發生錯誤:', error)
     }
   },
   methods: {
@@ -451,18 +524,18 @@ export default {
         return geojson
       }
 
-      console.log('開始轉換 TWD97 GeoJSON，特徵數量:', geojson.features.length)
+      log.log('開始轉換 TWD97 GeoJSON，特徵數量:', geojson.features.length)
       
       const convertedGeoJSON = JSON.parse(JSON.stringify(geojson)) // 深拷貝
 
       convertedGeoJSON.features.forEach((feature, index) => {
         if (feature.geometry && feature.geometry.coordinates) {
-          console.log(`轉換特徵 ${index + 1}:`, feature.geometry.type)
+          log.log(`轉換特徵 ${index + 1}:`, feature.geometry.type)
           feature.geometry.coordinates = this.convertCoordinates(feature.geometry.coordinates, feature.geometry.type)
         }
       })
 
-      console.log('TWD97 轉換完成')
+      log.log('TWD97 轉換完成')
       return convertedGeoJSON
     },
 
@@ -491,56 +564,56 @@ export default {
         
         // 只在第一個點時輸出詳細信息，避免日誌過多
         if (!this._firstPointConverted) {
-          console.log('=== 開始轉換第一個 TWD97 坐標點 ===')
-          console.log('轉換前 TWD97 坐標:', [x, y])
-          console.log('proj4 定義檢查:')
-          console.log('EPSG:3826 定義:', proj4.defs('EPSG:3826'))
-          console.log('EPSG:4326 定義:', proj4.defs('EPSG:4326'))
+          log.log('=== 開始轉換第一個 TWD97 坐標點 ===')
+          log.log('轉換前 TWD97 坐標:', [x, y])
+          log.log('proj4 定義檢查:')
+          log.log('EPSG:3826 定義:', proj4.defs('EPSG:3826'))
+          log.log('EPSG:4326 定義:', proj4.defs('EPSG:4326'))
         }
         
         const wgs84 = proj4('EPSG:3826', 'EPSG:4326', [x, y])
         
         if (!this._firstPointConverted) {
-          console.log('proj4 轉換結果:', wgs84)
-          console.log('轉換後 WGS84 坐標 [lng, lat]:', wgs84)
+          log.log('proj4 轉換結果:', wgs84)
+          log.log('轉換後 WGS84 坐標 [lng, lat]:', wgs84)
         }
         
         // proj4 返回 [lng, lat]，GeoJSON 標準格式也是 [lng, lat]
         const result = [wgs84[0], wgs84[1]] // 返回 [lng, lat] (GeoJSON 標準格式)
         
         if (!this._firstPointConverted) {
-          console.log('GeoJSON 標準格式坐標 [lng, lat]:', result)
-          console.log('=== 第一個坐標點轉換完成 ===')
+          log.log('GeoJSON 標準格式坐標 [lng, lat]:', result)
+          log.log('=== 第一個坐標點轉換完成 ===')
           this._firstPointConverted = true
         }
         
         return result
       } catch (error) {
-        console.error('坐標轉換失敗:', error, coords)
-        console.error('錯誤詳情:', error.message)
+        log.error('坐標轉換失敗:', error, coords)
+        log.error('錯誤詳情:', error.message)
         return coords // 如果轉換失敗，返回原始坐標
       }
     },
 
     // 測試坐標轉換
     testCoordinateConversion() {
-      console.log('=== 測試坐標轉換 ===')
+      log.log('=== 測試坐標轉換 ===')
       
       // 測試實際的 TWD97 坐標點（來自用戶提供的資料）
       const testCoords1 = [291038.942551413550973, 2729773.20912585966289] // 用戶資料中的第一個點
       const testCoords2 = [250000, 2750000] // 台灣中部
       
-      console.log('測試坐標1 (TWD97 - 用戶資料):', testCoords1)
-      console.log('測試坐標2 (TWD97 - 台灣中部):', testCoords2)
+      log.log('測試坐標1 (TWD97 - 用戶資料):', testCoords1)
+      log.log('測試坐標2 (TWD97 - 台灣中部):', testCoords2)
       
       try {
         const wgs84_1 = proj4('EPSG:3826', 'EPSG:4326', testCoords1)
         const wgs84_2 = proj4('EPSG:3826', 'EPSG:4326', testCoords2)
         
-        console.log('轉換結果1 (WGS84):', wgs84_1)
-        console.log('轉換結果2 (WGS84):', wgs84_2)
-        console.log('Leaflet 格式1:', [wgs84_1[1], wgs84_1[0]])
-        console.log('Leaflet 格式2:', [wgs84_2[1], wgs84_2[0]])
+        log.log('轉換結果1 (WGS84):', wgs84_1)
+        log.log('轉換結果2 (WGS84):', wgs84_2)
+        log.log('Leaflet 格式1:', [wgs84_1[1], wgs84_1[0]])
+        log.log('Leaflet 格式2:', [wgs84_2[1], wgs84_2[0]])
         
         // 驗證轉換是否合理（台灣的經緯度範圍）
         const lat1 = wgs84_1[1]
@@ -549,21 +622,21 @@ export default {
         const lng2 = wgs84_2[0]
         
         if (lat1 >= 21 && lat1 <= 26 && lng1 >= 119 && lng1 <= 122) {
-          console.log('✅ 坐標轉換結果1合理（在台灣範圍內）')
+          log.log('✅ 坐標轉換結果1合理（在台灣範圍內）')
         } else {
-          console.log('❌ 坐標轉換結果1不合理（超出台灣範圍）')
+          log.log('❌ 坐標轉換結果1不合理（超出台灣範圍）')
         }
         
         if (lat2 >= 21 && lat2 <= 26 && lng2 >= 119 && lng2 <= 122) {
-          console.log('✅ 坐標轉換結果2合理（在台灣範圍內）')
+          log.log('✅ 坐標轉換結果2合理（在台灣範圍內）')
         } else {
-          console.log('❌ 坐標轉換結果2不合理（超出台灣範圍）')
+          log.log('❌ 坐標轉換結果2不合理（超出台灣範圍）')
         }
       } catch (error) {
-        console.error('坐標轉換測試失敗:', error)
+        log.error('坐標轉換測試失敗:', error)
       }
       
-      console.log('=== 測試結束 ===')
+      log.log('=== 測試結束 ===')
     },
 
     // 計算 GeoJSON 邊界
@@ -625,15 +698,15 @@ export default {
     },
 
     initMap() {
-      console.log('=== 開始初始化地圖 ===')
-      console.log('初始化地圖')
-      console.log('地圖容器:', this.$refs.mapContainer)
-      console.log('專案位置:', this.project?.location)
+      log.log('=== 開始初始化地圖 ===')
+      log.log('初始化地圖')
+      log.log('地圖容器:', this.$refs.mapContainer)
+      log.log('專案位置:', this.project?.location)
       
       // 檢查地圖容器尺寸
       if (this.$refs.mapContainer) {
         const rect = this.$refs.mapContainer.getBoundingClientRect()
-        console.log('地圖容器尺寸:', {
+        log.log('地圖容器尺寸:', {
           width: rect.width,
           height: rect.height,
           clientWidth: this.$refs.mapContainer.clientWidth,
@@ -643,7 +716,7 @@ export default {
       
       try {
         // 使用標準的 WGS84 坐標系統（Leaflet 默認）
-        console.log('使用坐標系統: WGS84 (Leaflet 標準)')
+        log.log('使用坐標系統: WGS84 (Leaflet 標準)')
         
         // 設置地圖中心點（WGS84）
         const center = [this.project?.location?.lat || 24.8186, this.project?.location?.lng || 121.2681]
@@ -664,7 +737,7 @@ export default {
           // 不指定 crs，使用 Leaflet 默認的 WGS84
         })
         
-        console.log('地圖創建成功:', this.map)
+        log.log('地圖創建成功:', this.map)
         
         // 測試坐標轉換
         this.testCoordinateConversion()
@@ -673,13 +746,13 @@ export default {
         setTimeout(() => {
           if (this.map) {
             const size = this.map.getSize()
-            console.log('地圖尺寸:', size)
-            console.log('地圖中心:', this.map.getCenter())
-            console.log('地圖縮放級別:', this.map.getZoom())
+            log.log('地圖尺寸:', size)
+            log.log('地圖中心:', this.map.getCenter())
+            log.log('地圖縮放級別:', this.map.getZoom())
           }
         }, 100)
       } catch (error) {
-        console.error('地圖初始化失敗:', error)
+        log.error('地圖初始化失敗:', error)
         // 回退到基本的 WGS84 地圖
       this.map = L.map(this.$refs.mapContainer, {
         center: [this.project?.location?.lat || 24.8186, this.project?.location?.lng || 121.2681],
@@ -694,10 +767,10 @@ export default {
         boxZoom: true, // 啟用框選縮放
         keyboard: true // 啟用鍵盤導航
       })
-        console.log('使用回退地圖配置')
+        log.log('使用回退地圖配置')
       }
       
-      console.log('地圖已創建:', this.map)
+      log.log('地圖已創建:', this.map)
 
       this.initLayers()
       this.addDefaultLayer()
@@ -717,9 +790,10 @@ export default {
         this.$emit('map-click', e)
       })
 
-      // 監聽縮放事件，控制紅綠燈標記顯示
+      // 監聽縮放事件，控制紅綠燈標記顯示 + 地質圖自動切換
       this.map.on('zoomend', () => {
         this.updateWarningLightMarkersVisibility()
+        this._handleGeologyZoomSwitch()
       })
       
       // 初始化紅綠燈標記（不自動定位，由父組件控制）
@@ -727,14 +801,14 @@ export default {
       
       // 初始化底圖服務
       this.baseMapService = new BaseMapService()
-      console.log('BaseMapService 已初始化')
+      log.log('BaseMapService 已初始化')
       
       // 設置地圖到服務中
       this.baseMapService.setMap(this.map)
-      console.log('BaseMapService 地圖已設置')
+      log.log('BaseMapService 地圖已設置')
       
       // 通知父組件 baseMapService 已準備好
-      console.log('發送 base-map-service-ready 事件')
+      log.log('發送 base-map-service-ready 事件')
       this.$emit('base-map-service-ready', this.baseMapService)
       
       // 發送地圖準備就緒事件
@@ -744,7 +818,7 @@ export default {
       setTimeout(() => {
         // 觸發地圖更新（會在專案類型判斷完成後進行正確的定位）
         if (this.project && this.map) {
-          console.log('延遲執行 updateMap，確保專案類型已判斷')
+          log.log('延遲執行 updateMap，確保專案類型已判斷')
           this.updateMap()
         }
       }, 100)
@@ -753,11 +827,11 @@ export default {
       setTimeout(() => {
         if (this.map) {
           this.map.invalidateSize()
-          console.log('地圖已強制刷新')
+          log.log('地圖已強制刷新')
         }
       }, 200)
       
-      console.log('=== 地圖初始化完成 ===')
+      log.log('=== 地圖初始化完成 ===')
     },
 
     initLayers() {
@@ -807,7 +881,8 @@ export default {
         transparent: true,
         opacity: 0.8,
         attribution: '© 經濟部地質調查及礦業管理中心',
-        maxZoom: 18,
+        maxZoom: 20,        // 不限制 map 的最大 zoom（由自動切換邏輯處理）
+        maxNativeZoom: 16,  // WMS 只支援到 zoom 16，超過時使用 zoom 16 的圖磚縮放
         minZoom: 1,
         tileSize: 256,
         srs: 'EPSG:4326',
@@ -824,19 +899,19 @@ export default {
         
         // 添加瓦片載入事件監聽
         this.layers.emap.on('tileload', (e) => {
-          console.log('台灣通用地圖瓦片載入成功:', e.tile.src)
+          log.log('台灣通用地圖瓦片載入成功:', e.tile.src)
         })
         
         this.layers.emap.on('tileerror', (e) => {
-          console.error('台灣通用地圖瓦片載入失敗:', e.tile.src, e.error)
+          log.error('台灣通用地圖瓦片載入失敗:', e.tile.src, e.error)
         })
         
         this.layers.emap.on('loading', () => {
-          console.log('開始載入台灣通用地圖瓦片')
+          log.log('開始載入台灣通用地圖瓦片')
         })
         
         this.layers.emap.on('load', () => {
-          console.log('台灣通用地圖瓦片載入完成')
+          log.log('台灣通用地圖瓦片載入完成')
         })
       } else if (this.layers.photo) {
         // 回退到台灣正射影像
@@ -871,20 +946,33 @@ export default {
         // 更新當前圖層標記
         if (e.layer === this.layers.photo) {
           this.currentLayer = 'photo'
-          console.log('已切換至台灣通用地圖正射影像')
+          this.userSelectedLayer = 'photo'
+          this.geologySwitchedToEmap = false
+          log.log('已切換至台灣通用地圖正射影像')
         } else if (e.layer === this.layers.geology50k) {
           this.currentLayer = 'geology50k'
-          console.log('已切換至 1/50000 地質圖')
+          this.userSelectedLayer = 'geology50k'
+          this.geologySwitchedToEmap = false
+          // 剛切換到地質圖時，立即檢查縮放層級
+          const zoom = this.map.getZoom()
+          if (zoom > this.GEOLOGY_MAX_ZOOM) {
+            this._switchAwayFromGeology()
+          }
+          log.log('已切換至 1/50000 地質圖')
         } else if (e.layer === this.layers.emap) {
           this.currentLayer = 'emap'
-          console.log('已切換至台灣通用地圖')
+          // 只有使用者主動點選時才更新 userSelectedLayer
+          if (!this.geologySwitchedToEmap) {
+            this.userSelectedLayer = 'emap'
+          }
+          log.log('已切換至台灣通用地圖')
         }
         
         // 如果有自定義底圖，確保它在基本底圖之上
         if (this.customBaseMapLayer && this.map.hasLayer(this.customBaseMapLayer)) {
           if (this.customBaseMapLayer.bringToFront) {
             this.customBaseMapLayer.bringToFront()
-            console.log('已將自定義底圖置於最上層')
+            log.log('已將自定義底圖置於最上層')
           }
         }
       })
@@ -972,13 +1060,13 @@ export default {
             L.DomEvent.stopPropagation(e)
             L.DomEvent.preventDefault(e)
             
-            console.log('[ProjectMap] 省道里程樁號按鈕被點擊')
-            console.log('[ProjectMap] 當前狀態:', self.highwayMileageVisible)
+            log.log('[ProjectMap] 省道里程樁號按鈕被點擊')
+            log.log('[ProjectMap] 當前狀態:', self.highwayMileageVisible)
             
             // 直接發射事件，讓父組件處理狀態切換
             // 父組件會更新 prop，然後觸發 watcher
             self.$emit('toggle-highway-mileage')
-            console.log('[ProjectMap] 已發出 toggle-highway-mileage 事件')
+            log.log('[ProjectMap] 已發出 toggle-highway-mileage 事件')
           })
           
           // 監聽可見性變化
@@ -1423,14 +1511,21 @@ export default {
       try {
         const projectId = this.project?.projectId || this.project?.project_id
         if (!projectId) {
-          console.warn('無法載入子專案：缺少專案 ID')
+          log.warn('無法載入子專案：缺少專案 ID')
+          return
+        }
+
+        // 只有合法的 UUID 才呼叫後端，避免假 projectId（如 'early-warning-parent'）觸發 400
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+        if (!uuidRegex.test(projectId)) {
+          log.log('跳過載入子專案：projectId 非 UUID 格式（模擬專案）', projectId)
           return
         }
 
         const response = await this.$api.get(`/parent-projects/${projectId}/children`)
         if (response && response.success) {
           this.childProjects = response.data.children || []
-          console.log('子專案載入成功:', this.childProjects.length, '個')
+          log.log('子專案載入成功:', this.childProjects.length, '個')
           
           // 按 event_date 排序並分配順序號
           this.childProjects.sort((a, b) => {
@@ -1447,7 +1542,7 @@ export default {
           this.addChildProjectMarkers()
         }
       } catch (error) {
-        console.error('載入子專案失敗:', error)
+        log.error('載入子專案失敗:', error)
       }
     },
 
@@ -1498,7 +1593,7 @@ export default {
             // 使用 fitBounds 包含所有子專案，自動調整縮放層級
             this.map.fitBounds(bounds, { padding: [50, 50] })
             this._hasSetInitialView = true
-            console.log('母專案地圖定位完成 - 包含所有子專案:', {
+            log.log('母專案地圖定位完成 - 包含所有子專案:', {
               markersCount: this.childMarkers.length,
               bounds: bounds.toBBoxString(),
               zoom: this.map.getZoom()
@@ -1707,7 +1802,7 @@ export default {
       //   const firstLight = testWarningLights[0]
       //   this.$nextTick(() => {
       //     this.map.setView([firstLight.lat, firstLight.lng], 17)
-      //     console.log('已定位到紅綠燈位置:', firstLight.lat, firstLight.lng, '縮放層級: 17')
+      //     log.log('已定位到紅綠燈位置:', firstLight.lat, firstLight.lng, '縮放層級: 17')
       //   })
       // }
     },
@@ -1852,7 +1947,7 @@ export default {
           return `${year}/${month}/${day}`
         }
       } catch (error) {
-        console.error('格式化日期失敗:', error)
+        log.error('格式化日期失敗:', error)
         return dateString
       }
     },
@@ -1884,11 +1979,11 @@ export default {
                 </div>
               `)
           } catch (error) {
-            console.error('創建地圖標記失敗:', error)
-            console.error('座標值:', { lat, lng })
+            log.error('創建地圖標記失敗:', error)
+            log.error('座標值:', { lat, lng })
           }
         } else {
-          console.warn('專案座標無效，無法創建標記:', {
+          log.warn('專案座標無效，無法創建標記:', {
             project: this.project,
             location: this.project.location
           })
@@ -1898,11 +1993,11 @@ export default {
 
     updateMap() {
       if (!this.map) {
-        console.warn('地圖未初始化，無法更新')
+        log.warn('地圖未初始化，無法更新')
         return
       }
       
-      console.log('updateMap 被調用，當前專案類型:', {
+      log.log('updateMap 被調用，當前專案類型:', {
         isParentProject: this.isParentProject(),
         is_parent: this.project?.is_parent,
         parent_project_id: this.project?.parent_project_id
@@ -1910,7 +2005,7 @@ export default {
       
       // 如果是母專案，重新載入子專案標記
       if (this.isParentProject()) {
-        console.log('檢測到母專案，載入子專案標記')
+        log.log('檢測到母專案，載入子專案標記')
         this.loadChildProjects()
         // 地圖視圖會在 addChildProjectMarkers 完成後設置
         return
@@ -1935,7 +2030,7 @@ export default {
         lat = coords[1]
       }
       
-      console.log('子專案座標提取結果:', {
+      log.log('子專案座標提取結果:', {
         lat,
         lng,
         hasLocation: !!this.project?.location,
@@ -1962,14 +2057,14 @@ export default {
           if (!this._hasSetInitialView) {
           this.map.setView([validLat, validLng], 16)
             this._hasSetInitialView = true
-          console.log('子專案地圖定位完成:', { lat: validLat, lng: validLng, zoom: 16 })
+          log.log('子專案地圖定位完成:', { lat: validLat, lng: validLng, zoom: 16 })
         } else {
           // 如果已經設置過，但專案改變了，強制重新定位
-          console.log('重新定位子專案地圖:', { lat: validLat, lng: validLng, zoom: 16 })
+          log.log('重新定位子專案地圖:', { lat: validLat, lng: validLng, zoom: 16 })
           this.map.setView([validLat, validLng], 16)
           }
       } else {
-        console.warn('子專案座標無效，無法定位:', {
+        log.warn('子專案座標無效，無法定位:', {
           lat,
           lng,
           project: this.project,
@@ -1982,18 +2077,21 @@ export default {
     },
 
     updateMapStyle() {
-      // 地圖樣式更新邏輯
-      // 這裡可以根據 dark/light 模式調整地圖樣式
+      if (!this.map) return
+      // 通知 Leaflet 重新測量容器，確保 tile 正確載入
+      this.$nextTick(() => {
+        this.map.invalidateSize()
+      })
     },
 
     async addGeoJSONToMap(geojsonData) {
       if (!this.map || !geojsonData) {
-        console.log('addGeoJSONToMap: 缺少地圖或數據', { map: !!this.map, geojsonData: !!geojsonData })
+        log.log('addGeoJSONToMap: 缺少地圖或數據', { map: !!this.map, geojsonData: !!geojsonData })
         return
       }
 
-      console.log('addGeoJSONToMap: 開始添加 GeoJSON', geojsonData)
-      console.log('Features 數量:', geojsonData.features?.length)
+      log.log('addGeoJSONToMap: 開始添加 GeoJSON', geojsonData)
+      log.log('Features 數量:', geojsonData.features?.length)
 
       // 移除現有的 GeoJSON 圖層
       if (this.geojsonLayer) {
@@ -2029,7 +2127,7 @@ export default {
           // 總是使用 getFeatureColor 來分配顏色，確保每個 feature 都有獨特的顏色
           const color = this.getFeatureColor(featureId, feature, this.geojsonData)
           
-          console.log(`Feature ${featureId} 顏色: ${color}`)
+          log.log(`Feature ${featureId} 顏色: ${color}`)
 
           return {
             color: color,
@@ -2077,13 +2175,13 @@ export default {
       // 添加到地圖
       this.geojsonLayer.addTo(this.map)
       
-      console.log('GeoJSON 圖層已添加到地圖')
-      console.log('圖層 bounds:', this.geojsonLayer.getBounds())
+      log.log('GeoJSON 圖層已添加到地圖')
+      log.log('圖層 bounds:', this.geojsonLayer.getBounds())
       
       // 自動調整地圖視圖到 GeoJSON 範圍
       if (this.geojsonLayer.getBounds().isValid()) {
         this.map.fitBounds(this.geojsonLayer.getBounds(), { padding: [20, 20] })
-        console.log('地圖已調整到 GeoJSON 範圍')
+        log.log('地圖已調整到 GeoJSON 範圍')
       }
     },
 
@@ -2165,7 +2263,7 @@ export default {
     // 只渲染新添加的圖層
     renderNewLayers(newLayers) {
       if (this.isRendering) {
-        console.log('正在渲染中，跳過重複調用')
+        log.log('正在渲染中，跳過重複調用')
         return
       }
 
@@ -2175,7 +2273,7 @@ export default {
         Object.entries(newLayers).forEach(([fileId, layerData]) => {
           // 如果圖層已經存在，跳過
           if (this.geojsonLayers[fileId]) {
-            console.log(`圖層 ${fileId} 已存在，跳過`)
+            log.log(`圖層 ${fileId} 已存在，跳過`)
             return
           }
 
@@ -2188,13 +2286,13 @@ export default {
               // 如果應該顯示，確保圖層在地圖上
               if (!this.map.hasLayer(this.geojsonLayers[fileId])) {
                 this.geojsonLayers[fileId].addTo(this.map)
-                console.log(`圖層 ${fileId} 根據可見性設置被顯示`)
+                log.log(`圖層 ${fileId} 根據可見性設置被顯示`)
               }
             } else if (!isVisible && this.geojsonLayers[fileId]) {
               // 如果應該隱藏，確保圖層不在圖層上
               if (this.map.hasLayer(this.geojsonLayers[fileId])) {
                 this.map.removeLayer(this.geojsonLayers[fileId])
-                console.log(`圖層 ${fileId} 根據可見性設置被隱藏`)
+                log.log(`圖層 ${fileId} 根據可見性設置被隱藏`)
               }
             }
           }
@@ -2209,12 +2307,12 @@ export default {
     // 渲染所有 GeoJSON 圖層
     renderAllGeojsonLayers() {
       if (this.isRendering) {
-        console.log('正在渲染中，跳過重複調用')
+        log.log('正在渲染中，跳過重複調用')
         return
       }
       
       this.isRendering = true
-      console.log('開始渲染所有 GeoJSON 圖層:', Object.keys(this.loadedGeojsonLayers))
+      log.log('開始渲染所有 GeoJSON 圖層:', Object.keys(this.loadedGeojsonLayers))
       
       try {
         // 清除現有的圖層
@@ -2236,13 +2334,13 @@ export default {
               // 如果應該顯示，確保圖層在地圖上
               if (!this.map.hasLayer(this.geojsonLayers[fileId])) {
                 this.geojsonLayers[fileId].addTo(this.map)
-                console.log(`圖層 ${fileId} 根據可見性設置被顯示`)
+                log.log(`圖層 ${fileId} 根據可見性設置被顯示`)
               }
             } else if (!isVisible && this.geojsonLayers[fileId]) {
               // 如果應該隱藏，確保圖層不在圖層上
               if (this.map.hasLayer(this.geojsonLayers[fileId])) {
                 this.map.removeLayer(this.geojsonLayers[fileId])
-                console.log(`圖層 ${fileId} 根據可見性設置被隱藏`)
+                log.log(`圖層 ${fileId} 根據可見性設置被隱藏`)
               }
             }
           }
@@ -2257,7 +2355,7 @@ export default {
     // 添加單個圖層到地圖（支援 GeoJSON 和 KML）
     addGeojsonLayerToMap(fileId, layerData) {
       if (!this.map || !layerData) {
-        console.log('addGeojsonLayerToMap: 缺少地圖或數據', { 
+        log.log('addGeojsonLayerToMap: 缺少地圖或數據', { 
           map: !!this.map, 
           layerData: !!layerData
         })
@@ -2267,7 +2365,7 @@ export default {
       // 檢查是否有有效的數據
       const hasValidData = layerData.geojson || layerData.kml || layerData.storage_path
       if (!hasValidData) {
-        console.log('addGeojsonLayerToMap: 沒有有效的圖層數據', { 
+        log.log('addGeojsonLayerToMap: 沒有有效的圖層數據', { 
           hasGeojson: !!layerData.geojson, 
           hasKml: !!layerData.kml,
           hasStoragePath: !!layerData.storage_path,
@@ -2280,27 +2378,22 @@ export default {
 
       const isPotentialAnalysis = layerData.metadata?.data_type === 'potential_analysis' || layerData.metadata?.data_type === 'potential_analysis_snapshot'
       const isKML = layerData.file_type === 'kml' || layerData.kml || layerData.file_extension === '.kml'
-      console.log(`添加圖層 ${fileId}:`, layerData.file_name, 'file_extension:', layerData.file_extension, 'file_type:', layerData.file_type, isPotentialAnalysis ? '(潛勢分析)' : '', isKML ? '(KML)' : '(GeoJSON)')
+      log.log(`添加圖層 ${fileId}:`, layerData.file_name, 'file_extension:', layerData.file_extension, 'file_type:', layerData.file_type, isPotentialAnalysis ? '(潛勢分析)' : '', isKML ? '(KML)' : '(GeoJSON)')
 
       let layer
       if (isKML) {
         // 創建 KML 圖層
-        console.log('創建 KML 圖層')
-        console.log('KML 內容長度:', layerData.kml?.length)
-        console.log('omnivore 可用性:', !!window.L?.omnivore)
+        log.log('創建 KML 圖層')
+        log.log('KML 內容長度:', layerData.kml?.length)
         
         // 顯示加載指示器
         this.$emit('kml-loading-start', { fileId, fileName: layerData.file_name })
-        
-        // 創建一個臨時的 blob URL 來載入 KML
-        const blob = new Blob([layerData.kml], { type: 'application/vnd.google-earth.kml+xml' })
-        const kmlUrl = URL.createObjectURL(blob)
-        console.log('KML Blob URL:', kmlUrl)
-        console.log('KML 文件路徑:', layerData.storage_path)
-        
-        // 檢查 omnivore 是否可用
-        if (!window.L?.omnivore) {
-          console.error('omnivore 插件未加載')
+        log.log('KML 文件路徑:', layerData.storage_path)
+
+        const kmlGeoJson = parseKmlToGeoJson(layerData.kml || '')
+        if (!kmlGeoJson.features.length) {
+          log.warn('KML 沒有可顯示的 Placemark 幾何')
+          this.$emit('kml-loading-complete', { fileId, fileName: layerData.file_name })
           return
         }
         
@@ -2309,10 +2402,7 @@ export default {
         const layerIndex = Object.keys(this.geojsonLayers).length
         const layerZIndex = baseZIndex + (layerIndex * 10)
         
-        // 使用 omnivore 插件載入 KML（移除縮放級別限制）
-        layer = L.omnivore.kml(kmlUrl, {
-          // 移除縮放級別限制，確保在所有縮放級別下都能顯示
-        }, L.geoJSON(null, {
+        layer = L.geoJSON(kmlGeoJson, {
           // 計算圖層的 z-index（根據順序）
           zIndex: layerZIndex,
           style: (feature) => {
@@ -2331,7 +2421,7 @@ export default {
                 'style4': convertKMLColor('ff4444ef')  // 紫色
               }
               color = styleColors[styleId] || '#ff0000'
-              console.log(`樣式 ${styleId} 使用顏色: ${color}`)
+              log.log(`樣式 ${styleId} 使用顏色: ${color}`)
             }
             
             return {
@@ -2367,20 +2457,13 @@ export default {
               })
             })
           }
-        })).on('ready', () => {
-          console.log('KML 圖層載入完成')
-          // 樣式已經在 L.geoJSON 的 style 函數中設置，不需要重複設置
-          this.$emit('kml-loading-complete', { fileId, fileName: layerData.file_name })
-        }).on('error', (error) => {
-          console.error('KML 載入錯誤:', error)
-          this.$emit('kml-loading-error', { fileId, fileName: layerData.file_name, error })
         })
-        
-        // 清理 blob URL
-        setTimeout(() => URL.revokeObjectURL(kmlUrl), 1000)
+
+        log.log('KML 圖層載入完成')
+        this.$emit('kml-loading-complete', { fileId, fileName: layerData.file_name })
       } else {
         // 創建 GeoJSON 圖層
-        console.log('Features 數量:', layerData.geojson.features?.length)
+        log.log('Features 數量:', layerData.geojson.features?.length)
         
         // 計算圖層的 z-index（根據順序）
         const baseZIndex = 1000
@@ -2389,22 +2472,22 @@ export default {
         
         // 根據坐標系統選擇適當的圖層創建方式
         const layerSRID = layerData.srid || 4326
-        console.log('=== 圖層坐標系統檢查 ===')
-        console.log('圖層名稱:', layerData.file_name)
-        console.log('圖層坐標系統 SRID:', layerSRID)
-        console.log('圖層數據:', layerData)
-        console.log('是否為 TWD97:', layerSRID === 3826)
+        log.log('=== 圖層坐標系統檢查 ===')
+        log.log('圖層名稱:', layerData.file_name)
+        log.log('圖層坐標系統 SRID:', layerSRID)
+        log.log('圖層數據:', layerData)
+        log.log('是否為 TWD97:', layerSRID === 3826)
         
         if (layerSRID === 3826) {
           // TWD97 坐標系統，需要坐標轉換
-          console.log('=== 開始處理 TWD97 圖層 ===')
-          console.log('圖層名稱:', layerData.file_name)
-          console.log('原始 GeoJSON 特徵數量:', layerData.geojson.features?.length)
+          log.log('=== 開始處理 TWD97 圖層 ===')
+          log.log('圖層名稱:', layerData.file_name)
+          log.log('原始 GeoJSON 特徵數量:', layerData.geojson.features?.length)
           
           // 檢查原始坐標
           if (layerData.geojson.features && layerData.geojson.features.length > 0) {
             const firstFeature = layerData.geojson.features[0]
-            console.log('原始第一個特徵坐標 (TWD97):', firstFeature.geometry?.coordinates)
+            log.log('原始第一個特徵坐標 (TWD97):', firstFeature.geometry?.coordinates)
           }
           
           // 重置轉換標記
@@ -2412,23 +2495,23 @@ export default {
           
           // 預先轉換整個 GeoJSON 數據
           const convertedGeoJSON = this.convertTWD97ToWGS84(layerData.geojson)
-          console.log('轉換後 GeoJSON 特徵數量:', convertedGeoJSON.features?.length)
+          log.log('轉換後 GeoJSON 特徵數量:', convertedGeoJSON.features?.length)
           
           // 檢查轉換後的第一個特徵坐標
           if (convertedGeoJSON.features && convertedGeoJSON.features.length > 0) {
             const firstFeature = convertedGeoJSON.features[0]
-            console.log('轉換後第一個特徵坐標 (WGS84):', firstFeature.geometry?.coordinates)
+            log.log('轉換後第一個特徵坐標 (WGS84):', firstFeature.geometry?.coordinates)
             
             // 計算轉換後圖層的邊界
             const bounds = this.calculateGeoJSONBounds(convertedGeoJSON)
-            console.log('轉換後圖層邊界:', bounds)
+            log.log('轉換後圖層邊界:', bounds)
             
             // 檢查邊界是否合理
             if (bounds && bounds.south >= 21 && bounds.north <= 26 && bounds.west >= 119 && bounds.east <= 122) {
-              console.log('✅ 轉換後圖層邊界合理（在台灣範圍內）')
+              log.log('✅ 轉換後圖層邊界合理（在台灣範圍內）')
             } else {
-              console.log('❌ 轉換後圖層邊界不合理（超出台灣範圍）')
-              console.log('邊界詳細信息:', {
+              log.log('❌ 轉換後圖層邊界不合理（超出台灣範圍）')
+              log.log('邊界詳細信息:', {
                 south: bounds?.south,
                 north: bounds?.north,
                 west: bounds?.west,
@@ -2437,7 +2520,7 @@ export default {
             }
           }
           
-          console.log('=== TWD97 圖層處理完成 ===')
+          log.log('=== TWD97 圖層處理完成 ===')
           
           layer = L.geoJSON(convertedGeoJSON, {
           // 設置較高的 z-index，確保 GeoJSON 圖層在 WMS 圖層之上
@@ -2471,7 +2554,7 @@ export default {
             const color = this.getFeatureColor(featureId, feature, layerData);
             
             if (!isPotentialAnalysis) {
-              console.log(`Feature ${featureId} 顏色: ${color}`);
+              log.log(`Feature ${featureId} 顏色: ${color}`);
             }
 
             return {
@@ -2611,7 +2694,7 @@ export default {
               const color = this.getFeatureColor(featureId, feature, layerData);
               
               if (!isPotentialAnalysis) {
-                console.log(`Feature ${featureId} 顏色: ${color}`);
+                log.log(`Feature ${featureId} 顏色: ${color}`);
               }
 
               return {
@@ -2713,32 +2796,32 @@ export default {
 
       // 自動添加圖層到地圖上（默認可見）
       layer.addTo(this.map)
-      console.log(`圖層 ${fileId} 已創建並添加到地圖`)
-      console.log(`GeoJSON 圖層 ${fileId} z-index:`, layer.options.zIndex)
-      console.log(`GeoJSON 圖層 ${fileId} 是否在地圖上:`, this.map.hasLayer(layer))
+      log.log(`圖層 ${fileId} 已創建並添加到地圖`)
+      log.log(`GeoJSON 圖層 ${fileId} z-index:`, layer.options.zIndex)
+      log.log(`GeoJSON 圖層 ${fileId} 是否在地圖上:`, this.map.hasLayer(layer))
       
       // 檢查圖層邊界
       try {
         const bounds = layer.getBounds()
         if (bounds && bounds.isValid && bounds.isValid()) {
-          console.log(`圖層 ${fileId} 邊界:`, bounds)
-          console.log(`圖層 ${fileId} 中心點:`, bounds.getCenter())
+          log.log(`圖層 ${fileId} 邊界:`, bounds)
+          log.log(`圖層 ${fileId} 中心點:`, bounds.getCenter())
         } else {
-          console.log(`圖層 ${fileId} 邊界無效`)
+          log.log(`圖層 ${fileId} 邊界無效`)
         }
       } catch (error) {
-        console.error(`圖層 ${fileId} 邊界檢查失敗:`, error)
+        log.error(`圖層 ${fileId} 邊界檢查失敗:`, error)
       }
       
       // 記錄圖層信息用於調試
       const isTIF = layerData.file_extension === '.tif' || layerData.file_extension === '.tiff'
       if (isTIF) {
-        console.log('TIF 圖層已創建:', layer)
+        log.log('TIF 圖層已創建:', layer)
         if (layerData.metadata?.bounds) {
-          console.log('TIF 圖層邊界:', layerData.metadata.bounds)
+          log.log('TIF 圖層邊界:', layerData.metadata.bounds)
         }
       } else {
-        console.log('GeoJSON/KML 圖層已創建:', layer)
+        log.log('GeoJSON/KML 圖層已創建:', layer)
       }
     },
 
@@ -2750,12 +2833,12 @@ export default {
           if (isVisible) {
             if (!this.map.hasLayer(layer)) {
               layer.addTo(this.map);
-              console.log(`顯示圖層 ${fileId}`);
+              log.log(`顯示圖層 ${fileId}`);
             }
           } else {
             if (this.map.hasLayer(layer)) {
               this.map.removeLayer(layer);
-              console.log(`隱藏圖層 ${fileId}`);
+              log.log(`隱藏圖層 ${fileId}`);
             }
           }
         }
@@ -2765,13 +2848,13 @@ export default {
 
     // 更新單個圖層可見性
     updateLayerVisibility(fileId, visible) {
-      console.log('updateLayerVisibility 被調用:', fileId, visible);
-      console.log('當前圖層:', Object.keys(this.geojsonLayers));
-      console.log('已載入的圖層:', Object.keys(this.loadedGeojsonLayers));
+      log.log('updateLayerVisibility 被調用:', fileId, visible);
+      log.log('當前圖層:', Object.keys(this.geojsonLayers));
+      log.log('已載入的圖層:', Object.keys(this.loadedGeojsonLayers));
       
       // 如果圖層不存在，先嘗試載入
       if (!this.geojsonLayers[fileId] && this.loadedGeojsonLayers[fileId]) {
-        console.log('圖層不存在，嘗試載入:', fileId);
+        log.log('圖層不存在，嘗試載入:', fileId);
         this.addGeojsonLayerToMap(fileId, this.loadedGeojsonLayers[fileId]);
         
         // 等待下一個 tick 確保圖層已經創建，然後處理可見性
@@ -2788,11 +2871,11 @@ export default {
 
     // 更新圖層顏色
     updateLayerColor(fileId, newColor) {
-      console.log('updateLayerColor 被調用:', fileId, newColor);
+      log.log('updateLayerColor 被調用:', fileId, newColor);
       
       const layer = this.geojsonLayers[fileId];
       if (!layer) {
-        console.log(`圖層 ${fileId} 不存在，無法更新顏色`);
+        log.log(`圖層 ${fileId} 不存在，無法更新顏色`);
         return;
       }
 
@@ -2800,7 +2883,7 @@ export default {
       const layerData = this.loadedGeojsonLayers[fileId];
       if (layerData && layerData.metadata) {
         layerData.metadata.layer_color = newColor;
-        console.log(`圖層 ${fileId} 顏色已更新為: ${newColor}`);
+        log.log(`圖層 ${fileId} 顏色已更新為: ${newColor}`);
       }
 
       // 重新設置圖層樣式
@@ -2819,59 +2902,59 @@ export default {
         };
       });
 
-      console.log(`圖層 ${fileId} 樣式已更新`);
+      log.log(`圖層 ${fileId} 樣式已更新`);
     },
     
     // 處理圖層可見性的核心邏輯
     handleLayerVisibility(fileId, visible) {
       const layer = this.geojsonLayers[fileId];
       if (!layer) {
-        console.log(`圖層 ${fileId} 不存在，無法更新可見性`);
+        log.log(`圖層 ${fileId} 不存在，無法更新可見性`);
         return;
       }
       
       if (visible) {
         if (!this.map.hasLayer(layer)) {
           layer.addTo(this.map);
-          console.log(`圖層 ${fileId} 已添加到地圖`);
-          console.log(`圖層 ${fileId} z-index:`, layer.options.zIndex);
-          console.log(`圖層 ${fileId} 樣式:`, layer.options);
+          log.log(`圖層 ${fileId} 已添加到地圖`);
+          log.log(`圖層 ${fileId} z-index:`, layer.options.zIndex);
+          log.log(`圖層 ${fileId} 樣式:`, layer.options);
           
           // 驗證圖層是否真的在地圖上
           setTimeout(() => {
-            console.log(`[驗證] 圖層 ${fileId} 是否在地圖上:`, this.map.hasLayer(layer));
+            log.log(`[驗證] 圖層 ${fileId} 是否在地圖上:`, this.map.hasLayer(layer));
             
             // 檢查圖層的邊界和中心點
             try {
               const bounds = layer.getBounds();
               if (bounds && bounds.isValid && bounds.isValid()) {
-                console.log(`[驗證] 圖層 ${fileId} 邊界:`, bounds);
-                console.log(`[驗證] 圖層 ${fileId} 中心點:`, bounds.getCenter());
-                console.log(`[驗證] 圖層 ${fileId} 邊界大小:`, bounds.getNorthEast().distanceTo(bounds.getSouthWest()));
+                log.log(`[驗證] 圖層 ${fileId} 邊界:`, bounds);
+                log.log(`[驗證] 圖層 ${fileId} 中心點:`, bounds.getCenter());
+                log.log(`[驗證] 圖層 ${fileId} 邊界大小:`, bounds.getNorthEast().distanceTo(bounds.getSouthWest()));
               } else {
-                console.log(`[驗證] 圖層 ${fileId} 邊界無效`);
+                log.log(`[驗證] 圖層 ${fileId} 邊界無效`);
               }
             } catch (error) {
-              console.error(`[驗證] 圖層 ${fileId} 邊界檢查失敗:`, error);
+              log.error(`[驗證] 圖層 ${fileId} 邊界檢查失敗:`, error);
             }
             
             // 檢查圖層的 features 數量
             try {
               const layerCount = layer.getLayers ? layer.getLayers().length : 'unknown';
-              console.log(`[驗證] 圖層 ${fileId} features 數量:`, layerCount);
+              log.log(`[驗證] 圖層 ${fileId} features 數量:`, layerCount);
             } catch (error) {
-              console.error(`[驗證] 圖層 ${fileId} features 檢查失敗:`, error);
+              log.error(`[驗證] 圖層 ${fileId} features 檢查失敗:`, error);
             }
           }, 100);
         } else {
-          console.log(`圖層 ${fileId} 已經在地圖上`);
+          log.log(`圖層 ${fileId} 已經在地圖上`);
         }
       } else {
         if (this.map.hasLayer(layer)) {
           this.map.removeLayer(layer);
-          console.log(`圖層 ${fileId} 已從地圖移除`);
+          log.log(`圖層 ${fileId} 已從地圖移除`);
         } else {
-          console.log(`圖層 ${fileId} 已經不在圖層上`);
+          log.log(`圖層 ${fileId} 已經不在圖層上`);
         }
       }
     },
@@ -2898,7 +2981,7 @@ export default {
     
     // 清理所有圖層（用於組件卸載時）
     clearAllLayers() {
-      console.log('清理所有地圖圖層')
+      log.log('清理所有地圖圖層')
       
       try {
       // 清除所有 GeoJSON 圖層
@@ -2909,7 +2992,7 @@ export default {
           this.map.removeLayer(layer)
               }
             } catch (error) {
-              console.warn('移除 GeoJSON 圖層時發生錯誤:', error)
+              log.warn('移除 GeoJSON 圖層時發生錯誤:', error)
         }
       })
         }
@@ -2921,7 +3004,7 @@ export default {
         this.map.removeLayer(this.geojsonLayer)
             }
           } catch (error) {
-            console.warn('移除單個 GeoJSON 圖層時發生錯誤:', error)
+            log.warn('移除單個 GeoJSON 圖層時發生錯誤:', error)
           }
         }
         
@@ -2932,7 +3015,7 @@ export default {
               this.map.removeLayer(this.customBaseMapLayer)
             }
           } catch (error) {
-            console.warn('移除自定義底圖圖層時發生錯誤:', error)
+            log.warn('移除自定義底圖圖層時發生錯誤:', error)
           }
           this.customBaseMapLayer = null
       }
@@ -2944,14 +3027,14 @@ export default {
       // 清理工作應該由父組件完成
         this.isCustomBaseMapActive = false
       } catch (error) {
-        console.error('清理地圖圖層時發生錯誤:', error)
+        log.error('清理地圖圖層時發生錯誤:', error)
       }
     },
     
     // 切換到自定義底圖
     async switchToCustomBaseMap(baseMap) {
       if (!this.baseMapService) {
-        console.log('底圖服務未初始化，無法切換底圖')
+        log.log('底圖服務未初始化，無法切換底圖')
         return
       }
       
@@ -2961,10 +3044,16 @@ export default {
       }
       
       if (!this.baseMapService.map) {
-        console.log('地圖未準備好，無法切換底圖')
+        log.log('地圖未準備好，無法切換底圖')
         return
       }
-      
+
+      // 若正在執行縮放動畫，等待動畫結束再換圖層
+      // 避免 Leaflet _resetGrid 在 _map 為 null 時拋出 TypeError
+      if (this.map._animatingZoom) {
+        await new Promise(resolve => this.map.once('zoomend', resolve))
+      }
+
       try {
         await this.baseMapService.switchToCustomBaseMap(
           baseMap,
@@ -2985,11 +3074,11 @@ export default {
         if (this.customBaseMapLayer && this.map.hasLayer(this.customBaseMapLayer)) {
           if (this.customBaseMapLayer.bringToFront) {
             this.customBaseMapLayer.bringToFront()
-            console.log('已將自定義底圖置於最上層（切換後）')
+            log.log('已將自定義底圖置於最上層（切換後）')
           }
         }
       } catch (error) {
-        console.error('切換自定義底圖失敗:', error)
+        log.error('切換自定義底圖失敗:', error)
         this.$emit('hide-loading')
         this.switchToDefaultBaseMap()
       }
@@ -3000,7 +3089,7 @@ export default {
     switchToDefaultBaseMap() {
       if (!this.map) return
       
-      console.log('切換回默認底圖')
+      log.log('切換回默認底圖')
       
       if (this.baseMapService) {
         this.baseMapService.switchToDefaultBaseMap()
@@ -3014,17 +3103,59 @@ export default {
         this.layers.street.addTo(this.map)
       }
       
-      console.log('已切換回默認底圖')
+      log.log('已切換回默認底圖')
     },
     
+    // ── 地質圖縮放自動切換 ──
+
+    // 當 zoom > GEOLOGY_MAX_ZOOM 且目前是地質圖 → 自動切換到通用地圖
+    _switchAwayFromGeology() {
+      if (!this.map || !this.layers.emap || !this.layers.geology50k) return
+      if (!this.map.hasLayer(this.layers.geology50k)) return
+      this.geologySwitchedToEmap = true
+      // 移除地質圖，加入通用地圖
+      // Leaflet 的 layerremove/layeradd 事件會自動更新 layer control 的 radio button
+      this.map.removeLayer(this.layers.geology50k)
+      this.layers.emap.addTo(this.map)
+      this.currentLayer = 'emap'
+      log.log('[地質圖] zoom > ' + this.GEOLOGY_MAX_ZOOM + '，自動切換至台灣通用地圖')
+    },
+
+    // 當 zoom ≤ GEOLOGY_MAX_ZOOM 且使用者原本選地質圖 → 自動切換回地質圖
+    _switchBackToGeology() {
+      if (!this.map || !this.layers.emap || !this.layers.geology50k) return
+      if (!this.geologySwitchedToEmap) return
+      if (this.userSelectedLayer !== 'geology50k') return
+      this.geologySwitchedToEmap = false
+      // 移除通用地圖，加入地質圖
+      this.map.removeLayer(this.layers.emap)
+      this.layers.geology50k.addTo(this.map)
+      this.currentLayer = 'geology50k'
+      log.log('[地質圖] zoom ≤ ' + this.GEOLOGY_MAX_ZOOM + '，自動切換回 1/50000 地質圖')
+    },
+
+    _handleGeologyZoomSwitch() {
+      if (!this.map) return
+      const zoom = this.map.getZoom()
+      if (zoom > this.GEOLOGY_MAX_ZOOM) {
+        // 若正在使用地質圖 → 切走
+        if (this.currentLayer === 'geology50k') {
+          this._switchAwayFromGeology()
+        }
+      } else {
+        // zoom 已回到可用範圍 → 若原本是地質圖則切回
+        this._switchBackToGeology()
+      }
+    },
+
     // 地質圖層控制
     toggleGeologicalLayer(data) {
       if (!this.map || !this.geologicalLayerService) {
-        console.log('地圖或地質圖層服務未初始化')
+        log.log('地圖或地質圖層服務未初始化')
         return
       }
       
-      console.log('切換地質圖層:', data)
+      log.log('切換地質圖層:', data)
       
       // 保存 WMS 圖層狀態
       this.wmsLayerActive = data.active
@@ -3053,88 +3184,49 @@ export default {
       }
     },
 
-    // 載入省道里程樁號數據
-    async loadHighwayMileageData() {
-      if (!this.map) {
-        console.warn('地圖未初始化，無法載入省道里程樁號')
+    // 渲染省道里程樁號圖層（使用父元件傳入的 GeoJSON，不再自行 fetch）
+    loadHighwayMileageData() {
+      if (!this.map) return
+      const geojsonData = this.mileageGeoJson
+      if (!geojsonData || !geojsonData.features || geojsonData.features.length === 0) {
+        log.warn('[loadHighwayMileageData] 無里程點資料（mileageGeoJson 未設定或為空）')
         return
       }
 
-      try {
-        console.log('開始載入省道里程樁號數據（從 GeoJSON）...')
-        
-        // 從 alertRoad.geojson 讀取完整的桩号数据
-        let response
-        try {
-          // 首先嘗試從 public 目錄讀取 GeoJSON
-          response = await fetch('/data/uploads/geojson/alertRoad.geojson')
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`)
-        }
-        } catch (fetchError) {
-          console.error('從 public 目錄讀取 GeoJSON 失敗:', fetchError)
-          throw new Error('無法讀取 alertRoad.geojson 文件，請確保文件存在於 public/data/uploads/geojson/ 目錄')
-        }
-        
-        // 解析 GeoJSON 數據
-        const geojsonData = await response.json()
-        
-        if (!geojsonData || !geojsonData.features || geojsonData.features.length === 0) {
-          throw new Error('GeoJSON 文件為空或格式不正確')
-        }
-        
-        console.log('GeoJSON 文件載入成功，共', geojsonData.features.length, '個桩號點位')
-        
-        // 直接使用所有数据（alertRoad.geojson 已包含所有需要的路線數據）
-        const geoJsonData = geojsonData
-        
-        // 創建 GeoJSON 圖層（使用 alertRoad.geojson 的字段名）
-        this.highwayMileageLayer = L.geoJSON(geoJsonData, {
-          pointToLayer: (feature, latlng) => {
-            // 創建自定義標記（小圓點）
-            return L.circleMarker(latlng, {
-              radius: 4,
-              fillColor: '#ef4444', // 紅色
-              color: '#ffffff',
-              weight: 1,
-              opacity: 1,
-              fillOpacity: 0.8
-            })
-          },
-          onEachFeature: (feature, layer) => {
-            // 從 GeoJSON 屬性中提取信息（使用 alertRoad.geojson 的字段）
-            const props = feature.properties || {}
-            const roadNumber = props.公路編 || props.name || '未知路線'
-            const mileage = props.里程數 || props.mileage || '未知'
-            const workSection = props.工務段 || ''
-            const location = `${props.縣市別 || ''}${props.鄉鎮區 || ''}${props.村里 || ''}`
-            
-            const popupContent = `
-              <div style="min-width: 180px; padding: 8px;">
-                <div style="font-weight: 600; font-size: 14px; margin-bottom: 6px; color: #1f2937;">${roadNumber}</div>
-                <div style="font-size: 12px; color: #6b7280; line-height: 1.5;">
-                  里程數: ${mileage}<br>
-                  ${workSection ? `工務段: ${workSection}<br>` : ''}
-                  ${location ? `位置: ${location}` : ''}
-                </div>
+      this.highwayMileageLayer = L.geoJSON(geojsonData, {
+        pointToLayer: (feature, latlng) => {
+          return L.circleMarker(latlng, {
+            radius: 5,
+            fillColor: '#3b82f6',
+            color: '#1d4ed8',
+            weight: 1.5,
+            opacity: 1,
+            fillOpacity: 0.85
+          })
+        },
+        onEachFeature: (feature, layer) => {
+          const props = feature.properties || {}
+          const roadNumber = props.公路編 || props.name || '未知路線'
+          const mileage = props.里程數 || props.mileage || '未知'
+          const workSection = props.工務段 || ''
+          const location = `${props.縣市別 || ''}${props.鄉鎮區 || ''}${props.村里 || ''}`
+          layer.bindPopup(`
+            <div style="min-width: 180px; padding: 8px;">
+              <div style="font-weight: 600; font-size: 14px; margin-bottom: 6px; color: #1f2937;">${roadNumber}</div>
+              <div style="font-size: 12px; color: #6b7280; line-height: 1.5;">
+                里程數: ${mileage}<br>
+                ${workSection ? `工務段: ${workSection}<br>` : ''}
+                ${location ? `位置: ${location}` : ''}
               </div>
-            `
-            layer.bindPopup(popupContent)
-          }
-        })
-        
-        // 如果圖層應該可見，則添加到地圖
-        console.log('[loadHighwayMileageData] 檢查是否應該顯示圖層:', this.highwayMileageVisible)
-        if (this.highwayMileageVisible) {
-          this.highwayMileageLayer.addTo(this.map)
-          console.log('[loadHighwayMileageData] 省道里程樁號圖層已添加到地圖')
-        } else {
-          console.log('[loadHighwayMileageData] 圖層創建完成但未顯示（highwayMileageVisible 為 false）')
+            </div>
+          `)
         }
-        
-        console.log('[loadHighwayMileageData] 省道里程樁號圖層創建完成')
-      } catch (error) {
-        console.error('[loadHighwayMileageData] 載入省道里程樁號數據失敗:', error)
+      })
+
+      this.highwayMileageLayer.addTo(this.map)
+      const bounds = this.highwayMileageLayer.getBounds()
+      if (bounds.isValid()) {
+        this.map.fitBounds(bounds, { padding: [40, 40], maxZoom: 14 })
       }
     },
 
@@ -3165,42 +3257,27 @@ export default {
 
     // 切換省道里程樁號圖層可見性
     toggleHighwayMileageLayer(visible) {
-      console.log('========================================')
-      console.log('[toggleHighwayMileageLayer] 被調用')
-      console.log('[toggleHighwayMileageLayer] visible:', visible)
-      console.log('[toggleHighwayMileageLayer] this.map:', !!this.map)
-      console.log('[toggleHighwayMileageLayer] this.highwayMileageLayer:', !!this.highwayMileageLayer)
-      
-      if (!this.map) {
-        console.warn('[toggleHighwayMileageLayer] ❌ 地圖未初始化')
-        return
-      }
+      if (!this.map) return
 
       if (visible) {
-        // 如果圖層不存在，先載入數據
         if (!this.highwayMileageLayer) {
-          console.log('[toggleHighwayMileageLayer] ⚠️ 圖層不存在，開始載入數據...')
+          // 首次顯示：建立圖層（loadHighwayMileageData 會自行 addTo + fitBounds）
           this.loadHighwayMileageData()
-          return
-        }
-        
-        // 顯示圖層
-        if (!this.map.hasLayer(this.highwayMileageLayer)) {
-          this.highwayMileageLayer.addTo(this.map)
-          console.log('[toggleHighwayMileageLayer] ✅ 顯示省道里程樁號圖層成功')
         } else {
-          console.log('[toggleHighwayMileageLayer] ℹ️ 省道里程樁號圖層已在地圖上')
+          if (!this.map.hasLayer(this.highwayMileageLayer)) {
+            this.highwayMileageLayer.addTo(this.map)
+          }
+          // 定位到圖層範圍
+          const bounds = this.highwayMileageLayer.getBounds()
+          if (bounds.isValid()) {
+            this.map.fitBounds(bounds, { padding: [40, 40], maxZoom: 14 })
+          }
         }
       } else {
-        // 隱藏圖層
         if (this.highwayMileageLayer && this.map.hasLayer(this.highwayMileageLayer)) {
           this.map.removeLayer(this.highwayMileageLayer)
-          console.log('[toggleHighwayMileageLayer] ✅ 隱藏省道里程樁號圖層成功')
-        } else {
-          console.log('[toggleHighwayMileageLayer] ℹ️ 圖層不在地圖上或不存在')
         }
       }
-      console.log('========================================')
     },
     
     
@@ -3210,12 +3287,12 @@ export default {
     checkLayerOrder() {
       if (!this.map) return
       
-      console.log('=== 圖層順序檢查 ===')
+      log.log('=== 圖層順序檢查 ===')
       
       // 檢查 GeoJSON 圖層
       Object.entries(this.geojsonLayers).forEach(([fileId, layer]) => {
         if (layer && this.map.hasLayer(layer)) {
-          console.log(`GeoJSON 圖層 ${fileId}: z-index=${layer.options.zIndex}, 在地圖上=${this.map.hasLayer(layer)}`)
+          log.log(`GeoJSON 圖層 ${fileId}: z-index=${layer.options.zIndex}, 在地圖上=${this.map.hasLayer(layer)}`)
         }
       })
       
@@ -3223,19 +3300,19 @@ export default {
       if (this.geologicalLayerService) {
         const status = this.geologicalLayerService.getLayerStatus()
         Object.entries(status).forEach(([layerType, layerStatus]) => {
-          console.log(`地質圖層 ${layerType}: z-index=${layerStatus.zIndex}, 在地圖上=${layerStatus.onMap}`)
+          log.log(`地質圖層 ${layerType}: z-index=${layerStatus.zIndex}, 在地圖上=${layerStatus.onMap}`)
         })
       }
       
       // 檢查所有地圖圖層
-      console.log('所有地圖圖層:')
+      log.log('所有地圖圖層:')
       Object.entries(this.map._layers).forEach(([id, layer]) => {
         if (layer.options && layer.options.zIndex !== undefined) {
-          console.log(`  圖層 ${id}: z-index=${layer.options.zIndex}, 類型=${layer.constructor.name}`)
+          log.log(`  圖層 ${id}: z-index=${layer.options.zIndex}, 類型=${layer.constructor.name}`)
         }
       })
       
-      console.log('=== 圖層順序檢查結束 ===')
+      log.log('=== 圖層順序檢查結束 ===')
     },
     
     
@@ -3243,13 +3320,13 @@ export default {
     // 更新圖層 z-index 順序
     updateLayerZIndex(layerOrder) {
       if (!this.map || !layerOrder || layerOrder.length === 0) {
-        console.log('updateLayerZIndex: 缺少地圖或順序信息')
+        log.log('updateLayerZIndex: 缺少地圖或順序信息')
         return
       }
 
-      console.log('=== 更新圖層 z-index 順序 ===')
-      console.log('新的圖層順序:', layerOrder)
-      console.log('當前圖層:', Object.keys(this.geojsonLayers))
+      log.log('=== 更新圖層 z-index 順序 ===')
+      log.log('新的圖層順序:', layerOrder)
+      log.log('當前圖層:', Object.keys(this.geojsonLayers))
 
       // 為每個圖層分配新的 z-index
       // 基礎 z-index 從 1000 開始，每個圖層增加 10
@@ -3281,18 +3358,18 @@ export default {
           const isVisible = this.layerVisibility[fileId] === undefined ? false : this.layerVisibility[fileId]
           if (isVisible) {
             layer.addTo(this.map)
-            console.log(`圖層 ${fileId} 重新添加到地圖，z-index: ${newZIndex}, 可見性: ${isVisible}, 圖層卡順序: ${index + 1}/${layerOrder.length}`)
+            log.log(`圖層 ${fileId} 重新添加到地圖，z-index: ${newZIndex}, 可見性: ${isVisible}, 圖層卡順序: ${index + 1}/${layerOrder.length}`)
           } else {
-            console.log(`圖層 ${fileId} 不可見，不添加到地圖，z-index: ${newZIndex}, 圖層卡順序: ${index + 1}/${layerOrder.length}`)
+            log.log(`圖層 ${fileId} 不可見，不添加到地圖，z-index: ${newZIndex}, 圖層卡順序: ${index + 1}/${layerOrder.length}`)
           }
         } else {
-          console.warn(`圖層 ${fileId} 不存在於 geojsonLayers 中`)
+          log.warn(`圖層 ${fileId} 不存在於 geojsonLayers 中`)
         }
       })
 
       // 檢查更新後的圖層順序
       this.checkLayerOrder()
-      console.log('=== 圖層 z-index 更新完成 ===')
+      log.log('=== 圖層 z-index 更新完成 ===')
     },
 
   }
@@ -3383,6 +3460,18 @@ export default {
   cursor: grabbing !important;
 }
 
+/* 修正瓦片接縫黑線（tile seam） */
+:deep(.leaflet-tile) {
+  outline: 1px solid transparent;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  image-rendering: auto;
+}
+
+:deep(.leaflet-tile-container) {
+  will-change: transform;
+}
+
 /* 確保地圖容器不會被其他元素阻擋 */
 .map-container {
   pointer-events: auto !important;
@@ -3390,4 +3479,3 @@ export default {
   z-index: 1 !important;
 }
 </style>
-

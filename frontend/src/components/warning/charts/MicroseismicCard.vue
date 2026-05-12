@@ -1,76 +1,89 @@
 <template>
   <div class="microseismic-card w-full h-full p-4 flex flex-col">
+    <!-- 載入中 -->
     <div v-if="loading" class="flex items-center justify-center h-full">
       <div class="text-center">
-        <div class="w-6 h-6 border-2 border-blue-300 border-t-blue-600 rounded-full animate-spin mx-auto mb-2"></div>
-        <p class="text-xs text-gray-500 dark:text-gray-400">載入中...</p>
+        <div class="w-5 h-5 border-2 border-t-blue-500 rounded-full animate-spin mx-auto mb-2"
+             :style="isDarkMode ? 'border-color:#334155; border-top-color:#3b82f6;' : 'border-color:#dbeafe; border-top-color:#3b82f6;'"></div>
+        <p class="text-xs" :class="isDarkMode ? 'text-slate-500' : 'text-gray-400'">載入中...</p>
       </div>
     </div>
-    
+
+    <!-- 無數據 -->
     <div v-else-if="!data" class="flex items-center justify-center h-full">
-      <div class="text-center text-gray-400 dark:text-gray-500">
-        <svg class="w-12 h-12 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+      <div class="text-center" :class="isDarkMode ? 'text-slate-600' : 'text-gray-400'">
+        <svg class="w-10 h-10 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
         </svg>
-        <p class="text-sm">暫無數據</p>
+        <p class="text-xs">暫無數據</p>
       </div>
     </div>
-    
-    <div v-else-if="data !== null && data !== undefined" class="space-y-3 flex flex-col">
-      <!-- 標題區域 -->
-      <div class="flex items-center justify-between mb-2">
-        <div class="flex items-center gap-2">
-          <div class="w-3 h-3 rounded-full bg-blue-500 animate-pulse"></div>
-          <h4 class="text-sm font-bold text-gray-800 dark:text-gray-200">微地動監測</h4>
-        </div>
-        <span 
-          class="px-2 py-0.5 rounded-full text-xs font-medium"
-          :class="getStatusClass(status)"
-        >
+
+    <!-- 有數據 -->
+    <div v-else class="flex flex-col h-full gap-3">
+      <!-- 標題列 -->
+      <div class="flex items-center justify-between">
+        <span class="text-[11px] font-semibold uppercase tracking-wider"
+              :class="isDarkMode ? 'text-slate-500' : 'text-gray-400'">微地動監測</span>
+        <span class="flex items-center gap-1.5 text-xs font-medium"
+              :class="status === 'high' ? (isDarkMode ? 'text-red-400' : 'text-red-600')
+                    : status === 'medium' ? (isDarkMode ? 'text-amber-400' : 'text-amber-600')
+                    : (isDarkMode ? 'text-green-400' : 'text-green-600')">
+          <span class="w-1.5 h-1.5 rounded-full"
+                :class="status === 'high' ? 'bg-red-500' : status === 'medium' ? 'bg-amber-500' : 'bg-green-500'"></span>
           {{ statusText }}
         </span>
       </div>
-      
-      <!-- 事件類型統計 -->
-      <div class="grid grid-cols-3 gap-2 mb-3">
-        <div class="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-2.5 border border-blue-200 dark:border-blue-800 text-center">
-          <div class="text-xs text-blue-600 dark:text-blue-400 mb-1">TYPE I</div>
-          <div class="text-lg font-bold text-blue-700 dark:text-blue-300">{{ typeCounts.typeI }}</div>
+
+      <!-- 三欄計數 -->
+      <div class="grid grid-cols-3 rounded overflow-hidden"
+           :style="isDarkMode ? 'border:1px solid #1e293b;' : 'border:1px solid #f3f4f6;'">
+        <div class="py-3 text-center min-w-0"
+             :style="isDarkMode ? 'border-right:1px solid #1e293b;' : 'border-right:1px solid #f3f4f6;'">
+          <div class="text-[10px] font-medium tracking-wide mb-1"
+               :class="isDarkMode ? 'text-slate-500' : 'text-gray-400'">TYPE I</div>
+          <div class="text-xl font-semibold tabular-nums"
+               :class="isDarkMode ? 'text-slate-200' : 'text-gray-800'">{{ typeCounts.typeI }}</div>
         </div>
-        <div class="bg-yellow-50 dark:bg-yellow-900/20 rounded-lg p-2.5 border border-yellow-200 dark:border-yellow-800 text-center">
-          <div class="text-xs text-yellow-600 dark:text-yellow-400 mb-1">TYPE II</div>
-          <div class="text-lg font-bold text-yellow-700 dark:text-yellow-300">{{ typeCounts.typeII }}</div>
+        <div class="py-3 text-center min-w-0"
+             :style="isDarkMode ? 'border-right:1px solid #1e293b;' : 'border-right:1px solid #f3f4f6;'">
+          <div class="text-[10px] font-medium tracking-wide mb-1"
+               :class="isDarkMode ? 'text-slate-500' : 'text-gray-400'">TYPE II</div>
+          <div class="text-xl font-semibold tabular-nums"
+               :class="isDarkMode ? 'text-amber-400' : 'text-amber-600'">{{ typeCounts.typeII }}</div>
         </div>
-        <div class="bg-red-50 dark:bg-red-900/20 rounded-lg p-2.5 border border-red-200 dark:border-red-800 text-center">
-          <div class="text-xs text-red-600 dark:text-red-400 mb-1">TYPE III</div>
-          <div class="text-lg font-bold text-red-700 dark:text-red-300">{{ typeCounts.typeIII }}</div>
-        </div>
-      </div>
-      
-      <!-- 關鍵指標 -->
-      <div class="grid grid-cols-2 gap-2">
-        <div class="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-2.5 border border-gray-200 dark:border-gray-600">
-          <p class="text-xs text-gray-600 dark:text-gray-400 mb-1">今日事件總數</p>
-          <p class="text-xl font-bold text-gray-800 dark:text-gray-200">
-            {{ totalEvents }}
-          </p>
-        </div>
-        <div class="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-2.5 border border-gray-200 dark:border-gray-600">
-          <p class="text-xs text-gray-600 dark:text-gray-400 mb-1">最新事件</p>
-          <p class="text-sm font-semibold text-gray-800 dark:text-gray-200">
-            {{ latestEventTime }}
-          </p>
+        <div class="py-3 text-center min-w-0">
+          <div class="text-[10px] font-medium tracking-wide mb-1"
+               :class="isDarkMode ? 'text-slate-500' : 'text-gray-400'">TYPE III</div>
+          <div class="text-xl font-semibold tabular-nums"
+               :class="isDarkMode ? 'text-red-400' : 'text-red-600'">{{ typeCounts.typeIII }}</div>
         </div>
       </div>
-      
-      <!-- 底部信息 -->
-      <div class="flex items-center justify-between pt-2 border-t border-gray-200 dark:border-gray-700">
-        <span class="text-xs text-gray-500 dark:text-gray-400">
-          數據點：{{ dataPointCount }}
-        </span>
-        <span class="text-xs text-gray-400 dark:text-gray-500">
-          {{ formatTime(updateTime) }}
-        </span>
+
+      <!-- 分隔線 -->
+      <div class="h-px" :class="isDarkMode ? 'bg-slate-800' : 'bg-gray-100'"></div>
+
+      <!-- 指標列表 -->
+      <div class="space-y-2 flex-1">
+        <div class="flex items-center justify-between">
+          <span class="text-xs" :class="isDarkMode ? 'text-slate-400' : 'text-gray-500'">今日事件總數</span>
+          <span class="text-sm font-semibold tabular-nums"
+                :class="isDarkMode ? 'text-slate-200' : 'text-gray-800'">{{ totalEvents }}</span>
+        </div>
+        <div class="flex items-center justify-between">
+          <span class="text-xs" :class="isDarkMode ? 'text-slate-400' : 'text-gray-500'">最新事件</span>
+          <span class="text-sm font-semibold tabular-nums"
+                :class="isDarkMode ? 'text-slate-200' : 'text-gray-800'">{{ latestEventTime }}</span>
+        </div>
+        <div class="flex items-center justify-between">
+          <span class="text-xs" :class="isDarkMode ? 'text-slate-600' : 'text-gray-400'">數據點</span>
+          <span class="text-xs tabular-nums" :class="isDarkMode ? 'text-slate-600' : 'text-gray-400'">{{ dataPointCount }}</span>
+        </div>
+      </div>
+
+      <!-- 更新時間 -->
+      <div class="pt-2 border-t" :class="isDarkMode ? 'border-slate-800' : 'border-gray-100'">
+        <span class="text-[10px]" :class="isDarkMode ? 'text-slate-600' : 'text-gray-400'">{{ formatTime(updateTime) }}</span>
       </div>
     </div>
   </div>
@@ -85,6 +98,10 @@ export default {
       default: null
     },
     loading: {
+      type: Boolean,
+      default: false
+    },
+    isDarkMode: {
       type: Boolean,
       default: false
     }

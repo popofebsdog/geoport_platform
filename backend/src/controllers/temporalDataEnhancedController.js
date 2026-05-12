@@ -5,6 +5,7 @@ import multer from 'multer';
 import csv from 'csv-parser';
 import { v4 as uuidv4 } from 'uuid';
 import { fileURLToPath } from 'url';
+import { createMulterFileFilter, createStoredFilename, maxUploadSize } from '../config/uploadPolicy.js';
 
 // 在 ES6 模組中獲取 __dirname
 const __filename = fileURLToPath(import.meta.url);
@@ -34,29 +35,16 @@ const storage = multer.diskStorage({
     cb(null, uploadPath);
   },
   filename: (req, file, cb) => {
-    // 獲取檔案副檔名
-    const ext = path.extname(file.originalname).toLowerCase();
-    // 生成安全的檔案名：時間戳-隨機數.csv
-    const safeName = `${Date.now()}-${Math.round(Math.random() * 1E9)}${ext}`;
-    cb(null, safeName);
+    cb(null, createStoredFilename('temporal', file.originalname));
   }
 });
 
 const upload = multer({
   storage: storage,
   limits: {
-    fileSize: 100 * 1024 * 1024 // 100MB
+    fileSize: maxUploadSize('temporalData')
   },
-  fileFilter: (req, file, cb) => {
-    const allowedTypes = ['.csv', '.shp', '.dbf', '.prj', '.shx'];
-    const ext = path.extname(file.originalname).toLowerCase();
-    
-    if (allowedTypes.includes(ext)) {
-      cb(null, true);
-    } else {
-      cb(new Error('僅支援 CSV 和 Shapefile 格式檔案。'), false);
-    }
-  }
+  fileFilter: createMulterFileFilter('temporalData')
 });
 
 // 上傳時序資料
@@ -603,7 +591,7 @@ const processXAxisData = (parsedData, xAxisColumns) => {
 
 // 處理單一 X 軸值
 const processXAxisValue = (value, columnName) => {
-  if (!value) return null;
+  if (value === null || value === undefined || value === '') return null;
 
   // 檢查是否為時間相關欄位
   if (isTimeColumn(columnName) || isDateColumn(columnName)) {
@@ -821,7 +809,6 @@ const parseCSVForCharting = async (filePath, xAxisColumns, yAxisColumns, timeFor
             });
           });
           
-          console.log(`Y 軸數據統計 - 總數: ${data.length}, 有效值: ${validCount}, 0 值: ${zeroCount}, 空值: ${nullCount}`);
           
           // 生成圖表資料集
           const datasets = yAxisColumns.map((yCol, index) => ({
@@ -832,9 +819,8 @@ const parseCSVForCharting = async (filePath, xAxisColumns, yAxisColumns, timeFor
             })).filter(point => {
               // 過濾掉無效的資料點：
               // 1. X 軸必須存在
-              // 2. Y 軸必須存在且不為 null
-              // 3. Y 軸不為 0（過濾掉 0 值）
-              return point.x && point.y !== null && point.y !== 0;
+              // 2. Y 軸必須為有效數值（允許 0，0 值在雨量/位移資料中是合法的）
+              return point.x && point.y !== null && point.y !== undefined;
             })
           }));
           
@@ -897,7 +883,6 @@ const getChartData = async (req, res) => {
   const { temporalId } = req.params;
 
   try {
-    console.log('獲取圖表數據 - temporalId:', temporalId);
 
     // 獲取時序資料，並 JOIN data_files 表以獲取 storage_path
     const result = await pool.query(
@@ -912,7 +897,6 @@ const getChartData = async (req, res) => {
     );
 
     if (result.rows.length === 0) {
-      console.log('時序資料不存在:', temporalId);
       return res.status(404).json({
         success: false,
         message: '時序資料不存在'
@@ -921,19 +905,9 @@ const getChartData = async (req, res) => {
 
     const temporalData = result.rows[0];
     const resolvedFilePath = resolveStoragePath(temporalData.storage_path);
-    console.log('時序資料:', {
-      temporal_id: temporalData.temporal_id,
-      name: temporalData.name,
-      storage_path: temporalData.storage_path,
-      x_axis_columns: temporalData.x_axis_columns,
-      y_axis_columns: temporalData.y_axis_columns,
-      chart_config: temporalData.chart_config,
-      chart_config_type: typeof temporalData.chart_config
-    });
 
     // 檢查是否配置了軸線
     if (!temporalData.x_axis_columns || temporalData.x_axis_columns.length === 0) {
-      console.log('X 軸欄位未配置');
       return res.status(400).json({
         success: false,
         message: '此時序資料尚未配置 X 軸欄位，請先編輯資料並選擇 X 軸欄位'
@@ -941,7 +915,6 @@ const getChartData = async (req, res) => {
     }
 
     if (!temporalData.y_axis_columns || temporalData.y_axis_columns.length === 0) {
-      console.log('Y 軸欄位未配置');
       return res.status(400).json({
         success: false,
         message: '此時序資料尚未配置 Y 軸欄位，請先編輯資料並選擇 Y 軸欄位'
@@ -950,7 +923,6 @@ const getChartData = async (req, res) => {
 
     // 檢查是否有 CSV 文件
     if (!temporalData.storage_path) {
-      console.log('storage_path 為空');
       return res.status(404).json({
         success: false,
         message: 'CSV 文件路徑不存在'
@@ -958,14 +930,12 @@ const getChartData = async (req, res) => {
     }
 
     if (!fs.existsSync(resolvedFilePath)) {
-      console.log('CSV 文件不存在於文件系統:', resolvedFilePath);
       return res.status(404).json({
         success: false,
         message: `CSV 文件不存在: ${temporalData.storage_path}`
       });
     }
 
-    console.log('開始解析 CSV 文件...');
     const csvData = await parseCSVForCharting(
       resolvedFilePath,
       temporalData.x_axis_columns,
@@ -973,11 +943,6 @@ const getChartData = async (req, res) => {
       temporalData.time_format || 'auto'
     );
 
-    console.log('CSV 解析完成:', {
-      totalRecords: csvData.totalRecords,
-      processedRecords: csvData.processedRecords,
-      datasetsCount: csvData.datasets?.length
-    });
 
     res.json({
       success: true,

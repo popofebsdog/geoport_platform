@@ -59,7 +59,7 @@ cd backend
 python titiler_server.py
 ```
 
-服務器將在 `http://localhost:8000` 啟動。
+服務器將在 `http://localhost:8080` 啟動。
 
 ## 🔄 使用流程
 
@@ -171,7 +171,7 @@ python --version
 pip list | grep titiler
 
 # 檢查端口占用
-lsof -i :8000
+lsof -i :8080
 ```
 
 #### 2. COG 文件無法載入
@@ -186,12 +186,12 @@ rio cogeo validate your_file_cog.tif
 #### 3. 前端瓦片載入失敗
 ```javascript
 // 檢查 TiTiler 服務器狀態
-fetch('http://localhost:8000/health')
+fetch('http://localhost:8080/healthz')
   .then(response => response.json())
   .then(data => console.log('TiTiler 狀態:', data))
 
 // 檢查 COG 文件信息
-fetch('http://localhost:8000/cog/info?url=YOUR_COG_URL')
+fetch('http://localhost:8080/cog/info?url=YOUR_COG_URL')
   .then(response => response.json())
   .then(data => console.log('COG 信息:', data))
 ```
@@ -222,7 +222,7 @@ baseMapService.clearCache()
 
 ### TiTiler API 端點
 
-- `GET /health` - 健康檢查
+- `GET /healthz` - 健康檢查
 - `GET /cog/info?url={cog_url}` - 獲取 COG 信息
 - `GET /cog/statistics?url={cog_url}` - 獲取統計信息
 - `GET /cog/preview?url={cog_url}` - 獲取預覽圖
@@ -256,4 +256,4 @@ baseMapService.loadGeoTIFF(imageUrl, baseMap)
 
 ---
 
-**注意**: 本方案需要 TiTiler 服務器運行在 `http://localhost:8000`。在生產環境中，請確保服務器的安全性和穩定性。
+**注意**: 本方案需要 TiTiler 服務器運行在 `http://localhost:8080`。在生產環境中，請確保服務器的安全性和穩定性。

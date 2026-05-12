@@ -1,5 +1,6 @@
 import express from 'express';
 import { parseCSVForCharting, getAvailableColumns } from '../controllers/temporalDataParserController.js';
+import { authenticate } from '../middleware/auth.js';
 
 const router = express.Router();
 
@@ -10,7 +11,7 @@ const router = express.Router();
 
 // 解析 CSV 檔案並提取圖表資料
 // POST /api/temporal-data/:temporalId/parse
-router.post('/:temporalId/parse', parseCSVForCharting);
+router.post('/:temporalId/parse', authenticate, parseCSVForCharting);
 
 // 獲取可用欄位
 // GET /api/temporal-data/:temporalId/columns

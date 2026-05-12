@@ -9,17 +9,18 @@ import {
   getDeletedReports,
   restoreReport
 } from '../controllers/reportController.js';
+import { authenticate } from '../middleware/auth.js';
 
 const router = express.Router();
 
 // 報告路由
-router.get('/', getAllReports);                    // 獲取所有報告
-router.get('/deleted', getDeletedReports);         // 獲取已刪除報告
-router.get('/:id', getReportById);                 // 獲取單個報告
-router.post('/', createReport);                    // 創建報告
-router.put('/:id', updateReport);                  // 更新報告
-router.delete('/:id', deleteReport);               // 刪除報告
-router.patch('/:id/bookmark', toggleBookmark);     // 切換書籤狀態
-router.patch('/:id/restore', restoreReport);       // 還原報告
+router.get('/', getAllReports);
+router.get('/deleted', getDeletedReports);
+router.get('/:id', getReportById);
+router.post('/', authenticate, createReport);
+router.put('/:id', authenticate, updateReport);
+router.delete('/:id', authenticate, deleteReport);
+router.patch('/:id/bookmark', authenticate, toggleBookmark);
+router.patch('/:id/restore', authenticate, restoreReport);
 
 export default router;

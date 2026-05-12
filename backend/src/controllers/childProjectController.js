@@ -277,11 +277,6 @@ export const createChildProject = async (req, res) => {
       processedEventDate = event_date.toISOString();
     }
     
-    console.log('處理 event_date:', {
-      original: event_date,
-      processed: processedEventDate,
-      type: typeof event_date
-    });
 
     // 如果有提供時間區間，驗證時間範圍
     if (start_date && end_date && new Date(end_date) <= new Date(start_date)) {
@@ -418,11 +413,6 @@ export const updateChildProject = async (req, res) => {
         processedEventDate = event_date.toISOString();
       }
       
-      console.log('更新 event_date:', {
-        original: event_date,
-        processed: processedEventDate,
-        type: typeof event_date
-      });
       
       updates.push(`event_date = $${paramCount}::timestamp with time zone`);
       values.push(processedEventDate);

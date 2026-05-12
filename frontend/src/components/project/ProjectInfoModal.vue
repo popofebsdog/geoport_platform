@@ -1,6 +1,6 @@
 <template>
   <div v-if="isVisible" class="fixed inset-0 z-[1300] flex items-center justify-center bg-black bg-opacity-50">
-    <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-hidden"
+    <div class="rounded w-full max-w-2xl mx-4 max-h-[90vh] overflow-hidden"
          :class="isDarkMode ? 'bg-slate-800 border border-slate-700' : 'bg-white border border-gray-200'">
       
       <!-- 標題欄 -->
@@ -29,7 +29,7 @@
           <!-- 專案基本資訊 -->
           <div class="space-y-3">
             <div class="flex items-center space-x-3">
-              <div class="w-1 h-4 rounded-full bg-gradient-to-b from-blue-500 to-blue-600"></div>
+              <div class="w-1 h-4 rounded-full bg-brand"></div>
               <h4 class="text-sm font-semibold transition-colors duration-300"
                   :class="isDarkMode ? 'text-white' : 'text-gray-900'">
                 基本資訊
@@ -70,7 +70,7 @@
           <!-- 道路資訊 -->
           <div class="space-y-3">
             <div class="flex items-center space-x-3">
-              <div class="w-1 h-4 rounded-full bg-gradient-to-b from-green-500 to-green-600"></div>
+              <div class="w-1 h-4 rounded-full bg-brand"></div>
               <h4 class="text-sm font-semibold transition-colors duration-300"
                   :class="isDarkMode ? 'text-white' : 'text-gray-900'">
                 道路資訊
@@ -111,7 +111,7 @@
           <!-- 時間資訊 -->
           <div class="space-y-3">
             <div class="flex items-center space-x-3">
-              <div class="w-1 h-4 rounded-full bg-gradient-to-b from-purple-500 to-purple-600"></div>
+              <div class="w-1 h-4 rounded-full bg-brand"></div>
               <h4 class="text-sm font-semibold transition-colors duration-300"
                   :class="isDarkMode ? 'text-white' : 'text-gray-900'">
                 時間資訊
@@ -152,7 +152,7 @@
           <!-- 位置資訊 -->
           <div class="space-y-3">
             <div class="flex items-center space-x-3">
-              <div class="w-1 h-4 rounded-full bg-gradient-to-b from-orange-500 to-orange-600"></div>
+              <div class="w-1 h-4 rounded-full bg-brand"></div>
               <h4 class="text-sm font-semibold transition-colors duration-300"
                   :class="isDarkMode ? 'text-white' : 'text-gray-900'">
                 位置資訊

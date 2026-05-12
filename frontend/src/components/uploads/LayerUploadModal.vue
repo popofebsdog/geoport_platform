@@ -1,17 +1,17 @@
 <template>
   <div v-if="show" class="fixed inset-0 z-[1200] bg-black bg-opacity-50 flex items-center justify-center">
-    <div class="w-[1000px] max-w-[95vw] mx-4 rounded-lg shadow-2xl transition-colors duration-300 flex flex-col"
+    <div class="w-[1000px] max-w-[95vw] mx-4 rounded-lg transition-colors duration-300 flex flex-col max-h-[90vh]"
          :class="isDarkMode ? 'bg-slate-800' : 'bg-white'">
       <!-- 模態框標題 -->
-      <div class="flex items-center justify-between p-6 border-b transition-colors duration-300"
+      <div class="flex items-center justify-between px-6 py-4 border-b flex-shrink-0 transition-colors duration-300"
            :class="isDarkMode ? 'border-slate-700' : 'border-gray-200'">
         <h3 class="text-lg font-semibold transition-colors duration-300"
             :class="isDarkMode ? 'text-white' : 'text-gray-900'">
           {{ isEditMode ? '編輯圖層' : '上傳圖層' }}
         </h3>
-        <button @click="closeModal" 
-                class="flex items-center justify-center w-8 h-8 transition-colors duration-300"
-                :class="isDarkMode ? 'text-gray-400 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'">
+        <button @click="closeModal"
+                class="p-1.5 rounded-lg transition-colors duration-300"
+                :class="isDarkMode ? 'text-gray-400 hover:text-white hover:bg-slate-700' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
           </svg>
@@ -19,7 +19,7 @@
       </div>
 
       <!-- 模態框內容 -->
-      <div class="flex-1 flex">
+      <div class="flex-1 flex overflow-y-auto">
         <!-- 基本表單 -->
         <div class="p-6 transition-colors duration-300"
              :class="[
@@ -119,7 +119,6 @@
               ref="fileInput"
               type="file"
               @change="handleFileSelect"
-              @click="console.log('文件輸入被點擊')"
               accept=".geojson,.csv,.json,.shp,.kml,.gpx"
               class="w-full px-3 py-2 border rounded-lg transition-colors duration-300"
               :class="isDarkMode ? 'bg-slate-600 border-slate-500 text-white' : 'bg-white border-gray-300 text-gray-900'"
@@ -170,7 +169,7 @@
         <!-- 右側：顏色區間設定 -->
         <div v-if="form.dataType === 'potential_analysis' && analysisData" 
              class="w-80 p-4 transition-colors duration-300"
-             :class="isDarkMode ? 'bg-slate-750' : 'bg-gray-50'">
+             :class="isDarkMode ? 'bg-slate-700/50' : 'bg-gray-50'">
           
           <!-- 數值欄位選擇 -->
           <select v-if="analysisData.numericFields.length > 1" v-model="selectedNumericField" 
@@ -455,15 +454,7 @@ export default {
             layer_color: this.form.color
           }
 
-          const response = await fetch(`http://localhost:3001/api/data/${this.editingData.file_id}`, {
-            method: 'PUT',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(updateData)
-          })
-
-          const result = await response.json()
+          const result = await dataFileAPI.update(this.editingData.file_id, updateData)
 
           if (result.success) {
             this.showAlert({

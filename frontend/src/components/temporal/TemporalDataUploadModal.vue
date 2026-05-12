@@ -1,7 +1,7 @@
 <template>
   <Teleport to="body">
     <div v-if="isVisible" class="fixed inset-0 z-[1200] flex items-center justify-center bg-black bg-opacity-50">
-    <div class="bg-white rounded-2xl shadow-2xl mx-4 flex flex-col transition-all duration-300"
+    <div class="rounded border mx-4 flex flex-col transition-all duration-300"
          :class="[
            isDarkMode ? 'bg-slate-800' : 'bg-white',
            isEditMode ? 'w-full max-w-2xl max-h-[60vh]' : 'w-full max-w-5xl h-[90vh]'
@@ -31,7 +31,7 @@
       <div class="flex flex-1 min-h-0">
         <!-- 左側表單區域 -->
         <div :class="[
-          'p-6',
+          'p-6 overflow-y-auto',
           isEditMode ? 'w-full' : ((formData.type === 'csv') ? 'w-1/2 border-r' : 'w-full'),
           isDarkMode ? 'border-slate-600' : 'border-gray-200'
         ]">
@@ -112,7 +112,6 @@
                 : 'bg-white border-gray-300 text-gray-900'"
             >
               <option value="">請選擇資料類型</option>
-              <option value="shapefile">Shapefile</option>
               <option value="csv">CSV</option>
             </select>
           </div>
@@ -343,7 +342,7 @@
               <input
                 ref="fileInput"
                 type="file"
-                :accept="formData.type === 'csv' ? '.csv' : '.shp,.dbf,.prj,.shx'"
+                accept=".csv"
                 @change="handleFileSelect"
                 class="hidden"
               />
@@ -364,7 +363,7 @@
                 </p>
                 <p class="text-xs transition-colors duration-300"
                    :class="isDarkMode ? 'text-gray-500' : 'text-gray-400'">
-                  {{ formData.type === 'csv' ? '僅支援 CSV 格式' : '支援 Shapefile 格式 (.shp, .dbf, .prj, .shx)' }}
+                  僅支援 CSV 格式
                 </p>
               </div>
               

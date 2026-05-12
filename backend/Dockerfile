@@ -1,14 +1,26 @@
-# 使用 Node.js 18 Alpine 作為基礎鏡像
-FROM node:18-alpine
+# 使用 Debian slim，避免 canvas / chartjs native dependencies 在 Alpine musl 上編譯失敗
+FROM node:18-bookworm-slim
 
 # 設置工作目錄
 WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3 \
+    make \
+    g++ \
+    postgresql-client \
+    libcairo2-dev \
+    libpango1.0-dev \
+    libjpeg-dev \
+    libgif-dev \
+    librsvg2-dev \
+  && rm -rf /var/lib/apt/lists/*
 
 # 複製 package.json 和 package-lock.json
 COPY package*.json ./
 
 # 安裝依賴
-RUN npm ci --only=production
+RUN npm ci --omit=dev
 
 # 複製源代碼
 COPY . .

@@ -7,11 +7,8 @@
          @click="handleBackdropClick">
       
       <!-- 提示視窗 -->
-      <div class="bg-white rounded-lg shadow-2xl max-w-md w-full mx-4 transform transition-all duration-300"
-           :class="[
-             alertState.isDarkMode ? 'bg-slate-800' : 'bg-white',
-             'scale-100 opacity-100'
-           ]"
+      <div class="rounded border max-w-md w-full mx-4 transform transition-all duration-300 scale-100 opacity-100"
+           :class="alertState.isDarkMode ? 'bg-slate-800' : 'bg-white'"
            @click.stop>
         
         <!-- 標題欄 -->

@@ -184,81 +184,34 @@
       </div>
 
       <!-- 步驟 3: 介接監測資料 -->
-      <div v-if="currentStep === 2" class="space-y-6">
+      <div v-if="currentStep === 2" class="space-y-4">
         <div>
-          <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">介接監測資料</h3>
-          <p class="text-sm text-gray-600 dark:text-gray-400">設定監測資料的API端點，用於建立動態圖表</p>
+          <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">介接監測資料</h3>
+          <p class="text-sm text-gray-600 dark:text-gray-400">輸入 API Base URL 後點「探索」，從回應 JSON 中選擇要取用的資料欄位</p>
         </div>
 
-        <!-- 類別選擇標籤 -->
-        <div class="flex gap-2 border-b border-gray-200 dark:border-gray-700">
+        <!-- 類別 Tabs -->
+        <div class="flex gap-0 border-b border-gray-200 dark:border-gray-700">
           <button
-            v-for="category in apiCategories"
-            :key="category.key"
-            @click="selectedApiCategory = category.key"
-            class="px-4 py-2 text-sm font-medium transition-colors"
-            :class="selectedApiCategory === category.key
-              ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400'
-              : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'"
+            v-for="cat in apiCategories"
+            :key="cat.key"
+            @click="selectedApiCategory = cat.key"
+            class="px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors"
+            :class="selectedApiCategory === cat.key
+              ? 'border-blue-500 text-blue-600 dark:border-blue-400 dark:text-blue-400'
+              : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'"
           >
-            {{ category.label }}
+            {{ cat.icon }} {{ cat.label }}
           </button>
         </div>
 
-        <!-- 統一的API配置表單 -->
-        <div class="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-8 hover:border-blue-500 dark:hover:border-blue-500 transition-colors h-[400px] flex flex-col">
-          <div class="space-y-4 flex-1 overflow-hidden">
-            <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                API 端點 URL
-              </label>
-              <input
-                v-model="formData.apiConfig[selectedApiCategory].endpoint"
-                type="url"
-                :placeholder="`https://api.example.com/${selectedApiCategory}`"
-                class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  API 認證方式
-                </label>
-                <select
-                  v-model="formData.apiConfig[selectedApiCategory].authType"
-                  class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  <option value="none">無認證</option>
-                  <option value="api_key">API Key</option>
-                  <option value="bearer">Bearer Token</option>
-                  <option value="basic">Basic Auth</option>
-                </select>
-              </div>
-              <div v-if="formData.apiConfig[selectedApiCategory].authType !== 'none'">
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  認證資訊
-                </label>
-                <input
-                  v-model="formData.apiConfig[selectedApiCategory].authValue"
-                  type="text"
-                  :placeholder="getAuthPlaceholder(formData.apiConfig[selectedApiCategory].authType)"
-                  class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                更新頻率（分鐘）
-              </label>
-              <input
-                v-model.number="formData.apiConfig[selectedApiCategory].updateInterval"
-                type="number"
-                min="1"
-                placeholder="10"
-                class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
-          </div>
+        <!-- ApiRouteConfigurator for current category -->
+        <div class="min-h-[320px]">
+          <ApiRouteConfigurator
+            :model-value="formData.apiConfig[selectedApiCategory]"
+            :is-dark-mode="isDarkMode"
+            @update:model-value="formData.apiConfig[selectedApiCategory] = $event"
+          />
         </div>
       </div>
 
@@ -294,8 +247,9 @@
 </template>
 
 <script>
-import axios from 'axios';
+import api from '@/services/api';
 import { alert as showAlert, error as showError, success as showSuccess } from '@/utils/simpleAlertService';
+import ApiRouteConfigurator from '@/components/common/ApiRouteConfigurator.vue';
 
 export default {
   name: 'CreateRegionProject',
@@ -309,6 +263,7 @@ export default {
       default: null
     }
   },
+  components: { ApiRouteConfigurator },
   inject: ['isDarkMode'],
   emits: ['success', 'cancel', 'road-section-selected', 'work-section-selected'],
   data() {
@@ -333,39 +288,24 @@ export default {
         { key: 'insar', label: 'InSAR監測' },
         { key: 'disaster', label: '災點熱區' }
       ],
-      selectedApiCategory: 'microseismic', // 預設選擇微地動
+      selectedApiCategory: 'microseismic',
       apiCategories: [
-        { key: 'microseismic', label: '微地動' },
-        { key: 'earthquake', label: '地震' },
-        { key: 'rainfall', label: '雨量' }
+        { key: 'microseismic', label: '微地動', icon: '📡' },
+        { key: 'earthquake',   label: '地震',   icon: '🌍' },
+        { key: 'rainfall',     label: '雨量',   icon: '🌧️' }
       ],
       formData: {
         regionName: '',
         roadSection: '',
-        workSection: '', // 工務段
-        regionCode: '', // 自動生成，基於 roadSection
+        workSection: '',
+        regionCode: '',
         description: '',
         latitude: null,
         longitude: null,
         apiConfig: {
-          microseismic: {
-            endpoint: '',
-            authType: 'none',
-            authValue: '',
-            updateInterval: 10
-          },
-          earthquake: {
-            endpoint: '',
-            authType: 'none',
-            authValue: '',
-            updateInterval: 10
-          },
-          rainfall: {
-            endpoint: '',
-            authType: 'none',
-            authValue: '',
-            updateInterval: 10
-          }
+          microseismic: { baseUrl: '', authType: 'none', authValue: '', updateInterval: 10, routes: [] },
+          earthquake:   { baseUrl: '', authType: 'none', authValue: '', updateInterval: 10, routes: [] },
+          rainfall:     { baseUrl: '', authType: 'none', authValue: '', updateInterval: 10, routes: [] }
         }
       },
       steps: [
@@ -465,9 +405,9 @@ export default {
     async loadRoadSections() {
       try {
         // 從 GeoJSON 文件讀取路線選項
-        const response = await fetch('/data/uploads/geojson/alertRoad.geojson');
+        const response = await fetch('/uploads/monitoring/taiwan7/alertRoad.geojson');
         const geojsonData = await response.json();
-        
+
         // 提取所有唯一的路線名稱
         const roadSet = new Set();
         if (geojsonData.features) {
@@ -520,9 +460,9 @@ export default {
     async loadWorkSections(roadSection) {
       try {
         // 從 GeoJSON 文件讀取該路線的所有工務段
-        const response = await fetch('/data/uploads/geojson/alertRoad.geojson');
+        const response = await fetch('/uploads/monitoring/taiwan7/alertRoad.geojson');
         const geojsonData = await response.json();
-        
+
         // 提取該路線的所有唯一工務段
         const sectionSet = new Set();
         if (geojsonData.features) {
@@ -574,25 +514,17 @@ export default {
           ? JSON.parse(this.editData.api_config) 
           : this.editData.api_config;
         
+        const normalizeCategory = (cat) => ({
+          baseUrl:       cat?.baseUrl || cat?.endpoint || '',
+          authType:      cat?.authType || 'none',
+          authValue:     cat?.authValue || '',
+          updateInterval: cat?.updateInterval ?? 10,
+          routes:        Array.isArray(cat?.routes) ? cat.routes : [],
+        });
         this.formData.apiConfig = {
-          microseismic: apiConfig.microseismic || {
-            endpoint: '',
-            authType: 'none',
-            authValue: '',
-            updateInterval: 10
-          },
-          earthquake: apiConfig.earthquake || {
-            endpoint: '',
-            authType: 'none',
-            authValue: '',
-            updateInterval: 10
-          },
-          rainfall: apiConfig.rainfall || {
-            endpoint: '',
-            authType: 'none',
-            authValue: '',
-            updateInterval: 10
-          }
+          microseismic: normalizeCategory(apiConfig.microseismic),
+          earthquake:   normalizeCategory(apiConfig.earthquake),
+          rainfall:     normalizeCategory(apiConfig.rainfall),
         };
       }
     },
@@ -662,7 +594,7 @@ export default {
             throw new Error('缺少專案ID，無法更新');
           }
 
-          response = await axios.put(`/api/warning-regions/id/${regionId}`, updateData);
+          response = await api.put(`/warning-regions/id/${regionId}`, updateData);
         } else {
           // 建立模式：使用 POST 請求（包含檔案上傳）
           const formData = new FormData();
@@ -685,22 +617,18 @@ export default {
             formData.append('files[disaster]', file);
           });
 
-          response = await axios.post('/api/warning-regions/create-project', formData, {
-            headers: {
-              'Content-Type': 'multipart/form-data'
-            }
-          });
+          response = await api.post('/warning-regions/create-project', formData);
         }
 
-        if (response.data.success) {
+        if (response.success) {
           await showSuccess(
             this.editMode ? '地區專案更新成功' : '地區專案建立成功',
             '成功',
             this.isDarkMode
           );
-          this.$emit('success', response.data.data);
+          this.$emit('success', response.data);
         } else {
-          throw new Error(response.data.message || (this.editMode ? '更新失敗' : '建立失敗'));
+          throw new Error(response.message || (this.editMode ? '更新失敗' : '建立失敗'));
         }
       } catch (error) {
         console.error(this.editMode ? '更新地區專案失敗:' : '建立地區專案失敗:', error);

@@ -105,58 +105,39 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 2.5rem;
-  height: 2.5rem;
-  border-radius: 0.5rem;
-  transition: all 0.3s ease;
-  border-width: 1px;
-  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  width: 2rem;
+  height: 2rem;
+  border-radius: 2px;
+  transition: background-color 0.15s, color 0.15s, border-color 0.15s;
+  border: 1px solid transparent;
 }
 
-/* 淺色模式 */
 .icon-button-light {
-  background-color: rgb(255, 255, 255);
-  border-color: rgb(229, 231, 235);
-  color: rgb(75, 85, 99);
+  color: #6b7280;
+  border-color: #e5e7eb;
 }
-
 .icon-button-light:hover {
-  background-color: rgb(249, 250, 251);
-  border-color: rgb(209, 213, 219);
-  color: rgb(31, 41, 55);
+  background-color: #f3f4f6;
+  color: #374151;
 }
 
-.icon-button-light:active {
-  transform: scale(0.95);
-}
-
-/* 深色模式 */
 .icon-button-dark {
-  background-color: rgb(51, 65, 85);
-  border-color: rgb(71, 85, 105);
-  color: rgb(209, 213, 219);
+  color: #9ca3af;
+  border-color: #475569;
 }
-
 .icon-button-dark:hover {
-  background-color: rgb(71, 85, 105);
-  border-color: rgb(100, 116, 139);
-  color: rgb(255, 255, 255);
+  background-color: #1e293b;
+  color: #e2e8f0;
 }
 
-.icon-button-dark:active {
-  transform: scale(0.95);
-}
-
-/* 關閉按鈕特殊樣式 */
 .icon-button-close-light:hover {
-  background-color: rgb(254, 242, 242);
-  border-color: rgb(254, 202, 202);
-  color: rgb(220, 38, 38);
+  background-color: #fef2f2;
+  border-color: #fecaca;
+  color: #dc2626;
 }
-
 .icon-button-close-dark:hover {
   background-color: rgba(127, 29, 29, 0.3);
-  border-color: rgb(153, 27, 27);
-  color: rgb(248, 113, 113);
+  border-color: #991b1b;
+  color: #f87171;
 }
 </style>

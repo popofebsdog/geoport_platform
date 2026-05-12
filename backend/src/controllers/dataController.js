@@ -3,12 +3,22 @@ import path from 'path';
 import fs from 'fs';
 import crypto from 'crypto';
 import proj4 from 'proj4';
+import { fileURLToPath } from 'url';
 import { pool } from '../config/database.js';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import { validateUUID } from '../utils/validators.js';
+import { createMulterFileFilter, createStoredFilename, maxUploadSize } from '../config/uploadPolicy.js';
 
 const execAsync = promisify(exec);
+
+// 確保路徑解析永遠相對於 backend 目錄，不受 cwd 影響
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const BACKEND_ROOT = path.join(__dirname, '../..');  // backend/src/controllers → backend/
+
+const resolveUploadPath = (relativePath) =>
+  path.isAbsolute(relativePath) ? relativePath : path.join(BACKEND_ROOT, relativePath);
 
 // 配置 multer 用於檔案上傳
 const storage = multer.diskStorage({
@@ -23,117 +33,52 @@ const storage = multer.diskStorage({
     } else if (file.mimetype.startsWith('image/') || file.mimetype === 'image/tiff' || file.mimetype === 'image/tif') {
       if (req.body.data_type === 'basemap') {
         uploadPath = 'uploads/data/basemaps';
-        console.log('底圖檔案存儲到:', uploadPath);
       }
     }
     
     // 額外檢查：如果是底圖類型，強制使用 basemaps 目錄
     if (req.body.data_type === 'basemap') {
       uploadPath = 'uploads/data/basemaps';
-      console.log('強制底圖檔案存儲到:', uploadPath);
     }
     
-    // 確保目錄存在
-    if (!fs.existsSync(uploadPath)) {
-      fs.mkdirSync(uploadPath, { recursive: true });
+    // 確保目錄存在（使用絕對路徑）
+    const absUploadPath = resolveUploadPath(uploadPath);
+    if (!fs.existsSync(absUploadPath)) {
+      fs.mkdirSync(absUploadPath, { recursive: true });
     }
-    
-    cb(null, uploadPath);
+
+    cb(null, absUploadPath);
   },
   filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+    cb(null, createStoredFilename(file.fieldname || 'data', file.originalname));
   }
 });
 
 // 配置 multer 用於關聯上傳（feature uploads）
 const featureUploadStorage = multer.diskStorage({
   destination: (req, file, cb) => {
-    const uploadPath = 'uploads/features/';
+    const uploadPath = resolveUploadPath('uploads/features/');
     if (!fs.existsSync(uploadPath)) {
       fs.mkdirSync(uploadPath, { recursive: true });
     }
     cb(null, uploadPath);
   },
   filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, 'feature-' + uniqueSuffix + path.extname(file.originalname));
+    cb(null, createStoredFilename('feature', file.originalname));
   }
 });
 
 const upload = multer({ 
   storage: storage,
-  fileFilter: (req, file, cb) => {
-    console.log('Multer fileFilter - 文件信息:', {
-      fieldname: file.fieldname,
-      originalname: file.originalname,
-      mimetype: file.mimetype,
-      size: file.size
-    });
-    
-    // 允許的檔案類型
-    const allowedTypes = [
-      'application/pdf',
-      'application/vnd.ms-excel',
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      'text/csv',
-      'application/json',
-      'application/geo+json',
-      'text/plain',
-      'image/jpeg',
-      'image/png',
-      'image/tiff',           // 添加 TIF/TIFF 支援
-      'image/tif',            // 添加 TIF 支援
-      'application/zip',
-      'application/x-zip-compressed'
-    ];
-    
-    // 允許的副檔名
-    const allowedExtensions = ['.pdf', '.xlsx', '.xls', '.csv', '.json', '.geojson', '.txt', '.jpg', '.jpeg', '.png', '.tif', '.tiff', '.zip'];
-    
-    const fileExtension = path.extname(file.originalname).toLowerCase();
-    
-    console.log('Multer fileFilter - 檢查結果:', {
-      mimetype: file.mimetype,
-      extension: fileExtension,
-      mimetypeAllowed: allowedTypes.includes(file.mimetype),
-      extensionAllowed: allowedExtensions.includes(fileExtension)
-    });
-    
-    if (allowedTypes.includes(file.mimetype) || allowedExtensions.includes(fileExtension)) {
-      console.log('Multer fileFilter - 文件被接受');
-      cb(null, true);
-    } else {
-      console.log('Multer fileFilter - 文件被拒絕');
-      cb(new Error('不支援的檔案類型'), false);
-    }
-  }
+  limits: { fileSize: maxUploadSize('dataFile') },
+  fileFilter: createMulterFileFilter('dataFile')
 });
 
 // 關聯上傳的 multer 配置（主要用於圖片）
 const featureUpload = multer({
   storage: featureUploadStorage,
-  fileFilter: (req, file, cb) => {
-    // 關聯上傳主要支援圖片類型
-    const allowedTypes = [
-      'image/jpeg',
-      'image/png',
-      'image/gif',
-      'image/webp',
-      'application/pdf',
-      'text/plain'
-    ];
-    
-    const allowedExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.pdf', '.txt'];
-    
-    const fileExtension = path.extname(file.originalname).toLowerCase();
-    
-    if (allowedTypes.includes(file.mimetype) || allowedExtensions.includes(fileExtension)) {
-      cb(null, true);
-    } else {
-      cb(new Error('關聯上傳不支援此檔案類型'), false);
-    }
-  }
+  limits: { fileSize: maxUploadSize('featureAttachment') },
+  fileFilter: createMulterFileFilter('featureAttachment')
 });
 
 // 檔案類型識別函數
@@ -173,7 +118,6 @@ const convertTifToCog = async (inputPath) => {
     const inputName = path.basename(inputPath, path.extname(inputPath));
     const outputPath = path.join(inputDir, `${inputName}_cog.tif`);
     
-    console.log(`開始轉換 TIF 為 COG: ${inputPath} -> ${outputPath}`);
     
     // 使用 gdal_translate 轉換為 COG，嚴格控制透明度和無效數據
     // 添加 Alpha 通道和無效數據處理，避免雜訊生成
@@ -187,12 +131,10 @@ const convertTifToCog = async (inputPath) => {
     
     // 檢查輸出文件是否存在
     if (fs.existsSync(outputPath)) {
-      console.log(`COG 轉換成功: ${outputPath}`);
       
       // 刪除原始 TIF 文件
       try {
         fs.unlinkSync(inputPath);
-        console.log(`已刪除原始 TIF 文件: ${inputPath}`);
       } catch (error) {
         console.warn('刪除原始文件失敗:', error);
       }
@@ -210,19 +152,10 @@ const convertTifToCog = async (inputPath) => {
 // 上傳資料
 export const uploadData = async (req, res) => {
   try {
-    console.log('=== 上傳請求調試信息 ===');
-    console.log('Content-Type:', req.get('Content-Type'));
-    console.log('Content-Length:', req.get('Content-Length'));
-    console.log('req.file:', req.file);
-    console.log('req.files:', req.files);
-    console.log('req.body keys:', Object.keys(req.body));
-    console.log('req.body values:', req.body);
     
     const { project_id, data_name, data_description, data_date, data_type, analysis_data, layer_color } = req.body;
-    console.log('上傳請求參數:', { project_id, data_name, data_description, data_date, data_type, layer_color });
     
     if (!req.file) {
-      console.log('錯誤：req.file 為空');
       return res.status(400).json({
         success: false,
         message: '請選擇要上傳的檔案'
@@ -266,20 +199,21 @@ export const uploadData = async (req, res) => {
     }
     
     // 如果是底圖且為 TIF 文件，自動轉換為 COG
-    let finalFilePath = file.path;
+    // file.path 可能是絕對路徑（multer），轉為相對路徑存入 DB，確保前端 URL 正確
+    const toRelativePath = (p) =>
+      path.isAbsolute(p) ? path.relative(BACKEND_ROOT, p) : p;
+
+    let finalFilePath = toRelativePath(file.path);
     let finalFileName = file.originalname;
     let finalFileSize = file.size;
     
     if (data_type === 'basemap' && (fileExtension === '.tif' || fileExtension === '.tiff')) {
-      console.log('檢測到底圖 TIF 文件，開始轉換為 COG...');
       try {
         const cogPath = await convertTifToCog(file.path);
         if (cogPath) {
           finalFilePath = cogPath;
           finalFileName = file.originalname.replace(/\.(tif|tiff)$/i, '_cog.tif');
           finalFileSize = fs.statSync(cogPath).size;
-          console.log(`TIF 轉 COG 成功: ${file.originalname} -> ${finalFileName}`);
-          console.log(`文件大小: ${file.size} -> ${finalFileSize} bytes`);
         }
       } catch (error) {
         console.error('TIF 轉 COG 失敗:', error);
@@ -327,7 +261,6 @@ export const uploadData = async (req, res) => {
 
       // 如果是空間資料檔案，創建對應的 spatial_layers 記錄
       if ((fileExtension === '.geojson' || fileExtension === '.kml')) {
-        console.log('創建 spatial_layers 記錄...');
         
         // 讀取 GeoJSON 檔案來獲取空間資訊
         let spatialInfo = null;
@@ -337,27 +270,21 @@ export const uploadData = async (req, res) => {
           const geojson = JSON.parse(fileContent);
           
           // 檢測坐標系統
-          console.log('GeoJSON CRS 信息:', geojson.crs);
           if (geojson.crs && geojson.crs.properties && geojson.crs.properties.name) {
             const crsName = geojson.crs.properties.name;
-            console.log('CRS 名稱:', crsName);
             
             // 支持多種 CRS 格式
             if (crsName.includes('EPSG:3826') || crsName.includes('TWD97') || 
                 crsName.includes('urn:ogc:def:crs:EPSG::3826') || 
                 crsName.includes('urn:ogc:def:crs:EPSG:3826')) {
               detectedSRID = 3826; // TWD97/TM2 zone 121
-              console.log('檢測到 TWD97 坐標系統 (EPSG:3826)');
             } else if (crsName.includes('EPSG:4326') || crsName.includes('WGS84') ||
                        crsName.includes('urn:ogc:def:crs:EPSG::4326') ||
                        crsName.includes('urn:ogc:def:crs:EPSG:4326')) {
               detectedSRID = 4326; // WGS84
-              console.log('檢測到 WGS84 坐標系統 (EPSG:4326)');
             } else {
-              console.log('未知的 CRS 格式:', crsName);
             }
           } else {
-            console.log('沒有 CRS 信息，將根據坐標值範圍判斷');
           }
           
           // 如果沒有 CRS 信息，根據坐標值範圍判斷
@@ -376,18 +303,12 @@ export const uploadData = async (req, res) => {
               }
               
               // TWD97 坐標範圍判斷：X: 200000-300000, Y: 2500000-2800000
-              console.log('樣本坐標:', { sampleX, sampleY });
               
               // 更精確的 TWD97 坐標範圍判斷
               if (sampleX > 150000 && sampleX < 400000 && sampleY > 2400000 && sampleY < 2900000) {
                 detectedSRID = 3826; // TWD97
-                console.log('根據坐標值範圍檢測到 TWD97 坐標系統');
-                console.log('坐標範圍符合 TWD97: X在150000-400000, Y在2400000-2900000');
               } else if (sampleX >= -180 && sampleX <= 180 && sampleY >= -90 && sampleY <= 90) {
-                console.log('坐標值範圍符合 WGS84 (經緯度)');
               } else {
-                console.log('坐標值範圍不符合已知坐標系統，保持默認 WGS84');
-                console.log('坐標值:', { sampleX, sampleY });
               }
             }
           }
@@ -412,12 +333,10 @@ export const uploadData = async (req, res) => {
               // 強制檢查：如果坐標值在 TWD97 範圍內，強制設置
               if (sampleX && sampleY && sampleX > 100000 && sampleX < 500000 && sampleY > 2000000 && sampleY < 3000000) {
                 detectedSRID = 3826;
-                console.log('強制檢測：坐標值明顯是 TWD97 格式，強制設置 SRID 為 3826');
               }
             }
           }
           
-          console.log('最終檢測到的坐標系統 SRID:', detectedSRID);
           
           if (geojson.features && geojson.features.length > 0) {
             // 計算邊界框
@@ -564,7 +483,6 @@ export const uploadData = async (req, res) => {
           })
         ]);
 
-        console.log('spatial_layers 記錄創建成功:', spatialLayerResult.rows[0].layer_id);
       }
 
       await client.query('COMMIT');
@@ -583,7 +501,6 @@ export const uploadData = async (req, res) => {
     // 不需要額外的表，因為設定是作為一個整體存儲的
 
     // 暫時停用快照生成，直接顯示原始 GeoJSON
-    console.log('已停用快照生成，將顯示原始 GeoJSON 文件')
     // if (data_type === 'potential_analysis' && analysis_data) {
     //   try {
     //     console.log('開始創建潛勢分析快照...')
@@ -833,7 +750,6 @@ export const deleteData = async (req, res) => {
 
     // 如果是空間資料檔案，同時刪除對應的 spatial_layers 記錄
     if (dataFile.file_type === 'potential_analysis') {
-      console.log('刪除對應的 spatial_layers 記錄...');
       
       const spatialLayerResult = await client.query(`
         UPDATE spatial_layers 
@@ -843,13 +759,10 @@ export const deleteData = async (req, res) => {
       `, [id]);
 
       if (spatialLayerResult.rows.length > 0) {
-        console.log(`已刪除 ${spatialLayerResult.rows.length} 個 spatial_layers 記錄:`, 
-          spatialLayerResult.rows.map(row => row.layer_name));
       }
     }
 
     // 刪除相關的 feature_uploads 記錄（關聯上傳的圖片等）
-    console.log('刪除相關的 feature_uploads 記錄...');
     
     const featureUploadsResult = await client.query(`
       UPDATE feature_uploads 
@@ -859,8 +772,6 @@ export const deleteData = async (req, res) => {
     `, [id]);
 
     if (featureUploadsResult.rows.length > 0) {
-      console.log(`已刪除 ${featureUploadsResult.rows.length} 個 feature_uploads 記錄:`, 
-        featureUploadsResult.rows.map(row => `${row.upload_name} (${row.upload_type})`));
     }
 
     // 刪除 data_files 記錄
@@ -915,7 +826,8 @@ export const downloadFile = async (req, res) => {
 
     const { file_name, storage_path, mime_type } = result.rows[0];
 
-    if (!fs.existsSync(storage_path)) {
+    const absStoragePath = resolveUploadPath(storage_path);
+    if (!fs.existsSync(absStoragePath)) {
       return res.status(404).json({
         success: false,
         message: '檔案已遺失'
@@ -924,8 +836,8 @@ export const downloadFile = async (req, res) => {
 
     res.setHeader('Content-Type', mime_type);
     res.setHeader('Content-Disposition', `attachment; filename="${file_name}"`);
-    
-    const fileStream = fs.createReadStream(storage_path);
+
+    const fileStream = fs.createReadStream(absStoragePath);
     fileStream.pipe(res);
 
   } catch (error) {
@@ -1108,8 +1020,9 @@ export const getProjectGeoJSON = async (req, res) => {
       bbox_max_x,
       bbox_max_y
     } = result.rows[0];
-    
-    if (!fs.existsSync(storage_path)) {
+
+    const absStoragePath = resolveUploadPath(storage_path);
+    if (!fs.existsSync(absStoragePath)) {
       return res.status(404).json({
         success: false,
         message: 'GeoJSON 檔案已遺失'
@@ -1119,7 +1032,7 @@ export const getProjectGeoJSON = async (req, res) => {
     let responseData;
     if (file_extension === '.kml') {
       // 對於 KML 檔案，直接返回內容
-      const fileContent = fs.readFileSync(storage_path, 'utf8');
+      const fileContent = await fs.promises.readFile(absStoragePath, 'utf8');
       responseData = {
         file_id,
         file_name,
@@ -1137,8 +1050,8 @@ export const getProjectGeoJSON = async (req, res) => {
         }
       };
     } else {
-      // 對於 GeoJSON 檔案，解析 JSON
-      const fileContent = fs.readFileSync(storage_path, 'utf8');
+      // 對於 GeoJSON 檔案，非同步讀取避免阻塞 event loop
+      const fileContent = await fs.promises.readFile(absStoragePath, 'utf8');
       const geojsonData = JSON.parse(fileContent);
       
       // 處理邊界框坐標轉換
@@ -1157,36 +1070,19 @@ export const getProjectGeoJSON = async (req, res) => {
       
       // 如果是 TWD97 坐標系統，將邊界框轉換為 WGS84
       if (srid === 3826 && !isNaN(minX) && !isNaN(minY) && !isNaN(maxX) && !isNaN(maxY)) {
-        console.log('開始轉換 TWD97 邊界框為 WGS84');
-        console.log('原始 TWD97 邊界框:', { minX, minY, maxX, maxY });
-        
         try {
-          // 定義 TWD97 坐標系統
           proj4.defs('EPSG:3826', '+proj=tmerc +lat_0=0 +lon_0=121 +k=0.9999 +x_0=250000 +y_0=0 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs');
           proj4.defs('EPSG:4326', '+proj=longlat +datum=WGS84 +no_defs');
-          
-          // 轉換邊界框的四個角點
           const minPoint = proj4('EPSG:3826', 'EPSG:4326', [minX, minY]);
           const maxPoint = proj4('EPSG:3826', 'EPSG:4326', [maxX, maxY]);
-          
-          console.log('轉換結果:', { minPoint, maxPoint });
-          
-          // 更新邊界框為 WGS84 坐標
           bbox = {
-            minX: Math.min(minPoint[0], maxPoint[0]), // minLng
-            minY: Math.min(minPoint[1], maxPoint[1]), // minLat
-            maxX: Math.max(minPoint[0], maxPoint[0]), // maxLng
-            maxY: Math.max(minPoint[1], maxPoint[1])  // maxLat
+            minX: Math.min(minPoint[0], maxPoint[0]),
+            minY: Math.min(minPoint[1], maxPoint[1]),
+            maxX: Math.max(minPoint[0], maxPoint[0]),
+            maxY: Math.max(minPoint[1], maxPoint[1])
           };
-          
-          console.log('TWD97 邊界框轉換為 WGS84:', {
-            original: { minX, minY, maxX, maxY },
-            converted: bbox
-          });
         } catch (error) {
-          console.error('邊界框坐標轉換失敗:', error);
-          console.error('錯誤詳情:', error.message);
-          // 如果轉換失敗，保持原始邊界框
+          console.error('邊界框坐標轉換失敗:', error.message);
         }
       }
       
@@ -1353,8 +1249,9 @@ export const deleteFeatureUpload = async (req, res) => {
 
     // 刪除實體檔案
     const uploadRecord = result.rows[0];
-    if (fs.existsSync(uploadRecord.storage_path)) {
-      fs.unlinkSync(uploadRecord.storage_path);
+    const absPath = resolveUploadPath(uploadRecord.storage_path);
+    if (fs.existsSync(absPath)) {
+      fs.unlinkSync(absPath);
     }
 
     res.json({
@@ -1434,8 +1331,6 @@ export const getPotentialAnalysisIntervals = async (req, res) => {
 // 創建潛勢分析快照圖層
 const createPotentialAnalysisSnapshot = async (originalFileId, projectId, dataName, dataDate, dataDescription, analysisData) => {
   try {
-    console.log('開始創建潛勢分析快照:', originalFileId)
-    
     // 讀取原始 GeoJSON 檔案
     const originalFileResult = await pool.query(`
       SELECT storage_path, metadata
@@ -1469,7 +1364,7 @@ const createPotentialAnalysisSnapshot = async (originalFileId, projectId, dataNa
     
     // 保存 GeoJSON 快照檔案
     const snapshotFileName = `snapshot-${Date.now()}-${Math.random().toString(36).substr(2, 9)}.geojson`
-    const snapshotFilePath = path.join(process.cwd(), 'uploads', 'data', 'snapshots', 'geojson', snapshotFileName)
+    const snapshotFilePath = path.join(BACKEND_ROOT, 'uploads', 'data', 'snapshots', 'geojson', snapshotFileName)
     
     // 確保目錄存在
     const uploadDir = path.dirname(snapshotFilePath)
@@ -1517,7 +1412,6 @@ const createPotentialAnalysisSnapshot = async (originalFileId, projectId, dataNa
       })
     ])
     
-    console.log('潛勢分析快照創建成功:', snapshotResult.rows[0].file_id)
     return snapshotResult.rows[0]
     
   } catch (error) {

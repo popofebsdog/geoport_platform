@@ -131,81 +131,65 @@
               <div v-if="showDisasterPointButtons && !isDisasterPointMode" 
                    class="flex flex-col space-y-2"
                    @click.stop>
-                <!-- 新增按鈕（藍色） -->
+                <!-- 新增按鈕 -->
                 <button
                   @click="setDisasterPointMode('add')"
-                  class="px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-300 shadow-lg flex items-center space-x-2 transform hover:scale-105"
-                  :class="disasterPointMode === 'add'
-                    ? (isDarkMode 
-                        ? 'bg-blue-600 hover:bg-blue-700 text-white ring-2 ring-blue-400 shadow-blue-900/50' 
-                        : 'bg-blue-500 hover:bg-blue-600 text-white ring-2 ring-blue-300 shadow-blue-900/30')
-                    : (isDarkMode 
-                        ? 'bg-blue-600/80 hover:bg-blue-600 text-white/90 shadow-blue-900/30' 
-                        : 'bg-blue-500/80 hover:bg-blue-500 text-white/90 shadow-blue-900/20')"
+                  class="dp-mode-btn"
+                  :class="[isDarkMode ? 'dp-mode-btn-dark' : 'dp-mode-btn-light',
+                           disasterPointMode === 'add' ? 'dp-mode-btn-active-blue' : '']"
                   title="新增災點紀錄"
                 >
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <span class="dp-mode-dot" style="background:#3b82f6"></span>
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
                   </svg>
-                  <span>新增災點紀錄</span>
+                  <span>新增災點</span>
                 </button>
-                
-                <!-- 編輯按鈕（藍色） -->
+
+                <!-- 編輯按鈕 -->
                 <button
                   @click="setDisasterPointMode('edit')"
-                  class="px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-300 shadow-lg flex items-center space-x-2 transform hover:scale-105"
-                  :class="disasterPointMode === 'edit'
-                    ? (isDarkMode 
-                        ? 'bg-blue-600 hover:bg-blue-700 text-white ring-2 ring-blue-400 shadow-blue-900/50' 
-                        : 'bg-blue-500 hover:bg-blue-600 text-white ring-2 ring-blue-300 shadow-blue-900/30')
-                    : (isDarkMode 
-                        ? 'bg-blue-600/80 hover:bg-blue-600 text-white/90 shadow-blue-900/30' 
-                        : 'bg-blue-500/80 hover:bg-blue-500 text-white/90 shadow-blue-900/20')"
-                  title="編輯災點紀錄（點擊地圖上的災點標記）"
+                  class="dp-mode-btn"
+                  :class="[isDarkMode ? 'dp-mode-btn-dark' : 'dp-mode-btn-light',
+                           disasterPointMode === 'edit' ? 'dp-mode-btn-active-blue' : '']"
+                  title="編輯災點紀錄"
                 >
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <span class="dp-mode-dot" style="background:#6366f1"></span>
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
                   </svg>
-                  <span>編輯災點紀錄</span>
+                  <span>編輯災點</span>
                 </button>
-                
-                <!-- 瀏覽災點按鈕（綠色） -->
+
+                <!-- 瀏覽按鈕 -->
                 <button
                   @click="setDisasterPointMode('browse')"
-                  class="px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-300 shadow-lg flex items-center space-x-2 transform hover:scale-105"
-                  :class="disasterPointMode === 'browse'
-                    ? (isDarkMode 
-                        ? 'bg-green-600 hover:bg-green-700 text-white ring-2 ring-green-400 shadow-green-900/50' 
-                        : 'bg-green-500 hover:bg-green-600 text-white ring-2 ring-green-300 shadow-green-900/30')
-                    : (isDarkMode 
-                        ? 'bg-green-600/80 hover:bg-green-600 text-white/90 shadow-green-900/30' 
-                        : 'bg-green-500/80 hover:bg-green-500 text-white/90 shadow-green-900/20')"
+                  class="dp-mode-btn"
+                  :class="[isDarkMode ? 'dp-mode-btn-dark' : 'dp-mode-btn-light',
+                           disasterPointMode === 'browse' ? 'dp-mode-btn-active-green' : '']"
                   title="瀏覽災點功能"
                 >
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <span class="dp-mode-dot" style="background:#22c55e"></span>
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
                   </svg>
-                  <span>瀏覽災點功能</span>
+                  <span>瀏覽災點</span>
                 </button>
-                
-                <!-- 刪除按鈕（紅色） -->
+
+                <!-- 刪除按鈕 -->
                 <button
                   @click="setDisasterPointMode('delete')"
-                  class="px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-300 shadow-lg flex items-center space-x-2 transform hover:scale-105"
-                  :class="disasterPointMode === 'delete'
-                    ? (isDarkMode 
-                        ? 'bg-red-600 hover:bg-red-700 text-white ring-2 ring-red-400 shadow-red-900/50' 
-                        : 'bg-red-500 hover:bg-red-600 text-white ring-2 ring-red-300 shadow-red-900/30')
-                    : (isDarkMode 
-                        ? 'bg-red-600/80 hover:bg-red-600 text-white/90 shadow-red-900/30' 
-                        : 'bg-red-500/80 hover:bg-red-500 text-white/90 shadow-red-900/20')"
-                  title="刪除災點紀錄（點擊地圖上的災點標記）"
+                  class="dp-mode-btn"
+                  :class="[isDarkMode ? 'dp-mode-btn-dark' : 'dp-mode-btn-light',
+                           disasterPointMode === 'delete' ? 'dp-mode-btn-active-red' : '']"
+                  title="刪除災點紀錄"
                 >
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <span class="dp-mode-dot" style="background:#ef4444"></span>
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
                   </svg>
-                  <span>刪除災點紀錄</span>
+                  <span>刪除災點</span>
                 </button>
               </div>
             </Transition>
@@ -222,10 +206,8 @@
               <button
                 v-if="isDisasterPointMode"
                 @click="disableDisasterPointMode"
-                class="px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-300 shadow-lg flex items-center space-x-2 mt-2"
-                :class="isDarkMode
-                  ? 'bg-gray-600 hover:bg-gray-700 text-white shadow-gray-900/50'
-                  : 'bg-gray-500 hover:bg-gray-600 text-white shadow-gray-900/30'"
+                class="dp-mode-btn mt-1.5"
+                :class="isDarkMode ? 'dp-mode-btn-dark' : 'dp-mode-btn-light'"
                 :title="cancelButtonText"
               >
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -272,40 +254,58 @@
             <!-- 動畫瀏覽控制按鈕（地圖上方左側） -->
             <div v-if="showAnimationBrowseModal" class="absolute top-4 left-8 z-[1003] flex items-center space-x-4">
               <!-- 子專案資訊顯示 -->
-              <div class="px-6 py-3 rounded-lg backdrop-blur-md bg-white/90 shadow-lg flex items-center space-x-4">
+              <div class="px-4 py-2 flex items-center space-x-3 rounded border"
+                   :style="isDarkMode
+                     ? 'background-color:#1e293b; border-color:#475569;'
+                     : 'background-color:#ffffff; border-color:#d1d5db;'">
                 <!-- 上一個按鈕 -->
                 <button @click="previousAnimationChild()"
-                        class="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                        class="p-1.5 rounded transition-colors duration-150 border"
+                        :style="isDarkMode
+                          ? 'border-color:#475569; color:#cbd5e1;'
+                          : 'border-color:#d1d5db; color:#4b5563;'"
                         title="上一個時期">
-                  <svg class="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
                   </svg>
                 </button>
-                
+
                 <!-- 時期信息 -->
                 <div class="text-center">
-                  <div class="text-sm font-semibold text-gray-900">
+                  <div class="text-xs font-semibold"
+                       :style="isDarkMode ? 'color:#f1f5f9;' : 'color:#111827;'">
                     {{ currentAnimationChild?.name || '載入中...' }}
                   </div>
-                  <div class="text-xs text-gray-600">
+                  <div class="text-[11px]"
+                       :style="isDarkMode ? 'color:#94a3b8;' : 'color:#6b7280;'">
                     {{ currentAnimationChildIndex + 1 }} / {{ childProjects.length }}
                   </div>
                 </div>
-                
+
                 <!-- 下一個按鈕 -->
                 <button @click="nextAnimationChild()"
-                        class="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                        class="p-1.5 rounded transition-colors duration-150 border"
+                        :style="isDarkMode
+                          ? 'border-color:#475569; color:#cbd5e1;'
+                          : 'border-color:#d1d5db; color:#4b5563;'"
                         title="下一個時期">
-                  <svg class="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
                   </svg>
                 </button>
-                
+
+                <!-- 分隔 -->
+                <div class="w-px h-4"
+                     :style="isDarkMode ? 'background-color:#475569;' : 'background-color:#e5e7eb;'"></div>
+
                 <!-- 關閉按鈕 -->
                 <button @click="closeAnimationBrowse"
-                        class="p-2 rounded-lg hover:bg-red-100 transition-colors"
+                        class="p-1.5 rounded transition-colors duration-150 border"
+                        :style="isDarkMode
+                          ? 'border-color:#475569; color:#94a3b8;'
+                          : 'border-color:#d1d5db; color:#6b7280;'"
                         title="關閉">
-                  <svg class="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                   </svg>
                 </button>
@@ -336,33 +336,34 @@
           
           <!-- 瀏覽災點模式提示欄 -->
           <div v-if="disasterPointMode === 'browse' && isDisasterPointMode" 
-               class="absolute top-4 left-1/2 transform -translate-x-1/2 z-[1000] px-4 py-2.5 rounded-md"
-               :class="isDarkMode ? 'bg-slate-800/95 text-white border border-slate-700' : 'bg-white/95 text-gray-800 border border-gray-200'">
+               class="absolute top-4 left-1/2 transform -translate-x-1/2 z-[1000] px-4 py-2.5 rounded border"
+               :style="isDarkMode
+                 ? 'background-color:#1e293b; border-color:#475569; color:#f1f5f9;'
+                 : 'background-color:#ffffff; border-color:#d1d5db; color:#1f2937;'">
             <div class="flex items-center space-x-4">
               <span class="text-sm font-medium">請點擊按鈕瀏覽災情</span>
               <div class="flex items-center space-x-2">
                 <!-- 上一步按鈕 -->
                 <button
                   @click="handleBrowsePrevious"
-                  class="px-3 py-1.5 rounded text-sm font-medium transition-colors duration-200"
-                  :class="isDarkMode 
-                    ? 'bg-slate-700 text-white hover:bg-slate-600' 
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'"
+                  class="px-3 py-1.5 rounded text-sm font-medium transition-colors duration-200 border"
+                  :style="isDarkMode
+                    ? 'background-color:#334155; border-color:#475569; color:#f1f5f9;'
+                    : 'background-color:#f3f4f6; border-color:#d1d5db; color:#374151;'"
                   title="上一步"
                 >
                   <svg class="w-4 h-4 inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
                   </svg>
-                  
                 </button>
                 
                 <!-- 下一步按鈕 -->
                 <button
                   @click="handleBrowseNext"
-                  class="px-3 py-1.5 rounded text-sm font-medium transition-colors duration-200"
-                  :class="isDarkMode 
-                    ? 'bg-slate-700 text-white hover:bg-slate-600' 
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'"
+                  class="px-3 py-1.5 rounded text-sm font-medium transition-colors duration-200 border"
+                  :style="isDarkMode
+                    ? 'background-color:#334155; border-color:#475569; color:#f1f5f9;'
+                    : 'background-color:#f3f4f6; border-color:#d1d5db; color:#374151;'"
                   title="下一步"
                 >
                   下一步
@@ -522,7 +523,7 @@
     
     <!-- 自定義提示框 -->
     <CustomAlert
-      :show="showAlert"
+      :show="showLocalAlert"
       :type="alertType"
       :title="alertTitle"
       :message="alertMessage"
@@ -615,7 +616,7 @@
     
     <!-- 潛勢評估分析模態框 -->
     <div v-if="showAnalysisModal" class="fixed inset-0 z-[1200] bg-black bg-opacity-50 flex items-center justify-center">
-      <div class="w-[800px] max-w-[90vw] h-[80vh] max-h-[600px] mx-4 rounded-lg shadow-2xl transition-colors duration-300 flex flex-col"
+      <div class="w-[800px] max-w-[90vw] h-[80vh] max-h-[600px] mx-4 rounded border transition-colors duration-150 flex flex-col"
            :class="isDarkMode ? 'bg-slate-800' : 'bg-white'">
         <!-- 模態框標題 -->
         <div class="flex items-center justify-between p-6 border-b transition-colors duration-300"
@@ -736,17 +737,12 @@
     
     <!-- 關聯上傳資料顯示模態框 -->
     <div v-if="showFeatureDisplayModal" class="fixed inset-0 z-[1300] bg-black bg-opacity-60 backdrop-blur-sm flex items-center justify-center p-4">
-      <div class="w-[95vw] max-w-5xl h-[90vh] max-h-[800px] mx-auto rounded-2xl shadow-2xl transition-all duration-300 flex flex-col transform overflow-hidden"
-           :class="[
-             isDarkMode 
-               ? 'bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700' 
-               : 'bg-gradient-to-br from-white to-gray-50 border border-gray-200',
-             'animate-in fade-in-0 zoom-in-95 duration-300'
-           ]">
-        
+      <div class="w-[95vw] max-w-5xl h-[90vh] max-h-[800px] mx-auto rounded border flex flex-col overflow-hidden"
+           :class="isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'">
+
         <!-- 模態框標題 -->
-        <div class="flex items-center justify-between p-6 border-b transition-colors duration-300 rounded-t-2xl"
-             :class="isDarkMode ? 'border-slate-600 bg-slate-900' : 'border-gray-300 bg-gray-100'">
+        <div class="flex items-center justify-between px-5 py-3 border-b transition-colors duration-150"
+             :class="isDarkMode ? 'border-slate-700' : 'border-gray-200'">
           <div class="flex items-center space-x-3">
             <div class="flex items-center justify-center w-10 h-10 rounded-xl transition-colors duration-300"
                  :class="isDarkMode ? 'bg-green-600/20 text-green-400' : 'bg-green-100 text-green-600'">
@@ -823,12 +819,12 @@
             <div class="flex items-start space-x-6">
               <!-- 主圖片顯示區域 -->
               <div class="relative group">
-                <div class="w-[600px] h-[400px] flex items-center justify-center rounded-2xl shadow-2xl transition-all duration-300"
-                     :class="isDarkMode ? 'bg-gradient-to-br from-slate-700 to-slate-800' : 'bg-gradient-to-br from-gray-100 to-gray-200'">
+                <div class="w-[600px] h-[400px] flex items-center justify-center rounded border transition-colors duration-150"
+                     :class="isDarkMode ? 'bg-slate-700' : 'bg-surface-100'">
                   <img 
                     :src="getFileUrl(imageUploads[currentImageIndex].storage_path)" 
                     :alt="imageUploads[currentImageIndex].upload_name"
-                    class="max-w-full max-h-full object-contain rounded-xl transition-all duration-300 group-hover:scale-105"
+                    class="max-w-full max-h-full object-contain rounded"
                     @error="handleImageError"
                     loading="lazy"
                   />
@@ -836,8 +832,8 @@
               </div>
               
               <!-- 圖片標題和描述區域 -->
-              <div class="w-[300px] h-[400px] p-6 rounded-2xl transition-colors duration-300 flex flex-col"
-                   :class="isDarkMode ? 'bg-slate-700/50' : 'bg-gray-50'">
+              <div class="w-[300px] h-[400px] p-5 border-l flex flex-col"
+                   :class="isDarkMode ? 'border-slate-700 bg-slate-750' : 'border-gray-200 bg-surface-50'">
                 <!-- 標題區域 -->
                 <div class="text-center mb-6">
                   <h4 class="text-xl font-bold transition-colors duration-300"
@@ -959,7 +955,7 @@
           <!-- 上傳資料標籤頁 -->
           <div v-if="activeTab === 'upload'" class="space-y-6">
             <!-- 上傳表單 -->
-            <div class="bg-white rounded-2xl border p-6 shadow-sm"
+            <div class="rounded border p-5"
                  :class="isDarkMode ? 'bg-slate-700 border-slate-600' : 'bg-white border-gray-200'">
               <div class="mb-6">
                 <h4 class="text-lg font-semibold transition-colors duration-300"
@@ -986,10 +982,10 @@
                       multiple 
                       accept="image/*"
                       @change="handleFileSelect"
-                      class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:transition-all file:duration-300 file:cursor-pointer"
+                      class="block w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:transition-all file:duration-300 file:cursor-pointer"
                       :class="isDarkMode 
                         ? 'file:bg-slate-600 file:text-white file:hover:bg-slate-500 bg-slate-800 border-slate-600 text-gray-300' 
-                        : 'file:bg-blue-50 file:text-blue-700 file:hover:bg-blue-100 bg-white border-gray-300 text-gray-900'"
+                        : 'file:bg-blue-50 file:text-blue-700 file:hover:bg-blue-100 bg-white border-gray-300 text-gray-500'"
                     />
                   </div>
                   <p class="text-xs transition-colors duration-300"
@@ -1065,7 +1061,7 @@
             </div>
 
             <!-- 上傳進度 -->
-            <div v-if="isUploading" class="bg-white rounded-2xl border p-6 shadow-sm"
+            <div v-if="isUploading" class="rounded border p-5"
                  :class="isDarkMode ? 'bg-slate-700 border-slate-600' : 'bg-white border-gray-200'">
               <div class="space-y-4">
                 <div class="flex items-center justify-between">
@@ -1124,6 +1120,8 @@ import TemporalChart from '@/components/charts/TemporalChart.vue'
 import Footer from '@/components/Footer.vue'
 import CustomAlert from '@/components/CustomAlert.vue'
 import { useAlert } from '@/composables/useAlert'
+import { disasterPointAPI } from '@/services/api'
+import { confirm as showConfirm } from '@/utils/simpleAlertService'
 
 export default {
   name: 'ProjectDetail',
@@ -1412,7 +1410,7 @@ export default {
       selectedDisasterPointForEdit: null, // 選中編輯的災點
       deleteDisasterPointPending: null, // 待刪除的災點
       showDisasterPointButtons: false, // 是否顯示災點按鈕組
-      showAlert: false, // 顯示自定義提示框
+      showLocalAlert: false, // 顯示自定義提示框（避免與 setup() 的 showAlert 衝突）
       alertType: 'info', // 提示類型：success, warning, error, info
       alertTitle: '提示', // 提示標題
       alertMessage: '', // 提示內容
@@ -1617,18 +1615,17 @@ export default {
       await this.loadChildProjects()
     }
     
-    await this.loadGeoJSONLayers()
-    await this.loadUploadedData()
-    await this.loadTemporalData()
+    // 並行載入不互相依賴的資料，大幅縮短等待時間
+    await Promise.all([
+      this.loadGeoJSONLayers(),
+      this.loadUploadedData(),
+      this.loadTemporalData(),
+      this.loadBaseMapsAndPreloadTif(),
+    ])
     
-    // 載入底圖數據並開始預載入 TIF 檔案
-    await this.loadBaseMapsAndPreloadTif()
-    
-    // 如果是子專案且地圖已準備好，載入災點紀錄
-    // 注意：如果地圖還沒準備好，會在 onMapReady 中載入
+    // 災點需要地圖初始化完成，獨立處理
     if (!this.isParentProject && this.map) {
-      console.log('地圖已準備，在 mounted 中載入災點紀錄')
-      await this.loadDisasterPoints()
+      this.loadDisasterPoints()
     }
     
     // 監聽 baseMapService 的變化
@@ -2557,6 +2554,7 @@ export default {
         
         // 點擊事件 - 根據模式打開編輯、刪除、瀏覽或查看模態框
         marker.on('click', () => {
+          console.log('[marker click] 災點:', disasterPoint.name, '| 目前模式:', this.disasterPointMode)
           if (this.disasterPointMode === 'edit') {
             // 編輯模式：打開編輯模態框
             this.selectedDisasterPointForEdit = disasterPoint
@@ -2943,6 +2941,7 @@ export default {
     
     // 處理刪除災點紀錄
     async handleDeleteDisasterPoint(disasterPoint) {
+      console.log('[handleDeleteDisasterPoint] 災點:', disasterPoint?.name, '|', disasterPoint?.disaster_point_id)
       if (!disasterPoint || !disasterPoint.disaster_point_id) {
         this.showCustomAlert('error', '錯誤', '無法刪除：災點資料不完整')
         return
@@ -2950,6 +2949,7 @@ export default {
       
       // 使用自定義確認框
       this.deleteDisasterPointPending = disasterPoint
+      console.log('[handleDeleteDisasterPoint] deleteDisasterPointPending 已設定，顯示確認框')
       this.showCustomAlert('warning', '確認刪除', `確定要刪除災點「${disasterPoint.name}」嗎？此操作無法復原。`)
     },
     
@@ -2960,10 +2960,10 @@ export default {
       const disasterPoint = this.deleteDisasterPointPending
       const disasterPointId = disasterPoint.disaster_point_id
       this.deleteDisasterPointPending = null
-      this.showAlert = false
+      this.showLocalAlert = false
       
       try {
-        const response = await window.$api.delete(`/disaster-points/${disasterPointId}`)
+        const response = await disasterPointAPI.delete(disasterPointId)
         
         if (response.success) {
           // 立即從地圖上移除該災點的標記
@@ -3005,30 +3005,31 @@ export default {
       this.alertType = type
       this.alertTitle = title
       this.alertMessage = message
-      this.showAlert = true
+      this.showLocalAlert = true
     },
     
     // 處理提示框確認
     handleAlertConfirm() {
-      if (this.alertType === 'warning' && this.deleteDisasterPointPending) {
-        // 確認刪除
+      console.log('[handleAlertConfirm] alertType:', this.alertType, 'deleteDisasterPointPending:', !!this.deleteDisasterPointPending)
+      if (this.deleteDisasterPointPending) {
+        // 有待刪除的災點，確認刪除
         this.confirmDeleteDisasterPoint()
       } else {
         // 其他情況：關閉提示框
-        this.showAlert = false
+        this.showLocalAlert = false
       }
     },
     
     // 處理提示框取消
     handleAlertCancel() {
       this.deleteDisasterPointPending = null
-      this.showAlert = false
+      this.showLocalAlert = false
     },
     
     // 處理提示框關閉
     handleAlertClose() {
       this.deleteDisasterPointPending = null
-      this.showAlert = false
+      this.showLocalAlert = false
     },
     
     toggleDisasterPointButtons() {
@@ -3423,25 +3424,27 @@ export default {
     // 資料管理方法
     async loadGeoJSONLayers() {
       try {
-        if (!this.project?.projectId) {
-          console.log('沒有專案 ID，跳過載入 GeoJSON 圖層')
-          return
-        }
+        if (!this.project?.projectId) return
 
-        // 載入所有可用的 GeoJSON 圖層列表
+        // 1. 只取圖層清單（輕量）
         const result = await this.$api.get(`/data/project/${this.project.projectId}/geojson-list`)
 
         if (result.success && result.data && result.data.length > 0) {
           this.geojsonLayers = result.data
-          
-          // 載入所有圖層數據
-          await this.loadAllGeojsonLayers()
-          
-          // 設置第一個圖層作為默認激活圖層
-          if (this.geojsonLayers.length > 0) {
-            this.activeGeojsonLayer = this.geojsonLayers[0].file_id
-            this.geojsonData = this.loadedGeojsonLayers[this.activeGeojsonLayer]
-            await this.initAvailableFeatures()
+
+          // 2. 只載入第一個（預設顯示）圖層，其餘懶載入
+          const firstFileId = this.geojsonLayers[0].file_id
+          await this.loadSpecificGeoJSONLayer(firstFileId)
+
+          // 3. 其餘圖層在背景依序靜默載入（不阻塞 UI）
+          if (this.geojsonLayers.length > 1) {
+            Promise.all(
+              this.geojsonLayers.slice(1).map(layer =>
+                this.$api.get(`/data/project/${this.project.projectId}/geojson?fileId=${layer.file_id}`)
+                  .then(r => { if (r.success && r.data) this.loadedGeojsonLayers[layer.file_id] = r.data })
+                  .catch(() => {})
+              )
+            )
           }
         } else {
           this.geojsonLayers = []
@@ -3456,7 +3459,6 @@ export default {
 
     async loadSpecificGeoJSONLayer(fileId) {
       try {
-        // 檢查圖層類型
         const layerInfo = this.geojsonLayers.find(layer => layer.file_id === fileId)
 
         const result = await this.$api.get(`/data/project/${this.project.projectId}/geojson?fileId=${fileId}`)
@@ -3497,16 +3499,14 @@ export default {
 
     async switchGeoJSONLayer(fileId) {
       if (this.activeGeojsonLayer === fileId) {
-        return // 已經是當前激活的圖層
+        return
       }
       
       if (this.loadedGeojsonLayers[fileId]) {
-        // 圖層已經載入，直接切換
         this.activeGeojsonLayer = fileId
         this.geojsonData = this.loadedGeojsonLayers[fileId]
         await this.initAvailableFeatures()
       } else {
-        // 圖層未載入，先載入再切換
         await this.loadSpecificGeoJSONLayer(fileId)
       }
     },
@@ -4694,18 +4694,23 @@ export default {
     async locateCOGBaseMap(baseMap) {
       try {
         const staticBase = import.meta.env.VITE_STATIC_URL || 'http://localhost:3001'
-        const tiTilerBase = import.meta.env.VITE_TITILER_URL || 'http://localhost:8000'
+        const tiTilerBase = import.meta.env.VITE_TITILER_URL || 'http://localhost:8080'
         const imageUrl = `${staticBase}/${baseMap.storagePath.replace(/^\//, '')}`
         
         // 從 TiTiler 獲取邊界
         const response = await fetch(`${tiTilerBase}/cog/bounds?url=${encodeURIComponent(imageUrl)}`)
+        if (!response.ok) {
+          const errBody = await response.json().catch(() => ({}))
+          if (response.status === 404) {
+            throw new Error('伺服器找不到此影像檔案，可能已被刪除，請重新上傳')
+          }
+          throw new Error(errBody.error || `TiTiler 回傳錯誤 (${response.status})`)
+        }
         const result = await response.json()
         
-        if (result.success && result.bounds) {
-          const bounds = [
-            [result.bounds.minLat, result.bounds.minLon], // 西南角
-            [result.bounds.maxLat, result.bounds.maxLon]  // 東北角
-          ]
+        const bounds = this.$refs.projectMap.baseMapService?.parseTiTilerBounds(result)
+        
+        if (bounds) {
           
           // 調整地圖視圖到邊界
           this.$refs.projectMap.map.fitBounds(bounds, {
@@ -4843,7 +4848,7 @@ export default {
       
       try {
         console.log('[ProjectDetail] 請求 GeoJSON 數據...')
-        const response = await fetch('/data/uploads/geojson/alertRoad.geojson')
+        const response = await fetch('/uploads/monitoring/taiwan7/alertRoad.geojson')
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`)
         }
@@ -5098,9 +5103,9 @@ export default {
     
     async onDeleteTemporalData(temporalData) {
       console.log('刪除時序資料:', temporalData)
-      if (confirm(`確定要刪除時序資料「${temporalData.name}」嗎？`)) {
+      if (await showConfirm(`確定要刪除時序資料「${temporalData.name}」嗎？`, '刪除確認', this.isDarkMode)) {
         try {
-          const response = await this.$api.delete(`/temporal-data/${temporalData.temporal_id}`)
+          const response = await this.$api.delete(`/temporal-data-enhanced/${temporalData.temporal_id}`)
           console.log('刪除響應:', response)
           
           if (response.success) {
@@ -5748,6 +5753,59 @@ export default {
 
 :global(.temporal-location-popup-content .view-chart-btn:hover) {
   background-color: #2563eb;
+}
+
+/* ── 災點操作模式按鈕 ─────────────────────── */
+:global(.dp-mode-btn) {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.3125rem 0.75rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  border-radius: 2px;
+  border: 1px solid transparent;
+  transition: background-color 0.15s, color 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+:global(.dp-mode-dot) {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+:global(.dp-mode-btn-light) {
+  background: rgba(255,255,255,0.92);
+  color: #374151;
+  border-color: #d1d5db;
+}
+:global(.dp-mode-btn-light:hover) {
+  background: #f9fafb;
+  border-color: #9ca3af;
+}
+:global(.dp-mode-btn-dark) {
+  background: rgba(30,41,59,0.92);
+  color: #d1d5db;
+  border-color: #475569;
+}
+:global(.dp-mode-btn-dark:hover) {
+  background: #1e293b;
+  border-color: #64748b;
+}
+:global(.dp-mode-btn-active-blue) {
+  background: #1e5c8a !important;
+  color: #fff !important;
+  border-color: #1e5c8a !important;
+}
+:global(.dp-mode-btn-active-green) {
+  background: #16a34a !important;
+  color: #fff !important;
+  border-color: #16a34a !important;
+}
+:global(.dp-mode-btn-active-red) {
+  background: #dc2626 !important;
+  color: #fff !important;
+  border-color: #dc2626 !important;
 }
 
 /* 里程樁號標籤樣式 */

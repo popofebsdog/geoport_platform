@@ -304,6 +304,24 @@ export const getDeletedProjects = async (req, res) => {
 };
 
 // 還原項目
+export const permanentDeleteProject = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const project = await Project.findByPk(id, { paranoid: false });
+
+    if (!project) {
+      return res.status(404).json({ success: false, message: '項目不存在' });
+    }
+
+    await project.destroy({ force: true });
+
+    res.json({ success: true, message: '項目已永久刪除' });
+  } catch (error) {
+    console.error('永久刪除項目錯誤:', error);
+    res.status(500).json({ success: false, message: '永久刪除項目失敗' });
+  }
+};
+
 export const restoreProject = async (req, res) => {
   try {
     const { id } = req.params;

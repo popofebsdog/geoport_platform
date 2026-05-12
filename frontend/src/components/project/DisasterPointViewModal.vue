@@ -10,7 +10,7 @@
       
       <!-- 模態框內容 -->
       <div 
-        class="relative w-full max-w-2xl max-h-[90vh] rounded-2xl shadow-2xl transition-all duration-300 transform overflow-hidden flex flex-col"
+        class="relative w-full max-w-2xl max-h-[90vh] rounded border transition-all duration-300 transform overflow-hidden flex flex-col"
         :class="isDarkMode ? 'bg-slate-800' : 'bg-white'"
       >
         <!-- 標題列 -->
@@ -252,6 +252,8 @@
 </template>
 
 <script>
+import { confirm as showConfirm, error as showError } from '@/utils/simpleAlertService'
+
 export default {
   name: 'DisasterPointViewModal',
   props: {
@@ -324,25 +326,21 @@ export default {
         return
       }
       
-      // 使用自定義確認框（如果需要，可以替換為 CustomAlert）
-      if (!confirm(`確定要刪除「${media.original_name}」嗎？此操作無法復原。`)) {
-        return
-      }
-      
+      const confirmed = await showConfirm(`確定要刪除「${media.original_name}」嗎？此操作無法復原。`, '刪除確認', this.isDarkMode)
+      if (!confirmed) return
+
       try {
         const response = await this.$api.delete(
           `/disaster-points/${this.disasterPoint.disaster_point_id}/media/${media.media_id}`
         )
-        
         if (response.success) {
-          // 觸發事件，通知父組件更新災點數據
           this.$emit('media-deleted')
         } else {
           throw new Error(response.message || '刪除失敗')
         }
       } catch (error) {
         console.error('刪除照片失敗:', error)
-        alert(`刪除失敗：${error.response?.data?.message || error.message || '未知錯誤'}`)
+        await showError(`刪除失敗：${error.response?.data?.message || error.message || '未知錯誤'}`, '刪除失敗', this.isDarkMode)
       }
     },
     

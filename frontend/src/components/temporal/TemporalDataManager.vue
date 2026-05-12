@@ -41,7 +41,7 @@
 
 <script>
 import { ref, onMounted, inject } from 'vue'
-import axios from 'axios'
+import api from '@/services/api'
 import TemporalDataLayerCard from './TemporalDataLayerCard.vue'
 import TemporalDataChartModal from './TemporalDataChartModal.vue'
 
@@ -74,9 +74,9 @@ export default {
     const loadTemporalDataList = async () => {
       isLoading.value = true
       try {
-        const response = await axios.get(`/api/temporal-data-enhanced/${props.projectId}/list`)
-        if (response.data.success) {
-          temporalDataList.value = response.data.data
+        const response = await api.get(`/temporal-data-enhanced/${props.projectId}/list`)
+        if (response.success) {
+          temporalDataList.value = response.data
         }
       } catch (error) {
         console.error('載入時序資料列表失敗:', error)
@@ -105,8 +105,8 @@ export default {
     // 處理刪除
     const handleDelete = async (temporalId) => {
       try {
-        const response = await axios.delete(`/api/temporal-data-enhanced/${temporalId}`)
-        if (response.data.success) {
+        const response = await api.delete(`/temporal-data-enhanced/${temporalId}`)
+        if (response.success) {
           // 重新載入列表
           await loadTemporalDataList()
         }

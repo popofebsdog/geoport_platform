@@ -72,6 +72,10 @@ export default {
     zoom: {
       type: Number,
       default: 16
+    },
+    isDarkMode: {
+      type: Boolean,
+      default: false
     }
   },
   emits: ['click'],
@@ -130,7 +134,7 @@ export default {
     
     routeNameStyle() {
       return {
-        color: '#000',
+        color: this.isDarkMode ? '#e2e8f0' : '#1e293b',
         fontWeight: '500',
         fontSize: `${this.fontSize}px`,
         lineHeight: '1.2',
@@ -320,7 +324,7 @@ export default {
       <div class="warning-light-marker-container" style="pointer-events: none; position: relative;">
         <div style="background-color: transparent; border-radius: 0.5rem; padding: ${padding}px; text-align: center; min-width: ${containerMinWidth}px; max-width: ${containerMaxWidth}px; position: relative; cursor: pointer;" onclick="window.dispatchEvent(new CustomEvent('warning-light-click', {detail: {routeName: '${this.routeName}', currentLevel: '${this.currentLevel}', currentLevelName: '${this.currentLevelName}'}}))">
           <!-- 路線資訊 -->
-          <h4 style="color: #000; font-weight: 500; font-size: ${fontSize}px; line-height: 1.2; margin-bottom: ${Math.round(4 * scaleFactor)}px; margin: 0;">${this.routeName || ''}</h4>
+          <h4 style="color: ${this.isDarkMode ? '#e2e8f0' : '#1e293b'}; font-weight: 500; font-size: ${fontSize}px; line-height: 1.2; margin-bottom: ${Math.round(4 * scaleFactor)}px; margin: 0;">${this.routeName || ''}</h4>
           
           <!-- 紅綠燈顯示 -->
           <div style="display: flex; justify-content: center; margin-bottom: ${Math.round(4 * scaleFactor)}px;">

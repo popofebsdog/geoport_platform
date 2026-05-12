@@ -10,7 +10,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 const app = express();
-const PORT = 8000;
+const PORT = 8080;
 
 // 啟用 CORS
 app.use(cors({
@@ -56,7 +56,7 @@ app.get('/cog/tiles/:tileMatrixSetId/:z/:x/:y', async (req, res) => {
     
     if (!fs.existsSync(fullPath)) {
       console.error('文件不存在:', fullPath);
-      return res.status(404).json({ error: '文件不存在' });
+      return res.status(404).json({ error: '文件不存在', path: fullPath });
     }
     
     // 使用 GDAL 生成瓦片
@@ -182,7 +182,7 @@ app.get('/cog/bounds', async (req, res) => {
     
     if (!fs.existsSync(fullPath)) {
       console.error('文件不存在:', fullPath);
-      return res.status(404).json({ error: '文件不存在' });
+      return res.status(404).json({ error: '文件不存在', path: fullPath });
     }
     
     // 使用 GDAL 獲取文件邊界信息
@@ -320,8 +320,8 @@ app.use((error, req, res, next) => {
 // 啟動服務器
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`TiTiler JavaScript 服務器運行在 http://0.0.0.0:${PORT}`);
-  console.log('健康檢查: http://localhost:8000/health');
-  console.log('COG 信息: http://localhost:8000/cog/info');
+  console.log('健康檢查: http://localhost:8080/health');
+  console.log('COG 信息: http://localhost:8080/cog/info');
 });
 
 export default app;

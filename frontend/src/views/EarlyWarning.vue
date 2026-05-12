@@ -1,86 +1,95 @@
 <template>
-  <div class="px-4 py-4 sm:px-0 h-full flex flex-col overflow-hidden">
-    <div class="grid grid-cols-1 flex-1 overflow-hidden min-h-0">
-      <!-- 地圖和數據 -->
-      <div class="flex flex-col h-full">
-        <!-- 監測地區選擇器 -->
-        <RegionSelector 
-          ref="regionSelector"
-          v-model="selectedRegionId"
-          :show-create-button="true"
-          @region-changed="handleRegionChanged"
-          @regions-loaded="handleRegionsLoaded"
-          @create="handleCreateRegionProject"
-          @edit="handleEditRegionProject"
-          @delete="handleRegionDeleted"
-        />
-              
-        <!-- 災情預警情資 -->
-        <div class="card mb-3 flex-shrink-0 early-warning-card pt-3">
-          <!-- 圖表數據面板 -->
-          <div v-if="!selectedRegionCode" class="text-center py-12">
-            <div class="inline-flex flex-col items-center gap-4">
-              <div class="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
-                <svg class="w-8 h-8 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
-                  </svg>
-                </div>
-                <div>
-                <p class="text-gray-600 dark:text-gray-400 font-medium mb-1">請先選擇監測地區</p>
-                <p class="text-sm text-gray-500 dark:text-gray-500">選擇上方地區後，將顯示該地區的預警情資數據</p>
-                </div>
-              </div>
-            </div>
-          <ChartDataPanel 
-            v-else
-            :region-code="selectedRegionCode"
-            :region-id="selectedRegionId"
-            :region-name="currentRegionName"
-            ref="chartDataPanel"
-            @panel-collapsed-changed="handleChartPanelCollapsedChanged"
-          />
-            </div>
-            
-        <!-- 預警地圖 -->
-        <div class="card flex-1 flex flex-col p-0 overflow-hidden relative early-warning-card">
-          <!-- 告警燈號狀態面板 -->
-          <AlertLightStatusPanel
-            v-if="selectedRegionCode"
-            :is-visible="showAlertLightStatusPanel"
-            :alert-lights="currentAlertLights"
-            :chart-panel-collapsed="chartPanelCollapsed"
-            @close="handleAlertLightPanelClose"
-            @expand="showAlertLightStatusPanel = true"
-            @light-click="handleAlertLightClick"
-          />
-          
-          <div class="flex-1 w-full h-full min-h-0">
-            <ProjectMap 
-              ref="projectMap"
-              :project="mockParentProject"
-              :is-dark-mode="isDarkMode"
-              :loaded-geojson-layers="loadedGeojsonLayers"
-              :layer-visibility="layerVisibility"
-              :current-base-map="currentBaseMap"
-              :highway-mileage-visible="highwayMileageVisible"
-              :mileage-label-visible="showMileageLabels"
-              @map-ready="onMapReady"
-              @toggle-highway-mileage="toggleHighwayMileage"
-              @toggle-mileage-label="toggleMileageLabels"
-            />
-            
-            <!-- InSAR 地表形變圖層 -->
-            <InSARLayer
-              v-if="$refs.projectMap && $refs.projectMap.map"
-              :map="$refs.projectMap.map"
-              :is-active="showRadar"
-              :show-legend="true"
-              :sidebar-expanded="showAlertLightStatusPanel"
-            />
-              </div>
-            </div>
-          </div>
+  <div class="ew-root">
+
+    <!-- ① RegionSelector（自然高度）-->
+    <div class="ew-region flex items-stretch gap-0">
+      <RegionSelector
+        ref="regionSelector"
+        v-model="selectedRegionId"
+        :show-create-button="true"
+        class="flex-1 min-w-0"
+        @region-changed="handleRegionChanged"
+        @regions-loaded="handleRegionsLoaded"
+        @create="handleCreateRegionProject"
+        @edit="handleEditRegionProject"
+        @delete="handleRegionDeleted"
+      />
+      <!-- 管理後台按鈕：與 RegionSelector 同高同底線 -->
+      <div v-if="selectedRegionId" class="flex flex-col flex-shrink-0 ml-2">
+        <button
+          @click="showManagePanel = true"
+          class="flex-1 px-3 text-xs font-semibold border rounded transition-colors whitespace-nowrap"
+          :class="isDarkMode
+            ? 'border-slate-700 text-slate-400 hover:border-slate-500 hover:text-white'
+            : 'border-gray-300 text-brand hover:border-brand hover:bg-brand-light'"
+        >
+          ⚙ 管理
+        </button>
+        <div class="border-b transition-colors"
+             :class="isDarkMode ? 'border-slate-800' : 'border-gray-200'"></div>
+      </div>
+    </div>
+
+    <!-- ② ChartDataPanel（自然高度，收合時縮小）-->
+    <div class="ew-chart">
+      <div class="card early-warning-card pt-3 h-full">
+        <div v-if="!selectedRegionCode" class="flex items-center gap-4 py-5 px-1">
+          <span class="text-xs text-gray-400 dark:text-slate-600">—</span>
+          <p class="text-xs text-gray-400 dark:text-slate-600">請先從上方選擇監測地區，即可顯示預警情資數據</p>
         </div>
+        <ChartDataPanel
+          v-else
+          :region-code="selectedRegionCode"
+          :region-id="selectedRegionId"
+          :region-name="currentRegionName"
+          ref="chartDataPanel"
+          @panel-collapsed-changed="handleChartPanelCollapsedChanged"
+        />
+      </div>
+    </div>
+
+    <!-- ③ 地圖（填滿剩餘空間，固定不動）-->
+    <div class="ew-map">
+      <!-- 告警燈號面板（定位於地圖區）-->
+      <AlertLightStatusPanel
+        v-if="selectedRegionCode"
+        :is-visible="showAlertLightStatusPanel"
+        :alert-lights="currentAlertLights"
+        :chart-panel-collapsed="chartPanelCollapsed"
+        @close="handleAlertLightPanelClose"
+        @expand="showAlertLightStatusPanel = true"
+        @light-click="handleAlertLightClick"
+      />
+
+      <div class="w-full h-full p-2"
+           :class="isDarkMode ? 'bg-slate-900' : 'bg-slate-50'">
+        <div class="w-full h-full overflow-hidden rounded"
+             :class="isDarkMode ? 'bg-slate-900' : 'bg-white'">
+          <ProjectMap 
+            ref="projectMap"
+            :project="mockParentProject"
+            :is-dark-mode="isDarkMode"
+            :loaded-geojson-layers="loadedGeojsonLayers"
+            :layer-visibility="layerVisibility"
+            :current-base-map="currentBaseMap"
+            :highway-mileage-visible="highwayMileageVisible"
+            :mileage-label-visible="showMileageLabels"
+            :mileage-geo-json="currentRoadGeoJSON"
+            @map-ready="onMapReady"
+            @toggle-highway-mileage="toggleHighwayMileage"
+            @toggle-mileage-label="toggleMileageLabels"
+          />
+          <InSARLayer
+            v-if="$refs.projectMap && $refs.projectMap.map && monitoringLayers.insar"
+            :map="$refs.projectMap.map"
+            :is-active="showRadar"
+            :data-path="monitoringLayers.insar?.fileUrl"
+            :show-legend="true"
+            :sidebar-expanded="showAlertLightStatusPanel"
+          />
+        </div>
+      </div>
+    </div>
         
     <!-- 建立地區專案模態框 -->
     <Teleport to="body">
@@ -270,6 +279,16 @@
       @cancel="handleAlertLightCancel"
       @close="handleAlertLightCancel"
     />
+
+    <!-- 地區資料管理面板 -->
+    <RegionManagePanel
+      v-if="showManagePanel && selectedRegionId"
+      :region-id="selectedRegionId"
+      :region-code="selectedRegionCode"
+      :region-name="currentRegionName"
+      @close="showManagePanel = false"
+      @layers-updated="onLayersUpdated"
+    />
   </div>
 </template>
 
@@ -280,6 +299,7 @@ import ProjectMap from '@/components/project/ProjectMap.vue'
 import RegionSelector from '@/components/warning/RegionSelector.vue'
 import ChartDataPanel from '@/components/warning/ChartDataPanel.vue'
 import CreateRegionProject from '@/components/warning/CreateRegionProject.vue'
+import RegionManagePanel from '@/components/warning/RegionManagePanel.vue'
 import RoutineInspectionModal from '@/components/warning/RoutineInspectionModal.vue'
 import SpecialInspectionModal from '@/components/warning/SpecialInspectionModal.vue'
 import InspectionRecordsView from '@/components/warning/InspectionRecordsView.vue'
@@ -287,7 +307,7 @@ import AlertLightConfirmModal from '@/components/warning/AlertLightConfirmModal.
 import AlertLightStatusPanel from '@/components/warning/AlertLightStatusPanel.vue'
 import InSARLayer from '@/components/warning/InSARLayer.vue'
 import { generateWarningLightHTML } from '@/utils/warningLightMarkerHelper.js'
-import { success, error } from '@/utils/simpleAlertService.js'
+import { success, error, alert as showAlert } from '@/utils/simpleAlertService.js'
 
 // 確保 proj4 在全局可用
 if (typeof window !== 'undefined') {
@@ -314,7 +334,8 @@ export default {
     InspectionRecordsView,
     AlertLightConfirmModal,
     AlertLightStatusPanel,
-    InSARLayer
+    InSARLayer,
+    RegionManagePanel
   },
   inject: ['isDarkMode'],
   data() {
@@ -343,6 +364,10 @@ export default {
           lng: 121.0
         }
       },
+      // 監測圖資（從 API 取得，key = layer_type）
+      monitoringLayers: {},
+      // 當前選中路線的完整 GeoJSON（供里程樁號直接使用，不需 child 重新 fetch）
+      currentRoadGeoJSON: null,
       // 當前選中的路線 GeoJSON 圖層
       currentRoadLayer: null,
       // 點位顏色配置（以座標為 key）
@@ -370,6 +395,8 @@ export default {
          inspectionViewKey: 0,
          // 當前打開的里程點彈窗 layer（用於功能彈窗關閉後重新顯示）
          currentMileagePopupLayer: null,
+         // 管理面板
+         showManagePanel: false,
          // 告警燈號位置設置相關
          showAlertLightConfirmModal: false,
          currentAlertLightPoint: null, // 當前要設置告警燈號的點位信息
@@ -389,23 +416,9 @@ export default {
         showRadar: false // 是否顯示空中雷達
       }
     },
-  watch: {
-    // 監聽告警燈號面板狀態，更新熱點圖層和雷達按鈕位置
-    showAlertLightStatusPanel(newValue) {
-      if (this.heatmapControl && this.heatmapControl.updatePosition) {
-        this.$nextTick(() => {
-          this.heatmapControl.updatePosition()
-        })
-      }
-      if (this.radarControl && this.radarControl.updatePosition) {
-        this.$nextTick(() => {
-          this.radarControl.updatePosition()
-        })
-      }
-    }
-  },
+  watch: {},
   methods: {
-    handleRegionChanged(regionInfo) {
+    async handleRegionChanged(regionInfo) {
       // regionInfo 可能是字符串（向后兼容）或对象 {region_id, region_code, region}
       let regionCode = null;
       let regionId = null;
@@ -433,8 +446,9 @@ export default {
       if (this.$refs.chartDataPanel) {
         this.$refs.chartDataPanel.refresh();
       }
-      // 可以根據地區代碼更新地圖位置
+      // 先取得監測圖資，再更新地圖（避免 race condition）
       if (regionCode) {
+        await this.fetchMonitoringLayers(regionCode);
         this.updateMapForRegion(regionCode);
       }
       
@@ -450,8 +464,11 @@ export default {
         if (region) {
           this.selectedRegionCode = region.region_code;
           this.currentRegionName = region.region_name;
-          // 載入對應的地圖數據
-          this.$nextTick(() => {
+          // 載入對應的地圖數據（先取得監測圖資）
+          this.$nextTick(async () => {
+            if (Object.keys(this.monitoringLayers).length === 0) {
+              await this.fetchMonitoringLayers(this.selectedRegionCode);
+            }
             this.updateMapForRegion(this.selectedRegionCode);
           });
         }
@@ -542,101 +559,72 @@ export default {
       }
       
       
+      // 載入點位顏色配置、告警燈號、災害統計（不依賴道路圖資）
       try {
-        // 載入 GeoJSON 文件
-        const response = await fetch('/data/uploads/geojson/alertRoad.geojson');
-        if (!response.ok) {
-          throw new Error(`載入 GeoJSON 失敗: ${response.statusText}`);
+        if (this.selectedRegionId) {
+          await Promise.all([
+            this.loadPointColors(this.selectedRegionId),
+            this.loadAlertLights(this.selectedRegionId),
+            this.loadDisasterCounts(this.selectedRegionId)
+          ]);
+        } else {
+          await Promise.all([
+            this.loadPointColors(regionCode),
+            this.loadAlertLights(regionCode),
+            this.loadDisasterCounts(regionCode)
+          ]);
         }
+      } catch (e) {
+        console.warn('載入點位/燈號/災害統計時發生錯誤:', e);
+      }
+
+      // 載入道路線形 GeoJSON 並渲染（若無圖資則略過）
+      try {
+        const roadLayer = this.monitoringLayers?.road
+        if (!roadLayer) {
+          console.warn('此區域尚未設定道路線形圖資，略過路線繪製')
+          return
+        }
+        const response = await fetch(roadLayer.fileUrl);
+        if (!response.ok) throw new Error(`載入 GeoJSON 失敗: ${response.statusText}`);
         const geojsonData = await response.json();
-        
+
         // 過濾出選中路線和工務段的數據
         const filteredFeatures = geojsonData.features.filter(feature => {
-          const matchesRoad = feature.properties?.公路編 === roadSection;
-          if (!matchesRoad) return false;
-          
-          // 如果有工務段信息，進一步過濾
-          if (workSection) {
-            return feature.properties?.工務段 === workSection;
-          }
-          
+          if (feature.properties?.公路編 !== roadSection) return false;
+          if (workSection) return feature.properties?.工務段 === workSection;
           return true;
         });
-        
+
         if (filteredFeatures.length === 0) {
-          // 清除現有圖層
           if (this.currentRoadLayer && this.$refs.projectMap?.map) {
             this.$refs.projectMap.map.removeLayer(this.currentRoadLayer);
             this.currentRoadLayer = null;
           }
           return;
         }
-        
-        // 創建過濾後的 GeoJSON
-        const filteredGeoJSON = {
-          type: 'FeatureCollection',
-          features: filteredFeatures
-        };
-        
-        
-        // 保存當前地區的所有里程點列表（用於導航）
+
+        const filteredGeoJSON = { type: 'FeatureCollection', features: filteredFeatures };
+
+        // 儲存給里程樁號圖層直接使用（不需 ProjectMap 重新 fetch）
+        this.currentRoadGeoJSON = filteredGeoJSON;
+
+        // 保存里程點列表（用於導航）
         this.currentMileagePoints = filteredFeatures.map(feature => ({
           mileage: feature.properties?.里程數 || '',
           roadSection: feature.properties?.公路編 || '',
           location: `${feature.properties?.縣市別 || ''}${feature.properties?.鄉鎮區 || ''}${feature.properties?.村里 || ''}`,
           coordinates: feature.geometry?.coordinates || [],
           properties: feature.properties || {}
-        })).sort((a, b) => {
-          // 按里程數排序（轉換為數值比較）
-          const aMileage = this.parseMileageToNumber(a.mileage)
-          const bMileage = this.parseMileageToNumber(b.mileage)
-          return aMileage - bMileage
-        });
-        
-        // 載入點位顏色配置（使用 region_id 如果有的話）
-        if (this.selectedRegionId) {
-          await this.loadPointColors(this.selectedRegionId);
-        } else {
-          await this.loadPointColors(regionCode);
-        }
-        
-        // 載入告警燈號位置（使用 region_id 如果有的話）
-        if (this.selectedRegionId) {
-          await this.loadAlertLights(this.selectedRegionId);
-        } else {
-          await this.loadAlertLights(regionCode);
-        }
-        
-        // 載入災害數量統計
-        // 使用 region_id 載入災害統計（如果有的話）
-        if (this.selectedRegionId) {
-          await this.loadDisasterCounts(this.selectedRegionId);
-        } else if (this.selectedRegionCode) {
-          await this.loadDisasterCounts(this.selectedRegionCode);
-        } else {
-          await this.loadDisasterCounts(regionCode);
-        }
-        
-        // 在地圖上渲染數據
+        })).sort((a, b) => this.parseMileageToNumber(a.mileage) - this.parseMileageToNumber(b.mileage));
+
         await this.renderRoadGeoJSON(filteredGeoJSON);
-        
-        // 渲染災害熱力圖標記
         this.renderDisasterHeatmapMarkers(filteredGeoJSON);
-        
-        // 調整地圖視圖（如果不需要保持縮放層級）
+
         if (!preserveZoom) {
-          // 檢查是否為台7地區，如果是，則設置特定的初始視圖
-          const isTaiwan7 = roadSection === '台7線' || regionCode === 'taiwan7';
-          
-          if (isTaiwan7) {
-            // 台7地區：以 49.4K (049K+400) 為中心，縮放層級 17
-            this.$refs.projectMap.map.setView([24.674396, 121.404444], 17);
-          } else {
-            // 其他地區：使用自動適應邊界
-            this.fitMapToRoadData(filteredGeoJSON);
-          }
+          this.fitMapToRoadData(filteredGeoJSON);
         }
-        
+
       } catch (error) {
         console.error('載入路線數據失敗:', error);
       }
@@ -666,9 +654,12 @@ export default {
       
       // 如果已經選擇了地區，載入對應的地圖數據
       if (this.selectedRegionCode) {
-        this.$nextTick(() => {
+        this.$nextTick(async () => {
+          // 確保監測圖資已取得才繪製路線
+          if (Object.keys(this.monitoringLayers).length === 0) {
+            await this.fetchMonitoringLayers(this.selectedRegionCode);
+          }
           this.updateMapForRegion(this.selectedRegionCode);
-          // 根據當前選中的地區添加對應的控制按鈕
           if (this.currentRegionName) {
             this.updateMapControls(this.currentRegionName);
           }
@@ -728,9 +719,29 @@ export default {
         }
       });
     },
-    // 切換省道里程樁號顯示
-    toggleHighwayMileage(visible) {
-      this.highwayMileageVisible = visible
+    // 從 API 取得該區域的監測圖資清單（以 region_code 查詢）
+    async fetchMonitoringLayers(regionCode) {
+      if (!regionCode) return
+      try {
+        const res = await fetch(`/api/warning-regions/${encodeURIComponent(regionCode)}/layers`)
+        const json = await res.json()
+        if (json.success) {
+          const map = {}
+          json.data.forEach(layer => {
+            map[layer.layer_type] = {
+              ...layer,
+              fileUrl: `/api/warning-regions/monitoring-file?path=${encodeURIComponent(layer.storage_path)}`
+            }
+          })
+          this.monitoringLayers = map
+        }
+      } catch (e) {
+        console.warn('fetchMonitoringLayers 失敗:', e)
+        this.monitoringLayers = {}
+      }
+    },
+    toggleHighwayMileage() {
+      this.highwayMileageVisible = !this.highwayMileageVisible
     },
     // 處理建立地區專案
     handleCreateRegionProject() {
@@ -784,8 +795,11 @@ export default {
         this.currentPreviewRoadSection = roadSection;
         this.currentPreviewWorkSection = workSection;
         
-        // 載入 GeoJSON 文件
-        const response = await fetch('/data/uploads/geojson/alertRoad.geojson');
+        // 從監測圖資 API 取得道路線形
+        const roadLayer = this.monitoringLayers?.road
+        if (!roadLayer) { console.warn('此區域尚未設定道路線形圖資'); return }
+        const response = await fetch(roadLayer.fileUrl);
+        if (!response.ok) throw new Error(`載入 GeoJSON 失敗: ${response.statusText}`);
         const geojsonData = await response.json();
         
         // 過濾出選中路線和工務段的數據（只顯示該工務段的數據）
@@ -1335,6 +1349,12 @@ export default {
         error(errorMessage);
       }
     },
+    // 管理面板：圖資更新後重新抓取 monitoring layers
+    async onLayersUpdated() {
+      if (this.selectedRegionCode) {
+        await this.fetchMonitoringLayers(this.selectedRegionCode)
+      }
+    },
     // 處理告警燈號位置取消
     handleAlertLightCancel() {
       this.showAlertLightConfirmModal = false;
@@ -1789,30 +1809,21 @@ export default {
         onAdd: function() {
           const container = L.DomUtil.create('div', 'heatmap-control leaflet-bar leaflet-control')
           
-          // 初始樣式（基礎樣式 + 位置）
-          const updatePosition = () => {
-            // 根據告警燈號面板狀態調整位置
-            const leftOffset = self.showAlertLightStatusPanel ? '21rem' : '0'
-            container.style.cssText = `
-              background: white;
-              border: 2px solid rgba(0,0,0,0.2);
-              border-radius: 8px;
-              box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-              cursor: pointer;
-              width: 40px;
-              height: 40px;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              transition: all 0.3s ease;
-              margin-left: ${leftOffset};
-            `
-            // 保持當前的背景色和邊框色
-            const isActive = self.showDisasterHeatmap
-            container.style.backgroundColor = isActive ? '#ef4444' : 'white'
-            container.style.borderColor = isActive ? '#dc2626' : 'rgba(0,0,0,0.2)'
-          }
-          
+          // 固定樣式（不隨面板移動）
+          container.style.cssText = `
+            background: white;
+            border: 2px solid rgba(0,0,0,0.2);
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            cursor: pointer;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background-color 0.2s, border-color 0.2s, box-shadow 0.15s, transform 0.15s;
+          `
+
           // 創建按鈕內容
           const updateButton = () => {
             const isActive = self.showDisasterHeatmap
@@ -1828,9 +1839,8 @@ export default {
               </svg>
             `
           }
-          
-          // 初始化按鈕樣式和位置
-          updatePosition()
+
+          // 初始化
           updateButton()
           
           // 點擊事件
@@ -1857,14 +1867,13 @@ export default {
           
           // 保存更新函數，以便外部調用
           this.updateButton = updateButton
-          this.updatePosition = updatePosition
           
           return container
         }
       })
       
       this.heatmapControl = new HeatmapControl({
-        position: 'topleft'
+        position: 'topright'
       }).addTo(map)
     },
     
@@ -1878,31 +1887,21 @@ export default {
         onAdd: function() {
           const container = L.DomUtil.create('div', 'radar-control leaflet-bar leaflet-control')
           
-          // 初始樣式（基礎樣式 + 位置）
-          const updatePosition = () => {
-            // 根據告警燈號面板狀態調整位置
-            const leftOffset = self.showAlertLightStatusPanel ? '21rem' : '0'
-            container.style.cssText = `
-              background: white;
-              border: 2px solid rgba(0,0,0,0.2);
-              border-radius: 8px;
-              box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-              cursor: pointer;
-              width: 40px;
-              height: 40px;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              transition: all 0.3s ease;
-              margin-left: ${leftOffset};
-              margin-top: 10px;
-            `
-            // 保持當前的背景色和邊框色
-            const isActive = self.showRadar
-            container.style.backgroundColor = isActive ? '#3b82f6' : 'white'
-            container.style.borderColor = isActive ? '#2563eb' : 'rgba(0,0,0,0.2)'
-          }
-          
+          // 固定樣式（不隨面板移動）
+          container.style.cssText = `
+            background: white;
+            border: 2px solid rgba(0,0,0,0.2);
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            cursor: pointer;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background-color 0.2s, border-color 0.2s, box-shadow 0.15s, transform 0.15s;
+          `
+
           // 創建按鈕內容
           const updateButton = () => {
             const isActive = self.showRadar
@@ -1922,8 +1921,7 @@ export default {
             `
           }
           
-          // 初始化按鈕樣式和位置
-          updatePosition()
+          // 初始化
           updateButton()
           
           // 點擊事件
@@ -1950,14 +1948,13 @@ export default {
           
           // 保存更新函數，以便外部調用
           this.updateButton = updateButton
-          this.updatePosition = updatePosition
           
           return container
         }
       })
       
       this.radarControl = new RadarControl({
-        position: 'topleft'
+        position: 'topright'
       }).addTo(map)
     },
     
@@ -2059,10 +2056,20 @@ export default {
         const parseGeoraster = georasterModule.default || georasterModule.parseGeoraster
         const GeoRasterLayer = (await import('georaster-layer-for-leaflet')).default
         
-        // 載入 TIF 檔案
-        const response = await fetch('/data/uploads/tiff/Hitmap.tif')
+        // 從監測圖資 API 取得熱點 TIF，若尚未設定則提示
+        const hotspotLayer = this.monitoringLayers?.hotspot
+        if (!hotspotLayer) {
+          this.showDisasterHeatmap = false
+          this.isLoadingHeatmap = false
+          await showAlert('此區域尚未上傳熱點圖資，功能保留待檔案格式確認後啟用。', '熱點圖層', this.isDarkMode)
+          return
+        }
+        const response = await fetch(hotspotLayer.fileUrl)
         if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`)
+          this.showDisasterHeatmap = false
+          this.isLoadingHeatmap = false
+          await showAlert(`熱點圖資載入失敗（${response.status}），請確認檔案是否已正確上傳。`, '熱點圖層', this.isDarkMode)
+          return
         }
         const arrayBuffer = await response.arrayBuffer()
         
@@ -2183,12 +2190,12 @@ export default {
         this.heatmapTiffLayer.addTo(map)
         
       } catch (error) {
-        console.error('[EarlyWarning] 載入 Hitmap.tif 失敗:', error)
+        console.error('[EarlyWarning] 載入熱點圖失敗:', error)
         this.showDisasterHeatmap = false
-        // 更新按鈕狀態
         if (this.heatmapControl && this.heatmapControl.updateButton) {
           this.heatmapControl.updateButton()
         }
+        await showAlert('熱點圖層載入發生錯誤，請稍後再試。', '熱點圖層', this.isDarkMode)
       } finally {
         this.isLoadingHeatmap = false
       }
@@ -2422,7 +2429,7 @@ export default {
         }
       } catch (error) {
         console.error('設置點位顏色失敗:', error);
-        alert('設置顏色失敗：' + (error.response?.data?.message || error.message));
+        await showAlert('設置顏色失敗：' + (error.response?.data?.message || error.message), '錯誤', this.isDarkMode);
       }
     },
     // 調整地圖視圖以顯示路線數據
@@ -2663,14 +2670,39 @@ export default {
     // 處理圖表面板收起狀態變化
     handleChartPanelCollapsedChanged(collapsed) {
       this.chartPanelCollapsed = collapsed;
-      // 當面板收合狀態改變時，重新計算地圖尺寸以確保瓦片正確加載
+
+      const chartEl = this.$el?.querySelector('.ew-chart');
+      if (!chartEl) return;
+
+      // 取消尚在執行的動畫
+      if (this._chartAnimTimeout) clearTimeout(this._chartAnimTimeout);
+
+      // 鎖定目前高度，防止地圖在 DOM 更新瞬間跳動
+      const fromH = chartEl.offsetHeight;
+      chartEl.style.height = fromH + 'px';
+      chartEl.style.overflow = 'hidden';
+
       this.$nextTick(() => {
-        // 等待動畫完成後再刷新地圖（動畫時長為 300ms）
-        setTimeout(() => {
+        // DOM 已更新，量測新狀態的自然高度
+        chartEl.style.height = 'auto';
+        const toH = chartEl.offsetHeight;
+
+        // 從舊高度開始，下一幀滑到新高度
+        chartEl.style.height = fromH + 'px';
+        requestAnimationFrame(() => {
+          chartEl.style.transition = 'height 0.32s cubic-bezier(0.4, 0, 0.2, 1)';
+          chartEl.style.height = toH + 'px';
+        });
+
+        // 動畫結束後清理 inline style，並通知 Leaflet 重算尺寸
+        this._chartAnimTimeout = setTimeout(() => {
+          chartEl.style.transition = '';
+          chartEl.style.height = '';
+          chartEl.style.overflow = '';
           if (this.$refs.projectMap?.map) {
             this.$refs.projectMap.map.invalidateSize();
           }
-        }, 350); // 稍微延遲以確保動畫完成
+        }, 350);
       });
     },
     // 處理告警燈號點擊（從狀態面板）
@@ -2690,21 +2722,45 @@ export default {
 </script>
 
 <style scoped>
+/* ── EarlyWarning 主版面（CSS Grid，三列固定佈局）── */
+.ew-root {
+  display: grid;
+  grid-template-rows: auto auto 1fr;
+  height: 100%;
+  padding: 16px;
+  gap: 12px;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.ew-region {
+  min-height: 0;
+}
+
+.ew-chart {
+  min-height: 0;
+  border-radius: 4px; /* 動畫期間 overflow:hidden 時保留圓角 */
+}
+
+/* 地圖區：填滿剩餘空間，相對定位供 AlertLightStatusPanel 用 */
+.ew-map {
+  position: relative;
+  min-height: 0;
+  overflow: hidden;
+  border-radius: 4px;
+}
+
+/* card：邊框取代陰影，更俐落 */
 .card {
   background-color: #fff;
-  border-radius: 0.5rem;
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
-  padding: 1.5rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 4px;
+  padding: 1rem;
 }
 
 .dark .card {
-  background-color: #1e293b;
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.3), 0 1px 2px 0 rgba(0, 0, 0, 0.15);
-}
-
-/* 只针对 EarlyWarning 页面中的卡片移除右边框，不影响告警灯号状态面板 */
-.early-warning-card {
-  border-right: none !important;
+  background-color: #0f172a;
+  border-color: #1e293b;
 }
 
 .dark .text-gray-900 {

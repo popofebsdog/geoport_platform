@@ -27,9 +27,9 @@ fi
 export PYTHONPATH="${PYTHONPATH}:$(pwd)"
 
 # 啟動 TiTiler 服務器
-echo "📍 服務器地址: http://localhost:8000"
-echo "📚 API 文檔: http://localhost:8000/docs"
-echo "🔍 健康檢查: http://localhost:8000/health"
+echo "📍 服務器地址: http://localhost:8080"
+echo "📚 API 文檔: http://localhost:8080/docs"
+echo "🔍 健康檢查: http://localhost:8080/healthz"
 echo ""
 echo "按 Ctrl+C 停止服務器"
 echo ""

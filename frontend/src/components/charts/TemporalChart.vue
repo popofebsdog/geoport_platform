@@ -391,8 +391,8 @@ export default {
         
         const datasets = selectedColumns.value.map((column, index) => {
           const colors = [
-            '#3b82f6', '#ef4444', '#10b981', '#f59e0b', 
-            '#8b5cf6', '#06b6d4', '#84cc16', '#f97316'
+            '#1e5c8a', '#dc2626', '#059669', '#d97706',
+            '#7c3aed', '#0891b2', '#65a30d', '#ea580c'
           ]
           
           return {
@@ -406,6 +406,10 @@ export default {
         })
         
         // 創建圖表
+        const INTER = "'Inter', system-ui, -apple-system, sans-serif"
+        const isDark = props.isDarkMode
+        const gridClr = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'
+        const tickClr = isDark ? '#64748b' : '#6b7280'
         const ctx = chartCanvas.value.getContext('2d')
         chart.value = new Chart(ctx, {
           type: chartType.value,
@@ -416,51 +420,51 @@ export default {
           options: {
             responsive: true,
             maintainAspectRatio: false,
+            animation: { duration: 250 },
             plugins: {
               legend: {
                 position: 'top',
                 labels: {
-                  color: props.isDarkMode ? '#d1d5db' : '#374151',
-                  usePointStyle: true
+                  color: tickClr,
+                  usePointStyle: true,
+                  boxWidth: 10,
+                  boxHeight: 10,
+                  padding: 12,
+                  font: { family: INTER, size: 11 }
                 }
               },
               title: {
-                display: true,
-                text: `${props.chartData.name || '時序圖表'} - ${getChartTypeLabel(chartType.value)}`,
-                color: props.isDarkMode ? '#d1d5db' : '#374151',
-                font: {
-                  size: 16,
-                  weight: 'bold'
-                }
+                display: false
+              },
+              tooltip: {
+                backgroundColor: '#1e293b',
+                borderColor: '#334155',
+                borderWidth: 1,
+                titleFont: { family: INTER, size: 11, weight: '600' },
+                bodyFont: { family: INTER, size: 11 },
+                titleColor: '#f1f5f9',
+                bodyColor: '#cbd5e1',
+                cornerRadius: 4,
+                padding: { x: 10, y: 8 }
               }
             },
             scales: {
               x: {
-                title: {
-                  display: true,
-                  text: '時間',
-                  color: props.isDarkMode ? '#d1d5db' : '#374151'
-                },
                 ticks: {
-                  color: props.isDarkMode ? '#d1d5db' : '#374151',
-                  maxTicksLimit: 10
+                  color: tickClr,
+                  maxTicksLimit: 10,
+                  font: { family: INTER, size: 10 }
                 },
-                grid: {
-                  color: props.isDarkMode ? '#374151' : '#e5e7eb'
-                }
+                grid: { color: gridClr },
+                border: { color: 'transparent' }
               },
               y: {
-                title: {
-                  display: true,
-                  text: '數值',
-                  color: props.isDarkMode ? '#d1d5db' : '#374151'
-                },
                 ticks: {
-                  color: props.isDarkMode ? '#d1d5db' : '#374151'
+                  color: tickClr,
+                  font: { family: INTER, size: 10 }
                 },
-                grid: {
-                  color: props.isDarkMode ? '#374151' : '#e5e7eb'
-                }
+                grid: { color: gridClr },
+                border: { color: 'transparent' }
               }
             },
             interaction: {

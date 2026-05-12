@@ -9,47 +9,38 @@
       ></div>
       
       <!-- 模態框內容 -->
-      <div 
-        class="relative w-full max-w-2xl rounded-2xl shadow-2xl transition-all duration-300 transform"
-        :class="isDarkMode ? 'bg-slate-800' : 'bg-white'"
+      <div
+        class="relative w-full max-w-2xl rounded border transition-all duration-300 flex flex-col max-h-[90vh]"
+        :class="[isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200']"
       >
         <!-- 標題列 -->
-        <div 
-          class="flex items-center justify-between p-6 border-b"
+        <div
+          class="flex items-center justify-between px-6 py-4 border-b flex-shrink-0"
           :class="isDarkMode ? 'border-slate-700' : 'border-gray-200'"
         >
-          <div class="flex items-center space-x-3">
-            <!-- 編輯圖標 -->
-            <div class="p-2 rounded-lg" :class="isDarkMode ? 'bg-blue-600/20' : 'bg-blue-100'">
-              <svg class="w-6 h-6 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
-              </svg>
-            </div>
-            <div>
-              <h3 class="text-xl font-semibold transition-colors duration-300"
-                  :class="isDarkMode ? 'text-white' : 'text-gray-900'">
-                編輯時期專案
-              </h3>
-              <p class="text-sm" :class="isDarkMode ? 'text-gray-400' : 'text-gray-600'">
-                修改「{{ childProject?.name }}」的所有資訊
-              </p>
-            </div>
+          <div>
+            <h3 class="text-lg font-semibold transition-colors duration-300"
+                :class="isDarkMode ? 'text-white' : 'text-gray-900'">
+              編輯時期專案
+            </h3>
+            <p class="text-xs mt-0.5 transition-colors duration-300"
+               :class="isDarkMode ? 'text-gray-400' : 'text-gray-500'">
+              {{ childProject?.name }}
+            </p>
           </div>
-          
-          <!-- 關閉按鈕 -->
           <button
             @click="closeModal"
-            class="p-2 rounded-lg transition-all duration-300"
+            class="p-1.5 rounded-lg transition-all duration-300"
             :class="isDarkMode ? 'text-gray-400 hover:text-white hover:bg-slate-700' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'"
           >
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
             </svg>
           </button>
         </div>
-        
+
         <!-- 表單內容 -->
-        <div class="p-6 space-y-6 max-h-[calc(100vh-200px)] overflow-y-auto">
+        <div class="p-6 space-y-5 flex-1 overflow-y-auto">
           <!-- 母專案資訊顯示（只顯示，不編輯） -->
           <div class="p-4 rounded-lg" :class="isDarkMode ? 'bg-slate-700/50' : 'bg-gray-50'">
             <div class="flex items-center space-x-2 mb-2">
@@ -226,6 +217,7 @@
 <script>
 import api from '@/services/api.js'
 import { ref, computed, inject, watch, onMounted } from 'vue'
+import { error as showError } from '@/utils/simpleAlertService'
 
 export default {
   name: 'EditChildProjectModal',
@@ -381,7 +373,7 @@ export default {
         }
       } catch (error) {
         console.error('更新子專案失敗:', error)
-        alert(`更新失敗: ${error.response?.data?.message || error.message || '未知錯誤'}`)
+        await showError(`更新失敗: ${error.response?.data?.message || error.message || '未知錯誤'}`, '更新失敗', isDarkMode?.value ?? false)
       } finally {
         isSubmitting.value = false
       }

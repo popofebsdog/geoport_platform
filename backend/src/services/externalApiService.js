@@ -82,9 +82,6 @@ class MicroseismicApiService {
         }
       }
       
-      console.log('微地動CSV標題:', headers);
-      console.log('微地動CSV標題行索引:', headerLineIndex);
-      console.log('微地動CSV前5行數據:', lines.slice(0, 5));
       
       // 解析數據行（跳過標題行）
       const records = [];
@@ -120,9 +117,7 @@ class MicroseismicApiService {
         }
       }
       
-      console.log('解析後的記錄數量:', records.length);
       if (records.length > 0) {
-        console.log('第一條記錄示例:', records[0]);
       }
       
       return {
@@ -234,16 +229,12 @@ class RainfallEarthquakeApiService {
         });
         
         // 調試：輸出原始響應
-        console.log('雨量API原始響應長度:', response.data?.length || 0);
-        console.log('雨量API原始響應前500字符:', response.data?.substring(0, 500));
         
         // 解析TXT數據
         // 格式：time[hr],volt[mV],RSSI[dBm],rain[mm],crain[mm],JulianDay,datetime,epoch,flag
         // 數據行：0.000000  10942    -63   0.00   0.00  321.000000 2025-11-17T00:00:00  1763337600 1
         const lines = response.data.split('\n').filter(line => line.trim());
-        console.log('雨量TXT數據行數:', lines.length);
         if (lines.length > 0) {
-          console.log('前5行數據:', lines.slice(0, 5));
         }
         
         // 跳過標題行（包含 "time[hr]" 的行）
@@ -356,7 +347,6 @@ class RainfallEarthquakeApiService {
   async getStrongMotionDirectoryList() {
     try {
       const url = `${this.baseUrl}/pgapgv/`;
-      console.log('嘗試獲取強地動目錄列表:', url);
       
       const response = await apiClient.get(url, {
         responseType: 'text'
@@ -372,18 +362,12 @@ class RainfallEarthquakeApiService {
         timestamps.push(match[1]);
       }
       
-      console.log('找到的強地動目錄:', timestamps.slice(0, 10)); // 只顯示前10個
-      
       return {
         success: true,
-        timestamps: timestamps.sort().reverse() // 最新的在前
+        timestamps
       };
     } catch (error) {
-      console.warn('獲取目錄列表失敗:', error.message);
-      return {
-        success: false,
-        timestamps: []
-      };
+      return { success: false, timestamps: [], error: error.message };
     }
   }
 
@@ -408,16 +392,6 @@ class RainfallEarthquakeApiService {
       // 注意：目錄路徑格式是 YYYYMMDDHHMNSS.SS/，然後是文件名
       const url = `${this.baseUrl}/pgapgv/${timestampStr}/${fileType}`;
       
-      console.log('========== 強地動API請求詳情 ==========');
-      console.log('請求URL:', url);
-      console.log('Base URL:', this.baseUrl);
-      console.log('目錄路徑:', `/pgapgv/${timestampStr}/`);
-      console.log('時間戳格式:', timestampStr);
-      console.log('目標時間:', targetTime.toISOString());
-      console.log('本地時間:', targetTime.toLocaleString('zh-TW', { timeZone: 'Asia/Taipei' }));
-      console.log('百分之一秒值:', milliseconds);
-      console.log('文件類型:', fileType);
-      console.log('=====================================');
       
       if (fileType.endsWith('.png')) {
         const response = await apiClient.get(url, {
@@ -436,13 +410,9 @@ class RainfallEarthquakeApiService {
           responseType: 'text'
         });
         
-        console.log('強地動API響應狀態:', response.status);
-        console.log('強地動API響應數據長度:', response.data?.length || 0);
-        console.log('強地動API響應數據前500字符:', response.data?.substring(0, 500));
         
         // 解析CWA文本數據
         const lines = response.data.split('\n').filter(line => line.trim());
-        console.log('強地動數據行數:', lines.length);
         
         const parsedData = this.parseCwaData(lines);
         
@@ -460,12 +430,10 @@ class RainfallEarthquakeApiService {
         let legendData = null;
         try {
           const legendUrl = `${this.baseUrl}/pgapgv/${timestampStr}/tmp.legend`;
-          console.log('嘗試讀取圖例文件:', legendUrl);
           const legendResponse = await apiClient.get(legendUrl, {
             responseType: 'text'
           });
           legendData = this.parseLegendData(legendResponse.data);
-          console.log('圖例文件解析結果:', legendData);
         } catch (legendError) {
           console.warn('讀取圖例文件失敗（可能不存在）:', legendError.message);
         }
@@ -563,10 +531,8 @@ class RainfallEarthquakeApiService {
       return result;
     }
     
-    console.log('解析圖例文件，原始內容前500字符:', legendText.substring(0, 500));
     
     const lines = legendText.split('\n').filter(line => line.trim());
-    console.log('圖例文件行數:', lines.length);
     
     // 根據實際格式解析：查找包含 "PGA"、"PGV"、"Lead Time"、"Intensity" 的行
     lines.forEach(line => {
@@ -574,28 +540,24 @@ class RainfallEarthquakeApiService {
       const pgaMatch = line.match(/PGA\s+([\d.]+)\s+gal/i);
       if (pgaMatch && result.pga === null) {
         result.pga = parseFloat(pgaMatch[1]);
-        console.log('從圖例文件提取PGA:', result.pga, 'gal');
       }
       
       // 解析PGV: "L 12p,Helvetica CB PGV 0.6 cm/s"
       const pgvMatch = line.match(/PGV\s+([\d.]+)\s+cm\/s/i);
       if (pgvMatch && result.pgv === null) {
         result.pgv = parseFloat(pgvMatch[1]);
-        console.log('從圖例文件提取PGV:', result.pgv, 'cm/s');
       }
       
       // 解析Lead Time: "L 12p,Helvetica CB Lead Time 0.0 sec"
       const leadTimeMatch = line.match(/Lead\s+Time\s+([\d.]+)\s+sec/i);
       if (leadTimeMatch && result.leadTime === null) {
         result.leadTime = parseFloat(leadTimeMatch[1]);
-        console.log('從圖例文件提取Lead Time:', result.leadTime, 'sec');
       }
       
       // 解析Intensity: "L 12p,Helvetica CB Intensity 4"
       const intensityMatch = line.match(/Intensity\s+(\d+)/i);
       if (intensityMatch && result.intensity === null) {
         result.intensity = parseInt(intensityMatch[1], 10);
-        console.log('從圖例文件提取Intensity:', result.intensity);
       }
     });
     
@@ -604,7 +566,6 @@ class RainfallEarthquakeApiService {
       const pgaMatch = legendText.match(/PGA[:\s]+([\d.]+)/i);
       if (pgaMatch) {
         result.pga = parseFloat(pgaMatch[1]);
-        console.log('使用寬鬆匹配提取PGA:', result.pga);
       }
     }
     
@@ -612,11 +573,9 @@ class RainfallEarthquakeApiService {
       const pgvMatch = legendText.match(/PGV[:\s]+([\d.]+)/i);
       if (pgvMatch) {
         result.pgv = parseFloat(pgvMatch[1]);
-        console.log('使用寬鬆匹配提取PGV:', result.pgv);
       }
     }
     
-    console.log('圖例文件解析結果:', result);
     
     return result;
   }
@@ -636,8 +595,6 @@ class RainfallEarthquakeApiService {
     const accelerations = [];
     const metadata = {};
     
-    console.log('解析CWA數據，總行數:', lines.length);
-    console.log('前10行示例:', lines.slice(0, 10));
     
     let dataStartIndex = -1;
     
@@ -680,8 +637,6 @@ class RainfallEarthquakeApiService {
       }
     });
     
-    console.log('CWA元數據:', metadata);
-    console.log('數據開始行索引:', dataStartIndex);
     
     // 第二遍：解析數據序列（從#DataSequence之後開始）
     const dataLines = dataStartIndex >= 0 ? lines.slice(dataStartIndex) : lines;
@@ -732,13 +687,6 @@ class RainfallEarthquakeApiService {
       pga = metadata.amplitudeMaxE.abs;
     }
     
-    console.log('CWA數據解析結果:', {
-      totalLines: lines.length,
-      parsedCount: timeSeries.length,
-      pga: pga,
-      maxAcceleration: maxAcceleration,
-      metadata: metadata
-    });
     
     return {
       raw: lines,
@@ -795,7 +743,6 @@ class RainfallEarthquakeApiService {
     const result = `${year}${month}${day}${hour}${minute}${second}.${ssStr}`;
     
     // 調試：輸出格式化的時間戳
-    console.log(`格式化時間戳: ${date.toISOString()} -> ${result} (SS=${ss})`);
     
     return result;
   }

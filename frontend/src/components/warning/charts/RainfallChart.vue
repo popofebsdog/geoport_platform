@@ -1,109 +1,116 @@
 <template>
-  <div class="rainfall-chart w-full h-full p-2 flex flex-col">
-    <!-- 日期選擇器 -->
-    <div class="mb-2 flex items-center justify-between">
-      <label class="text-xs text-gray-600 dark:text-gray-400 mr-2">選擇日期：</label>
-      <div class="flex items-center gap-2">
-        <button
-          @click="selectPreviousDay"
-          class="px-2 py-1 text-xs bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded transition-colors"
-          title="前一天"
-        >
-          ←
-        </button>
-        <input
-          type="date"
-          v-model="selectedDate"
-          @change="onDateChange"
-          class="px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-          :max="maxDate"
-        />
-        <button
-          @click="selectNextDay"
-          :disabled="isToday"
-          class="px-2 py-1 text-xs bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          title="後一天"
-        >
-          →
-        </button>
-        <button
-          @click="selectToday"
-          :disabled="isToday"
-          class="px-2 py-1 text-xs bg-blue-500 hover:bg-blue-600 text-white rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          title="今天"
-        >
-          今天
-        </button>
-      </div>
-    </div>
-    
-    <div v-if="loading || loadingData" class="flex items-center justify-center flex-1">
+  <div class="rainfall-chart w-full h-full p-2">
+    <div v-if="loading || loadingData" class="flex items-center justify-center h-full">
       <div class="text-center">
         <div class="w-6 h-6 border-2 border-green-300 border-t-green-600 rounded-full animate-spin mx-auto mb-2"></div>
-        <p class="text-xs text-gray-500 dark:text-gray-400">載入中...</p>
+        <p class="text-xs" :class="isDarkMode ? 'text-slate-500' : 'text-gray-400'">載入中...</p>
       </div>
     </div>
-    
-    <div v-else-if="!data" class="flex items-center justify-center flex-1">
-      <div class="text-center text-gray-400 dark:text-gray-500">
-        <svg class="w-12 h-12 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z"></path>
+    <div v-else-if="!data && !chartData" class="flex items-center justify-center h-full">
+      <div class="text-center" :class="isDarkMode ? 'text-slate-600' : 'text-gray-400'">
+        <svg class="w-10 h-10 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z"/>
         </svg>
-        <p class="text-sm">暫無數據</p>
+        <p class="text-xs">暫無數據</p>
       </div>
     </div>
-    
-    <canvas v-else-if="chartData || data" ref="chartCanvas" class="w-full flex-1"></canvas>
+
+    <!-- 圖表 + 可拖曳 handle -->
+    <div v-else ref="chartWrapper" class="relative w-full h-full">
+      <canvas ref="chartCanvas" class="w-full h-full"></canvas>
+
+      <!-- 右側拖曳 handle（閾值線由 Chart.js dataset 畫） -->
+      <template v-if="chart && chartReady">
+        <!-- 黃色 handle -->
+        <div class="th-handle th-handle--yellow"
+             :style="handlePositions.yellow"
+             @mousedown.prevent="startDrag('yellow', $event)"
+             title="拖曳調整黃色警戒值">
+          <span class="th-handle__label">{{ localThresholds.yellow }}<small>mm</small></span>
+        </div>
+        <!-- 紅色 handle -->
+        <div class="th-handle th-handle--red"
+             :style="handlePositions.red"
+             @mousedown.prevent="startDrag('red', $event)"
+             title="拖曳調整紅色警戒值">
+          <span class="th-handle__label">{{ localThresholds.red }}<small>mm</small></span>
+        </div>
+      </template>
+
+      <!-- 拖曳預覽線（純 CSS，拖曳中不觸發 chart.update） -->
+      <div v-if="dragging" class="th-drag-line"
+           :class="dragging === 'red' ? 'th-drag-line--red' : 'th-drag-line--yellow'"
+           :style="{ top: dragLineY + 'px', left: chartAreaLeft + 'px', right: '4px' }">
+        <span class="th-drag-line__label">{{ dragValue }} mm</span>
+      </div>
+    </div>
   </div>
 </template>
 
 <script>
 export default {
   name: 'RainfallChart',
+  emits: ['threshold-change'],
   props: {
-    data: {
-      type: Object,
-      default: null
-    },
-    loading: {
-      type: Boolean,
-      default: false
-    },
-    regionCode: {
-      type: String,
-      default: ''
-    },
-    regionId: {
-      type: String,
-      default: null
-    }
+    data:         { type: Object,  default: null },
+    loading:      { type: Boolean, default: false },
+    regionCode:   { type: String,  default: '' },
+    regionId:     { type: [String, Number], default: null },
+    isDarkMode:   { type: Boolean, default: false },
+    selectedDate: { type: String,  default: null },
+    thresholds:   { type: Object,  default: () => ({ yellow: 20, red: 40 }) },
   },
   data() {
-    const today = new Date();
-    const todayStr = today.toISOString().split('T')[0]; // YYYY-MM-DD
-    
+    const d = new Date();
+    const today = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
     return {
       chart: null,
-      selectedDate: todayStr, // 預設為今天
-      maxDate: todayStr, // 不能選擇未來的日期
-      loadingData: false, // 本地載入狀態
-      chartData: null // 本地數據緩存
+      currentDate: today,
+      maxDate: today,
+      loadingData: false,
+      chartData: null,
+      // threshold drag state
+      localThresholds: { yellow: 20, red: 40 },
+      chartReady: false,
+      dragging: null,       // 'yellow' | 'red' | null
+      dragValue: 0,
+      dragLineY: 0,
+      chartAreaLeft: 0,
+      handlePositions: {
+        yellow: { display: 'none' },
+        red:    { display: 'none' },
+      },
     };
   },
   computed: {
     isToday() {
-      const today = new Date();
-      const todayStr = today.toISOString().split('T')[0];
-      return this.selectedDate === todayStr;
-    },
-    selectedDateObj() {
-      return new Date(this.selectedDate + 'T00:00:00');
+      const d = new Date();
+      const local = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+      return this.currentDate === local;
     },
     currentTime() {
       return new Date();
-    }
+    },
   },
   watch: {
+    thresholds: {
+      immediate: true,
+      deep: true,
+      handler(v) { this.localThresholds = { ...v }; },
+    },
+    selectedDate(newVal) {
+      if (newVal && newVal !== this.currentDate) {
+        this.currentDate = newVal;
+        if (this.regionCode) {
+          this.loadDataForDate(this.currentDate);
+        } else {
+          this.$nextTick(() => this.updateChart());
+        }
+      }
+    },
+    isDarkMode() {
+      this.updateChart();
+    },
     data: {
       deep: true,
       handler() {
@@ -121,24 +128,17 @@ export default {
     }
   },
   mounted() {
-    if (this.data) {
-      const hasRain = this.data.time_series?.some(item => (parseFloat(item.hourly) || 0) > 0);
-    }
-    
-    // 如果沒有regionCode，使用props傳入的data
-    // 如果有regionCode，載入今天的數據
+    if (this.selectedDate) this.currentDate = this.selectedDate;
     if (this.regionCode) {
-      this.loadDataForDate(this.selectedDate);
+      this.loadDataForDate(this.currentDate);
     } else if (this.data && !this.loading) {
       this.createChart();
-    } else {
-      console.warn('[RainfallChart] 沒有regionCode也沒有data，無法顯示圖表');
     }
   },
   beforeUnmount() {
-    if (this.chart) {
-      this.chart.destroy();
-    }
+    if (this.chart) this.chart.destroy();
+    document.removeEventListener('mousemove', this.onDrag);
+    document.removeEventListener('mouseup',   this.stopDrag);
   },
   methods: {
     formatTimeLabel(timeStr) {
@@ -172,50 +172,10 @@ export default {
       }
       
       for (let hour = 0; hour <= maxHour; hour++) {
-        const timeStr = `${String(hour).padStart(2, '0')}:00:00`;
-        labels.push(timeStr);
+        labels.push(`${String(hour).padStart(2, '0')}:00`);
       }
       
       return labels;
-    },
-    selectPreviousDay() {
-      const date = new Date(this.selectedDate);
-      date.setDate(date.getDate() - 1);
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const day = String(date.getDate()).padStart(2, '0');
-      this.selectedDate = `${year}-${month}-${day}`;
-      this.onDateChange();
-    },
-    selectNextDay() {
-      if (this.isToday) return;
-      const date = new Date(this.selectedDate);
-      date.setDate(date.getDate() + 1);
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const day = String(date.getDate()).padStart(2, '0');
-      const nextDateStr = `${year}-${month}-${day}`;
-      const todayStr = new Date().toISOString().split('T')[0];
-      if (nextDateStr <= todayStr) {
-        this.selectedDate = nextDateStr;
-        this.onDateChange();
-      }
-    },
-    selectToday() {
-      const today = new Date();
-      this.selectedDate = today.toISOString().split('T')[0];
-      this.onDateChange();
-    },
-    async onDateChange() {
-      // 當日期改變時，重新載入數據
-      if (this.regionCode) {
-        await this.loadDataForDate(this.selectedDate);
-      } else {
-        // 如果沒有regionCode，使用現有數據過濾
-        this.$nextTick(() => {
-          this.updateChart();
-        });
-      }
     },
     async loadDataForDate(dateStr) {
       if (!this.regionCode) return;
@@ -280,7 +240,7 @@ export default {
       }
     },
     getCurrentDateTitle() {
-      const date = new Date(this.selectedDate + 'T00:00:00');
+      const date = new Date(this.currentDate + 'T00:00:00');
       return date.toLocaleDateString('zh-TW', {
         year: 'numeric',
         month: '2-digit',
@@ -304,7 +264,7 @@ export default {
         return false;
       }
       
-      const selectedDateStr = this.selectedDate; // YYYY-MM-DD
+      const selectedDateStr = this.currentDate; // YYYY-MM-DD
       
       // 使用本地时间而不是UTC时间，避免时区问题
       const year = dataDate.getFullYear();
@@ -340,128 +300,127 @@ export default {
       
       try {
         const { Chart, registerables } = await import('chart.js');
+        const { applyChartDefaults, baseChartOptions, axisScale } = await import('@/utils/chartDefaults.js');
         Chart.register(...registerables);
-        
+        applyChartDefaults(Chart);
+
         const chartData = this.prepareChartData();
         const suggestedMaxValue = chartData.suggestedMax || 1;
-        
+        const dark = this.isDarkMode;
+        const base = baseChartOptions(dark);
+
+        this.chartReady = false;
         this.chart = new Chart(this.$refs.chartCanvas, {
           type: 'bar',
           data: chartData,
           options: {
-            responsive: true,
-            maintainAspectRatio: false,
+            ...base,
+            clip: false,
+            interaction: { intersect: false, mode: 'index' },
+            elements: {
+              line: { tension: 0.35, borderWidth: 1.5 },
+              bar:  { borderRadius: 2, borderWidth: 0, minBarLength: 2 }
+            },
             plugins: {
-              legend: {
-                display: true,
-                position: 'top',
-                labels: {
-                  font: {
-                    size: 12
-                  }
-                }
-              },
-              title: {
-                display: false
-              },
+              ...base.plugins,
               tooltip: {
+                ...base.plugins.tooltip,
                 mode: 'index',
                 intersect: false,
-                backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                padding: 10,
-                titleFont: {
-                  size: 12
-                },
-                bodyFont: {
-                  size: 11
-                },
                 callbacks: {
-                  label: function(context) {
+                  label(context) {
                     let label = context.dataset.label || '';
-                    if (label) {
-                      label += ': ';
-                    }
+                    if (label) label += ': ';
                     const value = context.parsed.y || 0;
-                    // 如果是0值且是時雨量，标注为"無雨量"
-                    if (value === 0 && context.dataset.label === '時雨量 (mm)') {
-                      label += '無雨量';
-                    } else {
-                      label += value.toFixed(2) + ' mm';
-                    }
-                    return label;
+                    return value === 0 && context.dataset.label === '時雨量 (mm)'
+                      ? label + '無雨量'
+                      : label + value.toFixed(2) + ' mm';
                   }
                 }
               }
             },
-            interaction: {
-              intersect: false,
-              mode: 'index'
-            },
-            elements: {
-              line: {
-                tension: 0.4
-              },
-              bar: {
-                borderRadius: 4,
-                borderWidth: 2,
-                minBarLength: 2
-              }
-            },
-            clip: false,
             scales: {
               x: {
-                display: true,
-                title: {
-                  display: true,
-                  text: '時間',
-                  font: {
-                    size: 12,
-                    weight: 'bold'
-                  }
-                },
+                ...axisScale('x', '', dark),
                 ticks: {
-                  font: {
-                    size: 10
-                  },
+                  ...axisScale('x', '', dark).ticks,
                   maxRotation: 45,
                   minRotation: 45
-                },
-                grid: {
-                  display: true,
-                  color: 'rgba(0, 0, 0, 0.05)'
                 }
               },
               y: {
-                display: true,
-                title: {
-                  display: true,
-                  text: '雨量 (mm)',
-                  font: {
-                    size: 12,
-                    weight: 'bold'
-                  }
-                },
-                ticks: {
-                  font: {
-                    size: 10
-                  },
-                  stepSize: suggestedMaxValue <= 1 ? 0.1 : (suggestedMaxValue <= 10 ? 1 : 5)
-                },
+                ...axisScale('y', 'mm', dark),
                 beginAtZero: true,
                 suggestedMin: 0,
                 suggestedMax: suggestedMaxValue,
                 grace: '5%',
-                grid: {
-                  display: true,
-                  color: 'rgba(0, 0, 0, 0.05)'
+                ticks: {
+                  ...axisScale('y', 'mm', dark).ticks,
+                  stepSize: suggestedMaxValue <= 1 ? 0.1 : (suggestedMaxValue <= 10 ? 1 : 5)
                 }
               }
             }
           }
         });
+        // 等圖表渲染完成，再計算 handle 位置
+        this.$nextTick(() => {
+          this.chartAreaLeft = this.chart?.chartArea?.left ?? 0;
+          this.updateHandlePositions();
+          this.chartReady = true;
+        });
       } catch (error) {
         console.error('創建圖表失敗:', error);
       }
+    },
+
+    // ── handle 位置計算（明確呼叫，不依賴 computed）──
+    updateHandlePositions() {
+      if (!this.chart?.scales?.y || !this.chart.chartArea) return;
+      const scale = this.chart.scales.y;
+      const right = this.chart.chartArea.right;
+      ['yellow', 'red'].forEach(type => {
+        const raw = scale.getPixelForValue(this.localThresholds[type]);
+        const yPx = Math.max(this.chart.chartArea.top, Math.min(this.chart.chartArea.bottom, raw));
+        this.handlePositions[type] = { top: `${yPx}px`, left: `${right}px` };
+      });
+    },
+
+    // ── 閾值線拖曳 ──
+    startDrag(type, e) {
+      this.dragging  = type;
+      this.dragValue = this.localThresholds[type];
+      document.addEventListener('mousemove', this.onDrag);
+      document.addEventListener('mouseup',   this.stopDrag);
+    },
+    onDrag(e) {
+      if (!this.dragging || !this.chart?.scales?.y || !this.chart.chartArea || !this.$refs.chartCanvas) return;
+      const rect    = this.$refs.chartCanvas.getBoundingClientRect();
+      const cssY    = e.clientY - rect.top;
+      const scale   = this.chart.scales.y;
+      const area    = this.chart.chartArea;
+      const clamped = Math.max(area.top, Math.min(area.bottom, cssY));
+      const val     = Math.max(0, Math.round(scale.getValueForPixel(clamped)));
+
+      const updated = { ...this.localThresholds };
+      if (this.dragging === 'yellow') {
+        updated.yellow = Math.min(val, updated.red - 1);
+      } else {
+        updated.red = Math.max(val, updated.yellow + 1);
+      }
+      this.localThresholds = updated;
+      this.dragValue = updated[this.dragging];
+
+      const dragYPx = Math.max(area.top, Math.min(area.bottom, scale.getPixelForValue(this.dragValue)));
+      this.handlePositions[this.dragging] = { top: `${dragYPx}px`, left: `${area.right}px` };
+      this.dragLineY = dragYPx;
+    },
+    async stopDrag() {
+      if (!this.dragging) return;
+      this.dragging = null;
+      document.removeEventListener('mousemove', this.onDrag);
+      document.removeEventListener('mouseup',   this.stopDrag);
+      await this.updateChart();
+      this.$emit('threshold-change', { ...this.localThresholds });
     },
     prepareChartData() {
       // 優先使用本地載入的數據（chartData），其次使用props傳入的數據（data）
@@ -662,50 +621,85 @@ export default {
       const maxAccumulated = Math.max(...accumulatedValues, 0);
       const maxValue = Math.max(maxHourly, maxAccumulated);
       
-      // 如果最大值很小，设置一个合理的显示范围
-      let suggestedMax = maxValue > 0 ? Math.max(maxValue * 1.5, 1) : 1;
-      
-      // 将时雨量中的0值替换为null，这样不会显示柱子
+      // Y 軸最大值需涵蓋閾值，確保線永遠可見
+      const thresholdMax = Math.max(this.localThresholds.red, this.localThresholds.yellow);
+      let suggestedMax = Math.max(
+        maxValue > 0 ? maxValue * 1.5 : 1,
+        thresholdMax * 1.2
+      );
+
+      // 時雨量 0 值不顯示柱子
       const hourlyValuesForDisplay = hourlyValues.map(v => v > 0 ? v : null);
-      
+      // 閾值線資料（填滿所有 label 位置）
+      const yellowData = labels.map(() => this.localThresholds.yellow);
+      const redData    = labels.map(() => this.localThresholds.red);
+
       return {
-        labels: labels,
+        labels,
         datasets: [
           {
             label: '時雨量 (mm)',
             data: hourlyValuesForDisplay,
-            backgroundColor: 'rgba(34, 197, 94, 0.8)',
-            borderColor: '#22c55e',
-            borderWidth: 2,
-            borderRadius: 4,
+            backgroundColor: 'rgba(71,160,255,0.55)',
+            borderColor: 'transparent',
+            borderWidth: 0,
+            borderRadius: 2,
             barThickness: 'flex',
             maxBarThickness: 40,
             order: 2,
             yAxisID: 'y',
-            // 确保0值不显示柱子，但保持数据集完整性
-            skipNull: true
+            skipNull: true,
           },
           {
             label: '累積雨量 (mm)',
             data: accumulatedValues,
             type: 'line',
-            borderColor: '#3b82f6',
-            backgroundColor: 'rgba(59, 130, 246, 0.1)',
-            borderWidth: 3,
-            fill: false,
-            tension: 0.4,
-            pointRadius: 4,
-            pointHoverRadius: 6,
-            pointBackgroundColor: '#3b82f6',
+            borderColor: '#1e5c8a',
+            backgroundColor: 'rgba(30,92,138,0.08)',
+            borderWidth: 1.5,
+            fill: true,
+            tension: 0.35,
+            pointRadius: 2,
+            pointHoverRadius: 4,
+            pointBackgroundColor: '#1e5c8a',
             pointBorderColor: '#fff',
             pointBorderWidth: 2,
             order: 1,
             yAxisID: 'y',
-            // 确保所有点都显示，包括0值
-            spanGaps: false
-          }
+            spanGaps: false,
+          },
+          // 黃色警戒線
+          {
+            label: '黃色警戒',
+            data: yellowData,
+            type: 'line',
+            borderColor: 'rgba(245,158,11,0.85)',
+            borderWidth: 2,
+            borderDash: [6, 4],
+            pointRadius: 0,
+            pointHoverRadius: 0,
+            fill: false,
+            tension: 0,
+            order: 0,
+            yAxisID: 'y',
+          },
+          // 紅色警戒線
+          {
+            label: '紅色警戒',
+            data: redData,
+            type: 'line',
+            borderColor: 'rgba(239,68,68,0.85)',
+            borderWidth: 2,
+            borderDash: [6, 4],
+            pointRadius: 0,
+            pointHoverRadius: 0,
+            fill: false,
+            tension: 0,
+            order: 0,
+            yAxisID: 'y',
+          },
         ],
-        suggestedMax: suggestedMax
+        suggestedMax,
       };
     },
     async updateChart() {
@@ -738,5 +732,67 @@ export default {
   height: 100%;
   width: 100%;
 }
+
+/* 拖曳 handle（右側小方塊） */
+.th-handle {
+  position: absolute;
+  transform: translate(2px, -50%);
+  width: 44px;
+  height: 20px;
+  border-radius: 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: ns-resize;
+  user-select: none;
+  z-index: 15;
+  font-size: 10px;
+  font-weight: 700;
+  transition: opacity 0.15s, box-shadow 0.15s;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+}
+.th-handle:hover, .th-handle:active {
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  opacity: 1 !important;
+}
+.th-handle--yellow {
+  background: rgba(245,158,11,0.92);
+  color: #78350f;
+  opacity: 0.85;
+}
+.th-handle--red {
+  background: rgba(239,68,68,0.92);
+  color: #fff;
+  opacity: 0.85;
+}
+.th-handle__label small {
+  font-size: 8px;
+  font-weight: 400;
+  margin-left: 1px;
+}
+
+/* 拖曳預覽線 */
+.th-drag-line {
+  position: absolute;
+  height: 2px;
+  pointer-events: none;
+  z-index: 20;
+  display: flex;
+  align-items: flex-start;
+}
+.th-drag-line--red    { background: rgba(239,68,68,0.9); }
+.th-drag-line--yellow { background: rgba(245,158,11,0.9); }
+.th-drag-line__label {
+  position: absolute;
+  right: 0;
+  top: -18px;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 3px;
+  white-space: nowrap;
+}
+.th-drag-line--red .th-drag-line__label    { background: rgba(239,68,68,0.9);  color: #fff; }
+.th-drag-line--yellow .th-drag-line__label { background: rgba(245,158,11,0.9); color: #78350f; }
 </style>
 

@@ -1,7 +1,7 @@
 <template>
   <!-- 戰情儀表板底部狀態欄 -->
   <footer class="border-t py-3 flex-shrink-0 transition-colors duration-300" 
-          :class="isDarkMode ? 'bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 border-slate-700' : 'bg-gradient-to-r from-white via-gray-50 to-white border-gray-200'">
+          :class="isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'">
     <div class="w-full px-4 sm:px-6 lg:px-8">
       <div class="flex items-center justify-between">
         <div class="flex items-center space-x-6">

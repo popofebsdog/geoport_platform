@@ -12,6 +12,13 @@ build/
 .env
 .env.local
 .env.*.local
+.env.development
+.env.production
+
+# Local agent/tooling state
+.Codex/
+.agents/
+.claude/
 
 # Editor
 .vscode/
@@ -30,6 +37,7 @@ logs/
 # Large binary / upload files
 data/uploads/
 backend/uploads/
+data/projects/**/*.geojson
 
 # Large raster / map files
 *.tif
