@@ -282,11 +282,8 @@ GET /api/temporal-data/:temporalId/chart/preview
 
 ### 圖表庫
 - **Chart.js**：主要圖表生成庫
-- **chartjs-node-canvas**：服務端圖表渲染
-- **chartjs-adapter-date-fns**：時間軸支援
 
 ### 輸出格式
-- **PNG 圖片**：高解析度圖表圖片
 - **JSON 配置**：Chart.js 配置對象
 - **ISO8601 時間**：標準時間格式
 

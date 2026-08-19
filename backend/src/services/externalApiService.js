@@ -5,6 +5,9 @@
 
 import axios from 'axios';
 import https from 'https';
+import { createLogger } from '../utils/logger.js';
+
+const log = createLogger('external-api');
 
 // 創建自定義axios實例，允許自簽名證書（如果需要）
 const apiClient = axios.create({
@@ -44,7 +47,11 @@ class MicroseismicApiService {
         timestamp: dateStr
       };
     } catch (error) {
-      console.error('獲取觸發事件失敗:', error.message);
+      log.warn('Failed to fetch trigger event', {
+        action: 'getTriggerEvent',
+        error,
+        statusCode: error.response?.status
+      });
       return {
         success: false,
         error: error.message,
@@ -130,7 +137,11 @@ class MicroseismicApiService {
         }
       };
     } catch (error) {
-      console.error('獲取每日目錄失敗:', error.message);
+      log.warn('Failed to fetch daily catalog', {
+        action: 'getDailyCatalog',
+        error,
+        statusCode: error.response?.status
+      });
       return {
         success: false,
         error: error.message,
@@ -155,7 +166,11 @@ class MicroseismicApiService {
         data: response.data || { warnings: [], alerts: [], timestamp: new Date().toISOString() }
       };
     } catch (error) {
-      console.error('獲取警示標籤失敗:', error.message);
+      log.warn('Failed to fetch alert label', {
+        action: 'getAlertLabel',
+        error,
+        statusCode: error.response?.status
+      });
       return {
         success: false,
         error: error.message,
@@ -325,7 +340,11 @@ class RainfallEarthquakeApiService {
         };
       }
     } catch (error) {
-      console.error('獲取降雨數據失敗:', error.message);
+      log.warn('Failed to fetch rainfall data', {
+        action: 'getRainfallData',
+        error,
+        statusCode: error.response?.status
+      });
       return {
         success: false,
         error: error.message,
@@ -364,7 +383,7 @@ class RainfallEarthquakeApiService {
       
       return {
         success: true,
-        timestamps
+        timestamps: timestamps.sort().reverse()
       };
     } catch (error) {
       return { success: false, timestamps: [], error: error.message };
@@ -418,7 +437,8 @@ class RainfallEarthquakeApiService {
         
         // 如果解析後沒有數據，記錄詳細信息
         if (parsedData.timeSeries.length === 0) {
-          console.warn('強地動數據解析後為空，原始數據格式:', {
+          log.warn('Strong motion data parsed empty', {
+            action: 'getStrongMotionData',
             firstLine: lines[0],
             secondLine: lines[1],
             thirdLine: lines[2],
@@ -435,7 +455,10 @@ class RainfallEarthquakeApiService {
           });
           legendData = this.parseLegendData(legendResponse.data);
         } catch (legendError) {
-          console.warn('讀取圖例文件失敗（可能不存在）:', legendError.message);
+          log.debug('Legend file not available', {
+            action: 'getStrongMotionData',
+            error: legendError
+          });
         }
         
         const data = {
@@ -488,17 +511,15 @@ class RainfallEarthquakeApiService {
         };
       }
     } catch (error) {
-      console.error('========== 強地動API錯誤詳情 ==========');
-      console.error('錯誤訊息:', error.message);
-      console.error('狀態碼:', error.response?.status);
-      console.error('響應頭:', error.response?.headers);
-      if (error.response?.data) {
-        console.error('響應數據前500字符:', String(error.response.data).substring(0, 500));
-      }
-      console.error('請求URL:', error.config?.url);
-      console.error('請求方法:', error.config?.method);
-      console.error('完整錯誤:', error);
-      console.error('=====================================');
+      log.error('Strong motion API request failed', {
+        action: 'getStrongMotionData',
+        error,
+        statusCode: error.response?.status,
+        responseHeaders: error.response?.headers,
+        responsePreview: error.response?.data ? String(error.response.data).substring(0, 500) : undefined,
+        requestUrl: error.config?.url,
+        requestMethod: error.config?.method
+      });
       
       return {
         success: false,
@@ -758,4 +779,3 @@ export {
   MicroseismicApiService,
   RainfallEarthquakeApiService
 };
-

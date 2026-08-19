@@ -4,9 +4,9 @@
     <nav class="border-b flex-shrink-0 transition-colors duration-300"
          :class="isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-gray-200'">
       <div class="w-full px-4 sm:px-6 lg:px-8">
-        <div class="flex justify-between items-stretch h-16">
+        <div class="flex justify-between items-stretch h-14 sm:h-16">
           <!-- 左側：系統標題（點擊回首頁） -->
-          <div class="flex items-stretch pr-6 border-r transition-colors duration-300"
+          <div class="flex items-stretch pr-3 sm:pr-6 border-r transition-colors duration-300"
                :class="isDarkMode ? 'border-slate-800' : 'border-gray-100'">
             <button class="text-left cursor-pointer group flex flex-col justify-center p-0 bg-transparent border-none outline-none h-full"
                     @click="navigateTo('Home')"
@@ -17,7 +17,7 @@
                     : 'text-gray-900 group-hover:text-brand'">
                 GeoPORTech
               </h1>
-              <p class="text-xs font-normal tracking-wide uppercase transition-colors duration-300 mt-0.5"
+              <p class="hidden sm:block text-xs font-normal tracking-wide uppercase transition-colors duration-300 mt-0.5"
                  :class="isDarkMode ? 'text-slate-500' : 'text-gray-400'">
                 山區公路防災預警
               </p>
@@ -55,6 +55,7 @@
             <div class="control-panel-container relative">
               <button
                 @click="toggleControlPanel"
+                aria-label="系統設定"
                 class="flex items-center justify-center w-10 h-10 mx-1 rounded transition-colors duration-150 cursor-pointer"
                 :class="showControlPanel
                   ? (isDarkMode ? 'bg-slate-700 text-white' : 'bg-gray-100 text-gray-900')

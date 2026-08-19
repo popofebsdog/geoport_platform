@@ -18,6 +18,11 @@
     <!-- 圖表 + 可拖曳 handle -->
     <div v-else ref="chartWrapper" class="relative w-full h-full">
       <canvas ref="chartCanvas" class="w-full h-full"></canvas>
+      <div v-if="chartReady && !hasRainSignal" class="chart-empty-state"
+           :class="isDarkMode ? 'chart-empty-state--dark' : 'chart-empty-state--light'">
+        <span>目前無雨量</span>
+        <small>警戒線持續監測中</small>
+      </div>
 
       <!-- 右側拖曳 handle（閾值線由 Chart.js dataset 畫） -->
       <template v-if="chart && chartReady">
@@ -80,6 +85,7 @@ export default {
         yellow: { display: 'none' },
         red:    { display: 'none' },
       },
+      hasRainSignal: true,
     };
   },
   computed: {
@@ -194,9 +200,6 @@ export default {
         
         if (response.data.success && response.data.source === 'external_api') {
           this.chartData = response.data.data;
-          this.$nextTick(() => {
-            this.updateChart();
-          });
         } else {
           console.warn('雨量API返回失敗:', response.data);
           this.chartData = null;
@@ -206,6 +209,8 @@ export default {
         this.chartData = null;
       } finally {
         this.loadingData = false;
+        await this.$nextTick();
+        await this.updateChart();
       }
     },
     // 將時間字符串轉換為小時索引（0-23）
@@ -318,8 +323,8 @@ export default {
             clip: false,
             interaction: { intersect: false, mode: 'index' },
             elements: {
-              line: { tension: 0.35, borderWidth: 1.5 },
-              bar:  { borderRadius: 2, borderWidth: 0, minBarLength: 2 }
+              line: { tension: 0.38, borderWidth: 2 },
+              bar:  { borderRadius: 5, borderSkipped: false, borderWidth: 0, minBarLength: 2 }
             },
             plugins: {
               ...base.plugins,
@@ -345,7 +350,8 @@ export default {
                 ticks: {
                   ...axisScale('x', '', dark).ticks,
                   maxRotation: 45,
-                  minRotation: 45
+                  minRotation: 0,
+                  maxTicksLimit: 8
                 }
               },
               y: {
@@ -379,6 +385,10 @@ export default {
       const scale = this.chart.scales.y;
       const right = this.chart.chartArea.right;
       ['yellow', 'red'].forEach(type => {
+        if (this.localThresholds[type] > scale.max) {
+          this.handlePositions[type] = { display: 'none' };
+          return;
+        }
         const raw = scale.getPixelForValue(this.localThresholds[type]);
         const yPx = Math.max(this.chart.chartArea.top, Math.min(this.chart.chartArea.bottom, raw));
         this.handlePositions[type] = { top: `${yPx}px`, left: `${right}px` };
@@ -620,13 +630,14 @@ export default {
       const maxHourly = Math.max(...hourlyValues, 0);
       const maxAccumulated = Math.max(...accumulatedValues, 0);
       const maxValue = Math.max(maxHourly, maxAccumulated);
+      this.hasRainSignal = maxValue >= 0.1;
       
-      // Y 軸最大值需涵蓋閾值，確保線永遠可見
+      // 有雨量時優先放大資料本身；沒有雨量時才用警戒線當尺度。
       const thresholdMax = Math.max(this.localThresholds.red, this.localThresholds.yellow);
-      let suggestedMax = Math.max(
-        maxValue > 0 ? maxValue * 1.5 : 1,
-        thresholdMax * 1.2
-      );
+      const suggestedMax = maxValue > 0
+        ? Math.max(maxValue * 1.5, 1)
+        : thresholdMax * 1.2;
+      const showThresholdLines = maxValue === 0 || thresholdMax <= suggestedMax;
 
       // 時雨量 0 值不顯示柱子
       const hourlyValuesForDisplay = hourlyValues.map(v => v > 0 ? v : null);
@@ -634,48 +645,51 @@ export default {
       const yellowData = labels.map(() => this.localThresholds.yellow);
       const redData    = labels.map(() => this.localThresholds.red);
 
-      return {
-        labels,
-        datasets: [
-          {
-            label: '時雨量 (mm)',
-            data: hourlyValuesForDisplay,
-            backgroundColor: 'rgba(71,160,255,0.55)',
-            borderColor: 'transparent',
-            borderWidth: 0,
-            borderRadius: 2,
-            barThickness: 'flex',
-            maxBarThickness: 40,
-            order: 2,
-            yAxisID: 'y',
-            skipNull: true,
-          },
-          {
-            label: '累積雨量 (mm)',
-            data: accumulatedValues,
-            type: 'line',
-            borderColor: '#1e5c8a',
-            backgroundColor: 'rgba(30,92,138,0.08)',
-            borderWidth: 1.5,
-            fill: true,
-            tension: 0.35,
-            pointRadius: 2,
-            pointHoverRadius: 4,
-            pointBackgroundColor: '#1e5c8a',
-            pointBorderColor: '#fff',
-            pointBorderWidth: 2,
-            order: 1,
-            yAxisID: 'y',
-            spanGaps: false,
-          },
+      const datasets = [
+        {
+          label: '時雨量 (mm)',
+          data: hourlyValuesForDisplay,
+          backgroundColor: this.isDarkMode ? 'rgba(56,189,248,0.64)' : 'rgba(14,165,233,0.56)',
+          borderColor: 'transparent',
+          borderWidth: 0,
+          borderRadius: 5,
+          borderSkipped: false,
+          barThickness: 'flex',
+          maxBarThickness: 22,
+          order: 2,
+          yAxisID: 'y',
+          skipNull: true,
+        },
+        {
+          label: '累積雨量 (mm)',
+          data: accumulatedValues,
+          type: 'line',
+          borderColor: this.isDarkMode ? '#67e8f9' : '#0f766e',
+          backgroundColor: this.isDarkMode ? 'rgba(103,232,249,0.08)' : 'rgba(15,118,110,0.08)',
+          borderWidth: 2,
+          fill: true,
+          tension: 0.38,
+          pointRadius: 0,
+          pointHoverRadius: 5,
+          pointBackgroundColor: this.isDarkMode ? '#67e8f9' : '#0f766e',
+          pointBorderColor: this.isDarkMode ? '#0f172a' : '#fff',
+          pointBorderWidth: 2,
+          order: 1,
+          yAxisID: 'y',
+          spanGaps: false,
+        },
+      ];
+
+      if (showThresholdLines) {
+        datasets.push(
           // 黃色警戒線
           {
             label: '黃色警戒',
             data: yellowData,
             type: 'line',
-            borderColor: 'rgba(245,158,11,0.85)',
-            borderWidth: 2,
-            borderDash: [6, 4],
+            borderColor: 'rgba(245,158,11,0.9)',
+            borderWidth: 1.5,
+            borderDash: [8, 5],
             pointRadius: 0,
             pointHoverRadius: 0,
             fill: false,
@@ -688,9 +702,9 @@ export default {
             label: '紅色警戒',
             data: redData,
             type: 'line',
-            borderColor: 'rgba(239,68,68,0.85)',
-            borderWidth: 2,
-            borderDash: [6, 4],
+            borderColor: 'rgba(239,68,68,0.92)',
+            borderWidth: 1.5,
+            borderDash: [8, 5],
             pointRadius: 0,
             pointHoverRadius: 0,
             fill: false,
@@ -698,7 +712,12 @@ export default {
             order: 0,
             yAxisID: 'y',
           },
-        ],
+        );
+      }
+
+      return {
+        labels,
+        datasets,
         suggestedMax,
       };
     },
@@ -794,5 +813,36 @@ export default {
 }
 .th-drag-line--red .th-drag-line__label    { background: rgba(239,68,68,0.9);  color: #fff; }
 .th-drag-line--yellow .th-drag-line__label { background: rgba(245,158,11,0.9); color: #78350f; }
-</style>
 
+.chart-empty-state {
+  position: absolute;
+  inset: 54px 18px 24px 52px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  border-radius: 10px;
+  backdrop-filter: blur(1px);
+  pointer-events: none;
+}
+
+.chart-empty-state span {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.chart-empty-state small {
+  font-size: 11px;
+}
+
+.chart-empty-state--light {
+  color: #526579;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.chart-empty-state--dark {
+  color: #cbd5e1;
+  background: rgba(15, 23, 42, 0.68);
+}
+</style>

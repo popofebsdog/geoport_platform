@@ -7,11 +7,11 @@ const FONT_FAMILY = "'Inter', system-ui, -apple-system, sans-serif"
 
 const COLORS = {
   grid: {
-    light: 'rgba(0,0,0,0.06)',
-    dark:  'rgba(255,255,255,0.06)'
+    light: 'rgba(30,92,138,0.08)',
+    dark:  'rgba(148,163,184,0.12)'
   },
   tick: {
-    light: '#9ca3af',
+    light: '#6b7d8f',
     dark:  '#94a3b8'
   },
   axisTitle: {
@@ -38,16 +38,19 @@ export function baseChartOptions(isDark = false) {
     maintainAspectRatio: false,
     animation: { duration: 300 },
     plugins: {
-      legend: {
-        display: true,
-        position: 'top',
-        labels: {
-          font: { family: FONT_FAMILY, size: 11 },
-          color: tickColor,
-          boxWidth: 10,
-          boxHeight: 10,
-          padding: 12
-        }
+    legend: {
+      display: true,
+      position: 'top',
+      align: 'end',
+      labels: {
+        font: { family: FONT_FAMILY, size: 11 },
+        color: tickColor,
+        boxWidth: 8,
+        boxHeight: 8,
+        padding: 10,
+        usePointStyle: true,
+        pointStyle: 'circle'
+      }
       },
       title: { display: false },
       tooltip: {
@@ -59,7 +62,7 @@ export function baseChartOptions(isDark = false) {
         bodyFont:  { family: FONT_FAMILY, size: 11 },
         titleColor: '#f1f5f9',
         bodyColor:  '#cbd5e1',
-        cornerRadius: 4,
+        cornerRadius: 8,
         displayColors: true,
         boxWidth: 8,
         boxHeight: 8
@@ -95,7 +98,8 @@ export function axisScale(axis, titleText, isDark = false, extra = {}) {
     },
     grid: {
       color: gridColor,
-      tickColor: 'transparent'
+      tickColor: 'transparent',
+      drawTicks: false
     },
     border: { color: 'transparent' },
     ...extra

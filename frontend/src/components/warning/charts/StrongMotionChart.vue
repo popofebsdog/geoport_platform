@@ -16,7 +16,14 @@
       </div>
     </div>
     
-    <canvas v-else ref="chartCanvas" class="w-full h-full"></canvas>
+    <div v-else class="relative w-full h-full">
+      <canvas ref="chartCanvas" class="w-full h-full"></canvas>
+      <div v-if="chart && !hasMotionSignal" class="chart-empty-state"
+           :class="isDarkMode ? 'chart-empty-state--dark' : 'chart-empty-state--light'">
+        <span>無強地動事件</span>
+        <small>PGA 維持背景值</small>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -47,7 +54,8 @@ export default {
   },
   data() {
     return {
-      chart: null
+      chart: null,
+      hasMotionSignal: true
     };
   },
   watch: {
@@ -224,7 +232,7 @@ export default {
             clip: false,
             interaction: { intersect: false, mode: 'index' },
             elements: {
-              line:  { tension: 0.2, borderWidth: 1.5 },
+              line:  { tension: 0.28, borderWidth: 1.8 },
               point: { radius: 0, hoverRadius: 3 }
             },
             plugins: {
@@ -242,7 +250,7 @@ export default {
                   ...axisScale('x', '', dark).ticks,
                   maxRotation: 45,
                   minRotation: 0,
-                  maxTicksLimit: 13,
+                  maxTicksLimit: 8,
                   callback(value, index, ticks) {
                     const lbl = this.getLabelForValue ? this.getLabelForValue(value) : String(value);
                     return lbl.length > 5 ? lbl.substring(0, 5) : lbl;
@@ -269,18 +277,19 @@ export default {
         console.warn('強地動數據為空');
         const labels = this.generateTimeLabels();
         const values = new Array(24).fill(0);
+        this.hasMotionSignal = false;
         return {
           labels: labels,
           datasets: [{
             label: '加速度 (gal)',
             data: values,
-            borderColor: '#1e5c8a',
-            backgroundColor: 'rgba(30,92,138,0.07)',
+            borderColor: this.isDarkMode ? '#38bdf8' : '#0f766e',
+            backgroundColor: this.isDarkMode ? 'rgba(56,189,248,0.08)' : 'rgba(15,118,110,0.08)',
             tension: 0.4,
             fill: false,
             pointRadius: 0,
             pointHoverRadius: 3,
-            borderWidth: 2
+            borderWidth: 1.8
           }]
         };
       }
@@ -299,18 +308,19 @@ export default {
           // 返回空数据
           const labels = this.generateTimeLabels();
           const values = new Array(24).fill(0);
+          this.hasMotionSignal = false;
           return {
             labels: labels,
             datasets: [{
               label: '加速度 (gal)',
               data: values,
-              borderColor: '#1e5c8a',
-              backgroundColor: 'rgba(30,92,138,0.07)',
+              borderColor: this.isDarkMode ? '#38bdf8' : '#0f766e',
+              backgroundColor: this.isDarkMode ? 'rgba(56,189,248,0.08)' : 'rgba(15,118,110,0.08)',
               tension: 0.4,
               fill: false,
               pointRadius: 0,
               pointHoverRadius: 3,
-              borderWidth: 2
+              borderWidth: 1.8
             }]
           };
         }
@@ -399,19 +409,19 @@ export default {
         }
       }
       
-      
+      this.hasMotionSignal = Math.max(...values, 0) > 0;
       return {
         labels: labels,
         datasets: [{
           label: '加速度 (gal)',
           data: values,
-          borderColor: '#1e5c8a',
-          backgroundColor: 'rgba(30,92,138,0.07)',
+          borderColor: this.isDarkMode ? '#38bdf8' : '#0f766e',
+          backgroundColor: this.isDarkMode ? 'rgba(56,189,248,0.08)' : 'rgba(15,118,110,0.08)',
           tension: 0.4,
           fill: false,
           pointRadius: 0,
           pointHoverRadius: 3,
-          borderWidth: 2
+          borderWidth: 1.8
         }]
       };
     },
@@ -439,19 +449,20 @@ export default {
       
       const labels = sampledData.map(d => `${d.time}s`);
       const values = sampledData.map(d => d.value);
+      this.hasMotionSignal = Math.max(...values, 0) > 0;
       
       return {
         labels: labels,
         datasets: [{
           label: `PGA (gal) - ${metadata.stationCode}`,
           data: values,
-          borderColor: '#dc2626',
-          backgroundColor: 'rgba(220,38,38,0.07)',
+          borderColor: '#ef4444',
+          backgroundColor: 'rgba(239,68,68,0.1)',
           tension: 0.1,
           fill: true,
           pointRadius: 0,
           pointHoverRadius: 3,
-          borderWidth: 1.5
+          borderWidth: 1.4
         }]
       };
     },
@@ -483,5 +494,36 @@ export default {
   height: 100%;
   width: 100%;
 }
-</style>
 
+.chart-empty-state {
+  position: absolute;
+  inset: 50px 18px 24px 52px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  border-radius: 10px;
+  backdrop-filter: blur(1px);
+  pointer-events: none;
+}
+
+.chart-empty-state span {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.chart-empty-state small {
+  font-size: 11px;
+}
+
+.chart-empty-state--light {
+  color: #526579;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.chart-empty-state--dark {
+  color: #cbd5e1;
+  background: rgba(15, 23, 42, 0.68);
+}
+</style>

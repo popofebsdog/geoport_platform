@@ -1,11 +1,13 @@
 <template>
-  <div class="h-full overflow-auto transition-colors duration-300"
-       :class="isDarkMode ? 'bg-slate-900 text-white' : 'bg-surface-50 text-gray-900'">
+  <div class="admin-shell h-full overflow-auto transition-colors duration-300"
+       :class="isDarkMode ? 'admin-dark bg-slate-950 text-white' : 'admin-light text-gray-900'">
     <div class="px-6 py-5 space-y-5">
-      <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+      <div class="admin-hero flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between"
+           :class="isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-[#f6f9fb] border-[#dfe8ef]'">
         <div>
-          <h1 class="text-base font-semibold">資料管理後台</h1>
-          <p class="text-xs mt-1" :class="mutedTextClass">
+          <p class="text-[11px] uppercase tracking-[0.18em]" :class="mutedTextClass">Operations console</p>
+          <h1 class="mt-1 text-xl font-semibold">資料管理後台</h1>
+          <p class="text-sm mt-1" :class="mutedTextClass">
             系統資料、檔案健康與上雲維運狀態
           </p>
         </div>
@@ -145,7 +147,7 @@
 
       <div class="grid grid-cols-2 lg:grid-cols-6 gap-3">
         <div v-for="card in summaryCards" :key="card.label"
-             class="rounded border p-4 transition-colors"
+             class="admin-stat rounded border p-4 transition-colors"
              :class="panelClass">
           <p class="text-[11px] uppercase tracking-wider" :class="mutedTextClass">{{ card.label }}</p>
           <div class="mt-2 text-xl font-semibold tabular-nums">{{ card.value }}</div>
@@ -754,3 +756,43 @@ export default {
   }
 }
 </script>
+
+<style scoped>
+.admin-shell.admin-light {
+  background:
+    linear-gradient(180deg, rgba(30, 92, 138, 0.08), transparent 220px),
+    #f3f7fa;
+}
+
+.admin-shell.admin-dark {
+  background:
+    linear-gradient(180deg, rgba(51, 120, 181, 0.12), transparent 220px),
+    #020617;
+}
+
+.admin-hero {
+  border: 1px solid;
+  border-radius: 10px;
+  padding: 20px;
+  box-shadow: 0 16px 40px rgba(15, 45, 71, 0.08);
+}
+
+.admin-stat {
+  min-height: 116px;
+  box-shadow: 0 10px 26px rgba(15, 45, 71, 0.06);
+}
+
+.admin-stat:hover {
+  transform: translateY(-1px);
+}
+
+@media (max-width: 640px) {
+  .admin-hero {
+    padding: 16px;
+  }
+
+  .admin-stat {
+    min-height: 104px;
+  }
+}
+</style>

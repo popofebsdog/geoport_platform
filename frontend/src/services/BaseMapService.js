@@ -58,7 +58,8 @@ export class BaseMapService {
 
     // 構建 TiTiler 瓦片 URL (使用 WebMercatorQuad 瓦片矩陣集)
     const titilerBase = import.meta.env.VITE_TITILER_URL
-    const titilerUrl = `${titilerBase}/cog/tiles/WebMercatorQuad/{z}/{x}/{y}?url=${encodeURIComponent(imageUrl)}`
+    const titilerAssetUrl = this.getTiTilerAssetUrl(imageUrl)
+    const titilerUrl = `${titilerBase}/cog/tiles/WebMercatorQuad/{z}/{x}/{y}?url=${encodeURIComponent(titilerAssetUrl)}`
     const layerBounds = boundsArray ? L.latLngBounds(boundsArray) : null
     
     // 創建自定義瓦片圖層，實現全瓦片載入
@@ -217,6 +218,14 @@ export class BaseMapService {
   }
 
   parseTiTilerBounds(result) {
+    if (Array.isArray(result?.bbox) && result.bbox.length === 4) {
+      const [minLon, minLat, maxLon, maxLat] = result.bbox
+      return [
+        [minLat, minLon],
+        [maxLat, maxLon]
+      ]
+    }
+
     if (result?.success && result.bounds) {
       return [
         [result.bounds.minLat, result.bounds.minLon],
@@ -246,6 +255,44 @@ export class BaseMapService {
     return null
   }
 
+  getTiTilerAssetUrl(imageUrl) {
+    const assetOrigin = import.meta.env.VITE_TITILER_ASSET_ORIGIN
+    if (!assetOrigin) {
+      return imageUrl
+    }
+
+    try {
+      const source = new URL(imageUrl)
+      const target = new URL(assetOrigin)
+      source.protocol = target.protocol
+      source.host = target.host
+      return source.toString()
+    } catch (error) {
+      log.warn('TiTiler asset URL 轉換失敗，使用原始 URL:', error)
+      return imageUrl
+    }
+  }
+
+  getStaticOrigin() {
+    return import.meta.env.VITE_STATIC_URL || window.location.origin
+  }
+
+  async fetchTiTilerBounds(imageUrl, timeoutMs = 5000) {
+    const titilerBase = import.meta.env.VITE_TITILER_URL
+    if (!titilerBase) {
+      return null
+    }
+
+    const titilerAssetUrl = this.getTiTilerAssetUrl(imageUrl)
+    const response = await fetch(`${titilerBase}/cog/info.geojson?url=${encodeURIComponent(titilerAssetUrl)}`, {
+      signal: AbortSignal.timeout(timeoutMs)
+    })
+    const result = await response.json()
+    const bounds = this.parseTiTilerBounds(result)
+
+    return { response, result, bounds }
+  }
+
   // 移除 loadCOGBaseMap 方法，因為已經有 createTiTilerLayer 處理 COG
 
 
@@ -271,11 +318,7 @@ export class BaseMapService {
     const titilerBase = import.meta.env.VITE_TITILER_URL
     if (titilerBase && this.isCOGFile(baseMap.storagePath || baseMap.originalName)) {
       try {
-        const boundsResponse = await fetch(`${titilerBase}/cog/bounds?url=${encodeURIComponent(imageUrl)}`, {
-          signal: AbortSignal.timeout(5000)
-        })
-        const boundsResult = await boundsResponse.json()
-        const bounds = this.parseTiTilerBounds(boundsResult)
+        const { response: boundsResponse, bounds } = await this.fetchTiTilerBounds(imageUrl, 5000)
 
         if (boundsResponse.ok && bounds) {
           return this.createTiTilerLayer(imageUrl, baseMap, bounds)
@@ -398,12 +441,7 @@ export class BaseMapService {
       const titilerBase = import.meta.env.VITE_TITILER_URL
       if (imageUrl && titilerBase) {
         try {
-          const response = await fetch(`${titilerBase}/cog/bounds?url=${encodeURIComponent(imageUrl)}`, {
-            signal: AbortSignal.timeout(3000)
-          })
-          const result = await response.json()
-
-          const bounds = this.parseTiTilerBounds(result)
+          const { bounds } = await this.fetchTiTilerBounds(imageUrl, 3000)
           if (bounds) {
             return bounds
           }
@@ -480,7 +518,7 @@ export class BaseMapService {
       }
       
       // 創建新的底圖圖層
-      const staticBase = import.meta.env.VITE_STATIC_URL || 'http://localhost:3001'
+      const staticBase = this.getStaticOrigin()
       const baseMapUrl = `${staticBase}/${baseMap.storagePath.replace(/^\//, '')}`
       
       // 根據檔案類型判斷是否為 TIF（raster / orthophoto，或副檔名為 .tif/.tiff）

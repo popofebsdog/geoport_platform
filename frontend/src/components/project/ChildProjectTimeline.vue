@@ -349,7 +349,7 @@ export default {
 <style scoped>
 .timeline-container {
   position: relative;
-  padding-left: 1.5rem;
+  padding-left: 0.5rem;
   overflow: visible; /* 允許連接線超出容器 */
 }
 
@@ -511,7 +511,7 @@ export default {
   border-radius: 4px;
   border-width: 1px;
   transition: background-color 0.15s;
-  margin-left: 18px;
+  margin-left: 14px;
   position: relative;
 }
 
@@ -1214,4 +1214,3 @@ export default {
   }
 }
 </style>
-

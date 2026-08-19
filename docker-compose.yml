@@ -70,13 +70,15 @@ services:
         VITE_API_URL: ${VITE_API_URL:-/api}
         VITE_STATIC_URL: ${VITE_STATIC_URL:-}
         VITE_TITILER_URL: ${VITE_TITILER_URL:-/titiler}
+        VITE_TITILER_ASSET_ORIGIN: ${VITE_TITILER_ASSET_ORIGIN:-}
         VITE_LOG_LEVEL: ${VITE_LOG_LEVEL:-warn}
     expose:
       - "5173"
     environment:
       - VITE_API_URL=/api
-      - VITE_STATIC_URL=
-      - VITE_TITILER_URL=/titiler
+      - VITE_STATIC_URL=${VITE_STATIC_URL:-}
+      - VITE_TITILER_URL=${VITE_TITILER_URL:-/titiler}
+      - VITE_TITILER_ASSET_ORIGIN=${VITE_TITILER_ASSET_ORIGIN:-}
     depends_on:
       - backend
     restart: unless-stopped

@@ -12,7 +12,7 @@ const normalizeLevel = (level) => {
 }
 
 const configuredLevel = normalizeLevel(import.meta.env.VITE_LOG_LEVEL)
-const defaultLevel = import.meta.env.PROD ? 'warn' : 'debug'
+const defaultLevel = 'warn'
 const activeLevel = configuredLevel || defaultLevel
 
 const shouldLog = (level) => LEVELS[level] >= LEVELS[activeLevel]

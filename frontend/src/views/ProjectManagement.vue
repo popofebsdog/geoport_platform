@@ -1,16 +1,16 @@
 <template>
-  <div class="h-full flex flex-col transition-colors duration-300" :class="isDarkMode ? 'bg-slate-900' : 'bg-gray-50'">
+  <div class="pm-root h-full flex flex-col transition-colors duration-300" :class="isDarkMode ? 'pm-dark bg-slate-900' : 'pm-light bg-gray-50'">
     
     <!-- 標題欄 -->
-    <div class="px-6 py-4 border-b transition-colors duration-300"
+    <div class="pm-topbar px-6 py-4 border-b transition-colors duration-300"
          :class="isDarkMode ? 'border-slate-700 bg-slate-800' : 'border-gray-200 bg-white'">
       <div class="flex items-center justify-between">
         <div class="flex items-center space-x-4">
-          <h1 class="text-2xl font-bold transition-colors duration-300"
+          <h1 class="text-lg font-semibold transition-colors duration-300"
               :class="isDarkMode ? 'text-white' : 'text-gray-900'">
-            📁 專案管理
+            專案管理
           </h1>
-          <span class="text-sm transition-colors duration-300"
+          <span class="text-[11px] uppercase tracking-[0.18em] transition-colors duration-300"
                 :class="isDarkMode ? 'text-gray-400' : 'text-gray-600'">
             Project Management
           </span>
@@ -48,7 +48,7 @@
     </div>
 
     <!-- 主要內容區域 -->
-    <div class="flex-1 overflow-y-auto p-6">
+    <div class="pm-content flex-1 overflow-y-auto p-6">
       <!-- 載入中 -->
       <div v-if="isLoading" class="flex items-center justify-center h-64">
         <div class="flex flex-col items-center space-y-3">
@@ -342,6 +342,27 @@ export default {
 </script>
 
 <style scoped>
+.pm-root.pm-light {
+  background:
+    linear-gradient(180deg, rgba(30, 92, 138, 0.07), transparent 240px),
+    #f3f7fa;
+}
+
+.pm-root.pm-dark {
+  background:
+    linear-gradient(180deg, rgba(51, 120, 181, 0.12), transparent 240px),
+    #0f172a;
+}
+
+.pm-content {
+  max-width: 1180px;
+  width: 100%;
+}
+
+.pm-topbar {
+  backdrop-filter: blur(10px);
+}
+
 /* 自訂滾動條 */
 ::-webkit-scrollbar {
   width: 10px;
@@ -369,4 +390,3 @@ export default {
   background-color: rgb(100 116 139); /* slate-500 */
 }
 </style>
-

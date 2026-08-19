@@ -2,6 +2,11 @@ import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import { resolve } from 'path'
 
+const backendOrigin = process.env.VITE_BACKEND_ORIGIN
+  || process.env.VITE_API_URL?.replace(/\/api\/?$/, '')
+  || 'http://localhost:3001'
+const titilerOrigin = process.env.VITE_TITILER_ORIGIN || process.env.VITE_TITILER_URL || 'http://localhost:8080'
+
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [vue()],
@@ -20,22 +25,22 @@ export default defineConfig({
         rewrite: (path) => path.replace(/^\/api\/rain/, '/rain')
       },
       '^/api/(?!debug)': {
-        target: 'http://localhost:3001',
+        target: backendOrigin,
         changeOrigin: true,
         secure: false
       },
       '/uploads': {
-        target: 'http://localhost:3001',
+        target: backendOrigin,
         changeOrigin: true,
         secure: false
       },
       '/data': {
-        target: 'http://localhost:3001',
+        target: backendOrigin,
         changeOrigin: true,
         secure: false
       },
       '/titiler': {
-        target: 'http://localhost:8080',
+        target: titilerOrigin,
         changeOrigin: true,
         secure: false,
         rewrite: (path) => path.replace(/^\/titiler/, '')

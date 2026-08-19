@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen flex" :class="isDarkMode ? 'dark' : ''">
+  <div class="h-full min-h-0 flex" :class="isDarkMode ? 'dark' : ''">
 
     <!-- Left panel — brand identity -->
     <div class="hidden lg:flex lg:w-5/12 xl:w-2/5 flex-col justify-between p-10"
@@ -38,11 +38,11 @@
     </div>
 
     <!-- Right panel — form -->
-    <div class="flex-1 flex flex-col justify-center items-center px-6 py-12 transition-colors duration-300"
+    <div class="flex-1 flex flex-col justify-start lg:justify-center items-center px-6 py-10 lg:py-12 transition-colors duration-300 overflow-auto"
          :class="isDarkMode ? 'bg-slate-950' : 'bg-white'">
 
       <!-- Mobile brand (hidden on lg+) -->
-      <div class="lg:hidden mb-8 text-center">
+      <div class="lg:hidden mb-6 text-center">
         <div class="inline-flex items-center gap-2 mb-1">
           <svg class="w-4 h-4" :class="isDarkMode ? 'text-white/60' : 'text-gray-400'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75"
@@ -53,7 +53,7 @@
         <p class="text-[11px] uppercase tracking-widest" :class="isDarkMode ? 'text-slate-600' : 'text-gray-400'">山區公路防災預警</p>
       </div>
 
-      <div class="w-full max-w-xs">
+      <div class="w-full max-w-sm lg:max-w-xs">
         <!-- Heading -->
         <div class="mb-7">
           <h1 class="text-xl font-bold tracking-tight mb-1"
@@ -70,7 +70,7 @@
              :class="isDarkMode ? 'border-slate-800' : 'border-gray-200'">
           <button v-for="tab in ['login','register']" :key="tab"
                   @click="activeTab = tab"
-                  class="px-0 mr-6 pb-2.5 text-xs font-semibold transition-colors border-b-2 -mb-px"
+                  class="px-0 mr-6 pb-2.5 text-xs font-semibold transition-colors border-b-2 -mb-px focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-300"
                   :class="activeTab === tab
                     ? (isDarkMode ? 'text-white border-white' : 'text-gray-900 border-gray-900')
                     : (isDarkMode ? 'text-slate-600 border-transparent hover:text-slate-400' : 'text-gray-400 border-transparent hover:text-gray-600')">
@@ -95,8 +95,8 @@
             <label class="block text-xs font-medium mb-1.5"
                    :class="isDarkMode ? 'text-slate-300' : 'text-gray-700'">帳號 / Email</label>
             <input v-model="form.username" type="text" required autocomplete="username"
-                   placeholder="請輸入帳號或 Email"
-                   class="w-full px-3.5 py-2.5 rounded-lg border text-sm transition-colors outline-none focus:ring-2"
+                  placeholder="請輸入帳號或 Email"
+                   class="w-full px-3.5 py-2.5 rounded-lg border text-sm transition-colors outline-none focus:ring-2 min-h-11"
                    :class="isDarkMode
                      ? 'bg-slate-800 border-slate-700 text-white placeholder-slate-500 focus:ring-brand-400 focus:border-brand-400'
                      : 'bg-white border-surface-300 text-gray-900 placeholder-surface-400 focus:ring-brand-300 focus:border-brand'" />
@@ -106,13 +106,13 @@
                    :class="isDarkMode ? 'text-slate-300' : 'text-gray-700'">密碼</label>
             <input v-model="form.password" type="password" required autocomplete="current-password"
                    placeholder="請輸入密碼"
-                   class="w-full px-3.5 py-2.5 rounded-lg border text-sm transition-colors outline-none focus:ring-2"
+                   class="w-full px-3.5 py-2.5 rounded-lg border text-sm transition-colors outline-none focus:ring-2 min-h-11"
                    :class="isDarkMode
                      ? 'bg-slate-800 border-slate-700 text-white placeholder-slate-500 focus:ring-brand-400 focus:border-brand-400'
                      : 'bg-white border-surface-300 text-gray-900 placeholder-surface-400 focus:ring-brand-300 focus:border-brand'" />
           </div>
           <button type="submit" :disabled="loading"
-                  class="w-full py-2.5 rounded-lg font-medium text-sm text-white transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed mt-1"
+                  class="w-full min-h-11 py-2.5 rounded-lg font-medium text-sm text-white transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed mt-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-300 focus-visible:ring-offset-2"
                   :style="{ backgroundColor: loading ? '#3378b5' : '#1e5c8a' }"
                   @mouseover="e => !loading && (e.target.style.backgroundColor='#153f62')"
                   @mouseout="e => !loading && (e.target.style.backgroundColor='#1e5c8a')">
@@ -135,7 +135,7 @@
                      :class="isDarkMode ? 'text-slate-300' : 'text-gray-700'">帳號</label>
               <input v-model="regForm.username" type="text" required autocomplete="username"
                      placeholder="英數字、_  -"
-                     class="w-full px-3.5 py-2.5 rounded-lg border text-sm transition-colors outline-none focus:ring-2"
+                     class="w-full px-3.5 py-2.5 rounded-lg border text-sm transition-colors outline-none focus:ring-2 min-h-11"
                      :class="isDarkMode
                        ? 'bg-slate-800 border-slate-700 text-white placeholder-slate-500 focus:ring-brand-400 focus:border-brand-400'
                        : 'bg-white border-surface-300 text-gray-900 placeholder-surface-400 focus:ring-brand-300 focus:border-brand'" />
@@ -145,7 +145,7 @@
                      :class="isDarkMode ? 'text-slate-300' : 'text-gray-700'">顯示名稱（選填）</label>
               <input v-model="regForm.display_name" type="text" autocomplete="name"
                      placeholder="顯示名稱"
-                     class="w-full px-3.5 py-2.5 rounded-lg border text-sm transition-colors outline-none focus:ring-2"
+                     class="w-full px-3.5 py-2.5 rounded-lg border text-sm transition-colors outline-none focus:ring-2 min-h-11"
                      :class="isDarkMode
                        ? 'bg-slate-800 border-slate-700 text-white placeholder-slate-500 focus:ring-brand-400 focus:border-brand-400'
                        : 'bg-white border-surface-300 text-gray-900 placeholder-surface-400 focus:ring-brand-300 focus:border-brand'" />
@@ -156,23 +156,23 @@
                    :class="isDarkMode ? 'text-slate-300' : 'text-gray-700'">Email</label>
             <input v-model="regForm.email" type="email" required autocomplete="email"
                    placeholder="example@domain.com"
-                   class="w-full px-3.5 py-2.5 rounded-lg border text-sm transition-colors outline-none focus:ring-2"
+                   class="w-full px-3.5 py-2.5 rounded-lg border text-sm transition-colors outline-none focus:ring-2 min-h-11"
                    :class="isDarkMode
                      ? 'bg-slate-800 border-slate-700 text-white placeholder-slate-500 focus:ring-brand-400 focus:border-brand-400'
                      : 'bg-white border-surface-300 text-gray-900 placeholder-surface-400 focus:ring-brand-300 focus:border-brand'" />
           </div>
           <div>
             <label class="block text-xs font-medium mb-1.5"
-                   :class="isDarkMode ? 'text-slate-300' : 'text-gray-700'">密碼 <span class="font-normal text-surface-400">（至少 6 字元）</span></label>
+                   :class="isDarkMode ? 'text-slate-300' : 'text-gray-700'">密碼 <span class="font-normal text-surface-400">（至少 8 字元）</span></label>
             <input v-model="regForm.password" type="password" required autocomplete="new-password"
-                   placeholder="至少 6 個字元"
-                   class="w-full px-3.5 py-2.5 rounded-lg border text-sm transition-colors outline-none focus:ring-2"
+                   placeholder="至少 8 個字元"
+                   class="w-full px-3.5 py-2.5 rounded-lg border text-sm transition-colors outline-none focus:ring-2 min-h-11"
                    :class="isDarkMode
                      ? 'bg-slate-800 border-slate-700 text-white placeholder-slate-500 focus:ring-brand-400 focus:border-brand-400'
                      : 'bg-white border-surface-300 text-gray-900 placeholder-surface-400 focus:ring-brand-300 focus:border-brand'" />
           </div>
           <button type="submit" :disabled="loading"
-                  class="w-full py-2.5 rounded-lg font-medium text-sm text-white transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed mt-1"
+                  class="w-full min-h-11 py-2.5 rounded-lg font-medium text-sm text-white transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed mt-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-300 focus-visible:ring-offset-2"
                   :style="{ backgroundColor: loading ? '#3378b5' : '#1e5c8a' }"
                   @mouseover="e => !loading && (e.target.style.backgroundColor='#153f62')"
                   @mouseout="e => !loading && (e.target.style.backgroundColor='#1e5c8a')">
@@ -250,8 +250,8 @@ export default {
 
     async handleRegister() {
       this.errorMsg = ''
-      if (this.regForm.password.length < 6) {
-        this.errorMsg = '密碼至少需要 6 個字元'
+      if (this.regForm.password.length < 8) {
+        this.errorMsg = '密碼至少需要 8 個字元'
         return
       }
       this.loading = true

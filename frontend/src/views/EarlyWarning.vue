@@ -1,5 +1,5 @@
 <template>
-  <div class="ew-root">
+  <div class="ew-root" :class="isDarkMode ? 'ew-dark' : 'ew-light'">
 
     <!-- ① RegionSelector（自然高度）-->
     <div class="ew-region flex items-stretch gap-0">
@@ -15,17 +15,19 @@
         @delete="handleRegionDeleted"
       />
       <!-- 管理後台按鈕：與 RegionSelector 同高同底線 -->
-      <div v-if="selectedRegionId" class="flex flex-col flex-shrink-0 ml-2">
-        <button
-          @click="showManagePanel = true"
-          class="flex-1 px-3 text-xs font-semibold border rounded transition-colors whitespace-nowrap"
-          :class="isDarkMode
-            ? 'border-slate-700 text-slate-400 hover:border-slate-500 hover:text-white'
-            : 'border-gray-300 text-brand hover:border-brand hover:bg-brand-light'"
-        >
-          ⚙ 管理
-        </button>
-        <div class="border-b transition-colors"
+      <div v-if="selectedRegionId" class="flex flex-col flex-shrink-0 ml-2 mb-3">
+        <div class="h-10 flex items-center">
+          <button
+            @click="showManagePanel = true"
+            class="px-3 py-1.5 text-xs font-semibold border rounded transition-colors whitespace-nowrap"
+            :class="isDarkMode
+              ? 'border-slate-700 text-slate-400 hover:border-slate-500 hover:text-white'
+              : 'border-gray-300 text-brand hover:border-brand hover:bg-brand-light'"
+          >
+            ⚙ 管理
+          </button>
+        </div>
+        <div class="mt-0 border-b transition-colors"
              :class="isDarkMode ? 'border-slate-800' : 'border-gray-200'"></div>
       </div>
     </div>
@@ -61,9 +63,9 @@
         @light-click="handleAlertLightClick"
       />
 
-      <div class="w-full h-full p-2"
+      <div class="ew-map-pad w-full h-full p-2"
            :class="isDarkMode ? 'bg-slate-900' : 'bg-slate-50'">
-        <div class="w-full h-full overflow-hidden rounded"
+        <div class="ew-map-frame w-full h-full overflow-hidden rounded"
              :class="isDarkMode ? 'bg-slate-900' : 'bg-white'">
           <ProjectMap 
             ref="projectMap"
@@ -2733,8 +2735,29 @@ export default {
   box-sizing: border-box;
 }
 
+.ew-light {
+  background: #f6f9fb;
+}
+
+.ew-dark {
+  background: #020617;
+}
+
 .ew-region {
   min-height: 0;
+  padding: 12px 14px;
+  border: 1px solid;
+  border-radius: 10px;
+}
+
+.ew-light .ew-region {
+  background: #ffffff;
+  border-color: #dfe8ef;
+}
+
+.ew-dark .ew-region {
+  background: #0f172a;
+  border-color: #1e293b;
 }
 
 .ew-chart {
@@ -2747,20 +2770,35 @@ export default {
   position: relative;
   min-height: 0;
   overflow: hidden;
-  border-radius: 4px;
+  border-radius: 10px;
+}
+
+.ew-map-pad {
+  border-radius: 10px;
+  box-shadow: 0 14px 34px rgba(15, 45, 71, 0.1);
+}
+
+.ew-dark .ew-map-pad {
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.32);
+}
+
+.ew-map-frame {
+  border-radius: 8px;
 }
 
 /* card：邊框取代陰影，更俐落 */
 .card {
   background-color: #fff;
   border: 1px solid #e5e7eb;
-  border-radius: 4px;
+  border-radius: 10px;
   padding: 1rem;
+  box-shadow: 0 10px 24px rgba(15, 45, 71, 0.06);
 }
 
 .dark .card {
   background-color: #0f172a;
   border-color: #1e293b;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.24);
 }
 
 .dark .text-gray-900 {

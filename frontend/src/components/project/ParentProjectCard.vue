@@ -1,6 +1,6 @@
 <template>
   <!-- 母專案卡片 -->
-  <div class="parent-project-card" :class="isDarkMode ? 'border-slate-700' : 'border-gray-200'">
+  <div class="parent-project-card" :class="isDarkMode ? 'parent-project-card-dark border-slate-700' : 'parent-project-card-light border-gray-200'">
     <!-- 母專案標題區域 -->
     <div
       class="parent-header"
@@ -9,7 +9,7 @@
       <!-- 左側：圖標和資訊 -->
       <div class="flex items-center flex-1 min-w-0 space-x-3">
         <!-- 資料夾圖標（中性色） -->
-        <div class="folder-icon flex-shrink-0">
+        <div class="folder-icon flex-shrink-0" :class="isDarkMode ? 'folder-icon-dark' : 'folder-icon-light'">
           <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
             <path d="M20 6h-8l-2-2H4c-1.11 0-2 .89-2 2v12c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2z"/>
           </svg>
@@ -163,16 +163,45 @@ export default {
 
 <style scoped>
 .parent-project-card {
-  @apply mb-3 rounded border overflow-hidden;
-  transition: border-color 0.15s;
+  @apply mb-3 rounded-lg border overflow-hidden;
+  transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
+}
+
+.parent-project-card-light {
+  background: #fff;
+  box-shadow: 0 10px 24px rgba(15, 45, 71, 0.06);
+}
+
+.parent-project-card-dark {
+  background: #0f172a;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.18);
+}
+
+.parent-project-card:hover {
+  transform: translateY(-1px);
 }
 
 .parent-header {
-  @apply flex items-center px-3 py-2.5 transition-colors duration-150;
+  @apply flex items-center px-4 py-3 transition-colors duration-150;
 }
 
 .folder-icon {
-  color: #9ca3af;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.folder-icon-light {
+  color: #1e5c8a;
+  background: rgba(30, 92, 138, 0.08);
+}
+
+.folder-icon-dark {
+  color: #7db3de;
+  background: rgba(51, 120, 181, 0.16);
 }
 
 /* ── 帶文字按鈕 ───────────── */
@@ -183,7 +212,7 @@ export default {
   padding: 0.25rem 0.625rem;
   font-size: 0.75rem;
   font-weight: 500;
-  border-radius: 2px;
+  border-radius: 7px;
   border: 1px solid transparent;
   transition: background-color 0.15s, color 0.15s, border-color 0.15s;
   white-space: nowrap;
@@ -227,7 +256,7 @@ export default {
   justify-content: center;
   width: 1.75rem;
   height: 1.75rem;
-  border-radius: 2px;
+  border-radius: 7px;
   border: 1px solid transparent;
   transition: background-color 0.15s, color 0.15s;
 }

@@ -4,6 +4,9 @@
  */
 
 import L from 'leaflet'
+import { logger } from '@/utils/logger.js'
+
+const log = logger.scoped('GeologicalLayerService')
 
 export class GeologicalLayerService {
   constructor(map) {
@@ -62,7 +65,7 @@ export class GeologicalLayerService {
 
       return layer
     } catch (error) {
-      console.error('創建 WMS 圖層失敗:', error)
+      log.error('創建 WMS 圖層失敗:', error)
       return null
     }
   }
@@ -262,7 +265,7 @@ export class GeologicalLayerService {
       const response = await fetch(testUrl)
       return response.ok
     } catch (error) {
-      console.error('WMS 服務測試失敗:', error)
+      log.warn('WMS 服務測試失敗:', error)
       return false
     }
   }

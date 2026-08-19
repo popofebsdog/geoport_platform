@@ -1,8 +1,8 @@
 <template>
-  <div class="h-full flex flex-col transition-colors duration-300" :class="isDarkMode ? 'bg-slate-900' : 'bg-gray-50'">
+  <div class="dc-root h-full flex flex-col transition-colors duration-300" :class="isDarkMode ? 'dc-dark bg-slate-900' : 'dc-light bg-gray-50'">
     
     <!-- 標題欄 -->
-    <div class="px-6 py-3 border-b transition-colors duration-300"
+    <div class="dc-topbar px-6 py-3 border-b transition-colors duration-300"
          :class="isDarkMode ? 'border-slate-700 bg-slate-800' : 'border-gray-200 bg-white'">
       <div class="flex items-center justify-between">
         <div class="flex items-center space-x-3">
@@ -32,7 +32,7 @@
     <!-- 主要內容區域 -->
     <div class="flex-1 flex overflow-hidden">
       <!-- 左側邊欄 -->
-      <div class="w-56 border-r transition-colors duration-300 flex-shrink-0"
+      <div class="dc-sidebar w-56 border-r transition-colors duration-300 flex-shrink-0"
            :class="isDarkMode ? 'border-slate-700 bg-slate-800' : 'border-gray-200 bg-white'">
         <div class="p-3 pt-4">
           <!-- 專案分類 -->
@@ -135,7 +135,7 @@
       <!-- 右側主要內容區域 -->
       <div class="flex-1 flex flex-col overflow-hidden">
         <!-- 工具欄 -->
-        <div v-if="!showReports" class="px-6 py-3 border-b transition-colors duration-300 relative"
+        <div v-if="!showReports" class="dc-toolbar px-6 py-3 border-b transition-colors duration-300 relative"
              :class="isDarkMode ? 'border-slate-700 bg-slate-800' : 'border-gray-200 bg-white'">
           <div class="flex items-center justify-between">
             <div class="flex items-center space-x-4">
@@ -304,7 +304,7 @@
           </div>
           
         <!-- 右側內容區域 -->
-        <div class="flex-1 flex flex-col overflow-hidden transition-colors duration-300"
+        <div class="dc-workspace flex-1 flex flex-col overflow-hidden transition-colors duration-300"
              :class="isDarkMode ? 'bg-slate-900' : 'bg-gray-50'">
           
           <!-- 地圖視圖 -->
@@ -478,7 +478,7 @@
             />
             
             <!-- 專案清單 - 母子專案資料夾視圖 -->
-            <div v-else class="flex-1 overflow-y-auto p-6">
+            <div v-else class="dc-list flex-1 overflow-y-auto p-6">
               <!-- 載入中 -->
               <div v-if="!isDataLoaded" class="flex items-center justify-center h-64">
                 <div class="flex flex-col items-center space-y-3">
@@ -1564,6 +1564,9 @@ import CreateParentProjectModal from '@/components/project/CreateParentProjectMo
 import EditParentProjectModal from '@/components/project/EditParentProjectModal.vue'
 import CreateChildProjectModal from '@/components/project/CreateChildProjectModal.vue'
 import EditChildProjectModal from '@/components/project/EditChildProjectModal.vue'
+import { logger } from '@/utils/logger.js'
+
+const log = logger.scoped('DisasterCollection')
 
 export default {
   name: 'DisasterCollection',
@@ -1848,11 +1851,11 @@ export default {
     
     // 防止重複載入
     if (this.isDataLoaded) {
-      console.log('數據已載入，跳過重複載入')
+      log.debug('數據已載入，跳過重複載入')
       return
     }
     
-    console.log('DisasterCollection 組件掛載，開始載入數據...')
+    log.debug('DisasterCollection 組件掛載，開始載入數據...')
     
     // 確保初始狀態正確
     this.showTrash = false
@@ -1871,7 +1874,7 @@ export default {
     
     // 標記數據已載入
     this.isDataLoaded = true
-    console.log('DisasterCollection 數據載入完成')
+    log.debug('DisasterCollection 數據載入完成')
   },
   beforeUnmount() {
     // 清理桩號圖層
@@ -1881,7 +1884,7 @@ export default {
         map.removeLayer(this.mileagePointsLayer)
       }
       this.mileagePointsLayer = null
-      console.log('[DisasterCollection] 清理桩號圖層')
+      log.debug('[DisasterCollection] 清理桩號圖層')
     }
   },
   computed: {
@@ -2176,11 +2179,11 @@ export default {
         if (response.success) {
           this.trashProjects = response.data.projects || []
         } else {
-          console.error('載入已刪除專案失敗:', response.message)
+          log.error('載入已刪除專案失敗:', response.message)
           this.trashProjects = []
         }
       } catch (error) {
-        console.error('載入已刪除專案錯誤:', error)
+        log.error('載入已刪除專案錯誤:', error)
         this.trashProjects = []
       }
     },
@@ -2191,13 +2194,13 @@ export default {
         const response = await this.$api.dataFileAPI.getDeleted()
         if (response && response.success) {
           this.trashData = response.data.dataFiles || []
-          console.log('成功載入已刪除資料，資料數量:', this.trashData.length)
+          log.debug('成功載入已刪除資料，資料數量:', this.trashData.length)
         } else {
-          console.error('載入已刪除資料失敗:', response?.message || '未知錯誤')
+          log.error('載入已刪除資料失敗:', response?.message || '未知錯誤')
           this.trashData = []
         }
       } catch (error) {
-        console.error('載入已刪除資料錯誤:', error)
+        log.error('載入已刪除資料錯誤:', error)
         this.trashData = []
       }
     },
@@ -2227,13 +2230,13 @@ export default {
           this.trashReports = reportsResponse.data.reports || []
         }
         
-        console.log('垃圾桶計數載入完成:', {
+        log.debug('垃圾桶計數載入完成:', {
           projects: this.trashProjects.length,
           data: this.trashData.length,
           reports: this.trashReports.length
         })
       } catch (error) {
-        console.error('載入垃圾桶計數錯誤:', error)
+        log.error('載入垃圾桶計數錯誤:', error)
         // 如果載入失敗，保持空數組
         this.trashProjects = []
         this.trashData = []
@@ -2244,21 +2247,21 @@ export default {
     // 載入報告列表
     async loadReports() {
       try {
-        console.log('開始載入報告列表...')
+        log.debug('開始載入報告列表...')
         const response = await this.$api.reportAPI.getAll()
-        console.log('報告 API 響應:', response)
+        log.debug('報告 API 響應:', response)
 
         if (response && response.success && response.data) {
           this.reports = response.data.reports || []
-          console.log('成功載入報告列表，報告數量:', this.reports.length)
+          log.debug('成功載入報告列表，報告數量:', this.reports.length)
         } else {
-          console.error('載入報告列表失敗:', response?.message || '未知錯誤')
-          console.log('響應結構:', response)
+          log.error('載入報告列表失敗:', response?.message || '未知錯誤')
+          log.debug('響應結構:', response)
           // 如果 API 失敗，保持空列表
           this.reports = []
         }
       } catch (error) {
-        console.error('載入報告列表錯誤:', error)
+        log.error('載入報告列表錯誤:', error)
         // 如果 API 失敗，保持空列表
         this.reports = []
       }
@@ -2278,7 +2281,7 @@ export default {
           createdAt: new Date('2024-11-07 10:00:00')
         }
       ]
-      console.log('載入範例報告資料，報告數量:', this.reports.length)
+      log.debug('載入範例報告資料，報告數量:', this.reports.length)
     },
     
     // 獲取專案圖標文字
@@ -2364,7 +2367,7 @@ export default {
       const projectId = urlParams.get('project')
       
       if (projectId) {
-        console.log('URL 中發現專案 ID:', projectId)
+        log.debug('URL 中發現專案 ID:', projectId)
         // 立即標記為 URL 載入中，避免顯示閃爍的空白頁面
         this.isLoadingFromUrl = true
         // 載入專案數據並顯示地圖
@@ -2375,22 +2378,22 @@ export default {
     // 從 URL 載入專案
     async loadProjectFromUrl(projectId) {
       try {
-        console.log('=== loadProjectFromUrl 開始 ===')
-        console.log('要載入的專案 ID:', projectId)
+        log.debug('=== loadProjectFromUrl 開始 ===')
+        log.debug('要載入的專案 ID:', projectId)
         
         // 先載入專案列表
         await this.loadProjects()
         
-        console.log('loadProjects 完成，projects 數組長度:', this.projects.length)
-        console.log('projects 中所有專案 ID:', this.projects.map(p => p.projectId))
+        log.debug('loadProjects 完成，projects 數組長度:', this.projects.length)
+        log.debug('projects 中所有專案 ID:', this.projects.map(p => p.projectId))
         
         // 找到對應的專案
         let project = this.projects.find(p => p.projectId === projectId)
         
-        console.log('查找結果:', project ? '找到' : '未找到')
+        log.debug('查找結果:', project ? '找到' : '未找到')
         
         if (project) {
-          console.log('從專案列表中找到專案，原始信息:', {
+          log.debug('從專案列表中找到專案，原始信息:', {
             projectId: project.projectId,
             name: project.name,
             is_parent: project.is_parent,
@@ -2400,23 +2403,23 @@ export default {
           // 如果專案有 parent_project_id，明確標記為子專案
           if (project.parent_project_id) {
             project.is_parent = false
-            console.log('專案有 parent_project_id，設置為子專案')
+            log.debug('專案有 parent_project_id，設置為子專案')
           } 
           // 如果專案明確標記為 is_parent = true，是母專案
           else if (project.is_parent === true) {
             project.parent_project_id = null
-            console.log('專案明確標記為母專案')
+            log.debug('專案明確標記為母專案')
           }
           // 如果專案類型信息不明確（例如從舊數據載入），從 API 載入完整信息
           else if (project.is_parent === undefined) {
-            console.log('專案類型信息不明確，從 API 載入完整信息:', projectId)
+            log.debug('專案類型信息不明確，從 API 載入完整信息:', projectId)
             project = null // 標記為未找到，以便從 API 載入
           }
         }
         
         // 如果找不到，嘗試從 API 直接載入完整專案信息
         if (!project) {
-          console.log('在專案列表中找不到，嘗試從 API 載入:', projectId)
+          log.debug('在專案列表中找不到，嘗試從 API 載入:', projectId)
           try {
             // 先嘗試載入子專案
             const childResponse = await this.$api.get(`/child-projects/${projectId}`)
@@ -2433,14 +2436,14 @@ export default {
                 project.parent_project_id = childResponse.data.parent_project_id
               } else if (!project.parent_project_id) {
                 // 如果 API 沒有返回 parent_project_id，嘗試從專案列表中找到對應的母專案
-                console.warn('子專案 API 沒有返回 parent_project_id，嘗試從專案列表查找')
+                log.warn('子專案 API 沒有返回 parent_project_id，嘗試從專案列表查找')
                 const parentProject = this.parentProjects.find(p => {
                   const children = this.getChildProjects(p.project_id) || []
                   return children.some(c => (c.project_id || c.projectId) === projectId)
                 })
                 if (parentProject) {
                   project.parent_project_id = parentProject.project_id
-                  console.log('從專案列表中找到母專案，設置 parent_project_id:', parentProject.project_id)
+                  log.debug('從專案列表中找到母專案，設置 parent_project_id:', parentProject.project_id)
                 }
               }
               
@@ -2452,7 +2455,7 @@ export default {
                 }
               }
               
-              console.log('從子專案 API 載入成功:', {
+              log.debug('從子專案 API 載入成功:', {
                 projectId: project.projectId,
                 is_parent: project.is_parent,
                 parent_project_id: project.parent_project_id,
@@ -2460,7 +2463,7 @@ export default {
               })
             }
           } catch (childError) {
-            console.log('子專案 API 失敗，嘗試母專案 API:', childError.message)
+            log.debug('子專案 API 失敗，嘗試母專案 API:', childError.message)
             // 嘗試載入母專案
             try {
               const parentResponse = await this.$api.get(`/parent-projects/${projectId}`)
@@ -2471,17 +2474,17 @@ export default {
                 if (!project.projectId && project.project_id) {
                   project.projectId = project.project_id
                 }
-                console.log('從母專案 API 載入成功:', project)
+                log.debug('從母專案 API 載入成功:', project)
               }
             } catch (parentError) {
-              console.error('無法從 API 載入專案:', parentError)
+              log.error('無法從 API 載入專案:', parentError)
             }
           }
         }
         
         if (project) {
-          console.log('找到專案，準備打開地圖')
-          console.log('最終專案信息:', {
+          log.debug('找到專案，準備打開地圖')
+          log.debug('最終專案信息:', {
             projectId: project.projectId,
             name: project.name,
             is_parent: project.is_parent,
@@ -2490,12 +2493,12 @@ export default {
           })
           this.openProjectDetailMap(project)
         } else {
-          console.log('找不到專案 ID:', projectId)
+          log.debug('找不到專案 ID:', projectId)
           // 清除無效的 URL 參數
           this.clearProjectUrl()
         }
       } catch (error) {
-        console.error('載入專案失敗:', error)
+        log.error('載入專案失敗:', error)
         this.clearProjectUrl()
       } finally {
         this.isLoadingFromUrl = false
@@ -2522,7 +2525,7 @@ export default {
 
     // 打開專案詳情地圖
     openProjectDetailMap(project) {
-      console.log('打開專案詳情地圖，原始專案對象:', JSON.parse(JSON.stringify(project)))
+      log.debug('打開專案詳情地圖，原始專案對象:', JSON.parse(JSON.stringify(project)))
       
       // 確保專案對象結構正確
       if (!project.projectId && project.project_id) {
@@ -2533,12 +2536,12 @@ export default {
       // 如果有 parent_project_id，一定是子專案
       if (project.parent_project_id) {
         project.is_parent = false
-        console.log('檢測到 parent_project_id，設置為子專案')
+        log.debug('檢測到 parent_project_id，設置為子專案')
       } else if (project.is_parent === true) {
         // 如果明確標記為 true，是母專案
         project.is_parent = true
         project.parent_project_id = null
-        console.log('專案明確標記為母專案')
+        log.debug('專案明確標記為母專案')
       }
       
       // 創建新的專案對象，確保響應式更新
@@ -2549,7 +2552,7 @@ export default {
         parent_project_id: project.parent_project_id || null
       }
       
-      console.log('打開專案詳情地圖，處理後的專案對象:', {
+      log.debug('打開專案詳情地圖，處理後的專案對象:', {
         projectId: newProject.projectId,
         is_parent: newProject.is_parent,
         parent_project_id: newProject.parent_project_id,
@@ -2558,8 +2561,8 @@ export default {
       
       this.detailProject = newProject
       this.showProjectDetailMap = true
-      console.log('showProjectDetailMap 設為:', this.showProjectDetailMap)
-      console.log('detailProject 設為:', JSON.parse(JSON.stringify(this.detailProject)))
+      log.debug('showProjectDetailMap 設為:', this.showProjectDetailMap)
+      log.debug('detailProject 設為:', JSON.parse(JSON.stringify(this.detailProject)))
       
       // 更新 URL 參數
       this.updateProjectUrl(newProject.projectId)
@@ -2572,8 +2575,8 @@ export default {
     
     // 處理切換專案（從 ProjectDetail 組件觸發）
     async handleSwitchProject(project) {
-      console.log('=== 開始切換專案 ===')
-      console.log('接收到的專案對象（原始）:', JSON.parse(JSON.stringify(project)))
+      log.debug('=== 開始切換專案 ===')
+      log.debug('接收到的專案對象（原始）:', JSON.parse(JSON.stringify(project)))
       
       // 確保專案對象結構正確
       if (!project.projectId && project.project_id) {
@@ -2581,7 +2584,7 @@ export default {
       }
       
       // 檢查並記錄專案類型屬性
-      console.log('專案類型屬性檢查:', {
+      log.debug('專案類型屬性檢查:', {
         is_parent: project.is_parent,
         parent_project_id: project.parent_project_id,
         'has parent_project_id': !!project.parent_project_id,
@@ -2597,25 +2600,25 @@ export default {
       if (project.parent_project_id) {
         finalIsParent = false
         finalParentProjectId = project.parent_project_id
-        console.log('檢測到 parent_project_id，設置為子專案')
+        log.debug('檢測到 parent_project_id，設置為子專案')
       } 
       // 如果明確標記為 false，也是子專案
       else if (project.is_parent === false) {
         finalIsParent = false
         finalParentProjectId = null
-        console.log('專案明確標記為子專案（但沒有 parent_project_id）')
+        log.debug('專案明確標記為子專案（但沒有 parent_project_id）')
       } 
       // 如果明確標記為 true，是母專案
       else if (project.is_parent === true) {
         finalIsParent = true
         finalParentProjectId = null
-        console.log('專案明確標記為母專案')
+        log.debug('專案明確標記為母專案')
       } 
       // 否則保持原值
       else {
         finalIsParent = project.is_parent
         finalParentProjectId = project.parent_project_id || null
-        console.log('專案類型未明確，保持原值')
+        log.debug('專案類型未明確，保持原值')
       }
       
       // 創建新的專案對象，確保響應式更新
@@ -2626,7 +2629,7 @@ export default {
         parent_project_id: finalParentProjectId
       }
       
-      console.log('切換專案，新專案信息:', {
+      log.debug('切換專案，新專案信息:', {
         projectId: newProject.projectId,
         is_parent: newProject.is_parent,
         parent_project_id: newProject.parent_project_id,
@@ -2642,8 +2645,8 @@ export default {
       
       // 強制更新視圖
       await this.$nextTick()
-      console.log('專案已切換，當前專案:', JSON.parse(JSON.stringify(this.detailProject)))
-      console.log('=== 切換專案完成 ===')
+      log.debug('專案已切換，當前專案:', JSON.parse(JSON.stringify(this.detailProject)))
+      log.debug('=== 切換專案完成 ===')
     },
     
     // 關閉專案詳情地圖
@@ -2657,7 +2660,7 @@ export default {
     
     // 編輯專案資訊
     editProject(project) {
-      console.log('編輯專案:', project)
+      log.debug('編輯專案:', project)
       // 這裡可以打開專案編輯模態框或跳轉到編輯頁面
       // 目前先顯示提示訊息
       this.showAlert({
@@ -2682,9 +2685,9 @@ export default {
       }
       
       this.projectLayerVisibility[projectId][fileId] = visible
-      console.log('更新專案圖層可見性:', projectId, fileId, visible)
-      console.log('當前專案圖層可見性狀態:', this.projectLayerVisibility[projectId])
-      console.log('完整的 projectLayerVisibility:', this.projectLayerVisibility)
+      log.debug('更新專案圖層可見性:', projectId, fileId, visible)
+      log.debug('當前專案圖層可見性狀態:', this.projectLayerVisibility[projectId])
+      log.debug('完整的 projectLayerVisibility:', this.projectLayerVisibility)
     },
     
     // 清除所有篩選條件
@@ -2711,7 +2714,7 @@ export default {
     applyFilters() {
       // 篩選邏輯已經在computed屬性filteredProjects中處理
       // 這裡可以添加額外的邏輯，比如保存篩選狀態到localStorage
-      console.log('應用篩選條件:', {
+      log.debug('應用篩選條件:', {
         filterRoadType: this.filterRoadType,
         filterHighway: this.filterHighway,
         filterStartDate: this.filterStartDate,
@@ -2722,7 +2725,7 @@ export default {
     // 應用搜尋條件
     applySearch() {
       // 搜尋邏輯已經在computed屬性filteredProjects中處理
-      console.log('應用搜尋條件:', {
+      log.debug('應用搜尋條件:', {
         searchQuery: this.searchQuery
       })
     },
@@ -2769,7 +2772,7 @@ export default {
           await alert(response.message || '創建專案失敗', '錯誤', this.isDarkMode)
         }
       } catch (error) {
-        console.error('創建專案錯誤:', error)
+        log.error('創建專案錯誤:', error)
         await alert('創建專案時發生錯誤，請稍後再試', '錯誤', this.isDarkMode)
       }
     },
@@ -2792,7 +2795,7 @@ export default {
     selectProject(project) {
       this.selectedProject = project
       // 這裡可以添加點擊專案後的邏輯，比如跳轉到專案詳情頁面
-      console.log('選中專案:', project)
+      log.debug('選中專案:', project)
     },
     
     // 標記/取消標記專案
@@ -2812,7 +2815,7 @@ export default {
           await alert(response.message || '標記操作失敗', '錯誤', this.isDarkMode)
         }
       } catch (error) {
-        console.error('標記專案錯誤:', error)
+        log.error('標記專案錯誤:', error)
         // 如果 API 失敗，恢復原狀態
         project.isBookmarked = !project.isBookmarked
         await alert('標記專案時發生錯誤，請稍後再試', '錯誤', this.isDarkMode)
@@ -2917,7 +2920,7 @@ export default {
           await alert(response.message || '更新專案失敗', '錯誤', this.isDarkMode)
         }
       } catch (error) {
-        console.error('更新專案錯誤:', error)
+        log.error('更新專案錯誤:', error)
         await alert('更新專案時發生錯誤，請稍後再試', '錯誤', this.isDarkMode)
       }
     },
@@ -2941,7 +2944,7 @@ export default {
             await alert(response.message || '刪除專案失敗', '錯誤', this.isDarkMode)
           }
         } catch (error) {
-          console.error('刪除專案錯誤:', error)
+          log.error('刪除專案錯誤:', error)
           await alert('刪除專案時發生錯誤，請稍後再試', '錯誤', this.isDarkMode)
         }
       }
@@ -2973,7 +2976,7 @@ export default {
             await alert(response.message || '還原專案失敗', '錯誤', this.isDarkMode)
           }
         } catch (error) {
-          console.error('還原專案錯誤:', error)
+          log.error('還原專案錯誤:', error)
           await alert('還原專案時發生錯誤，請稍後再試', '錯誤', this.isDarkMode)
         }
       }
@@ -2997,7 +3000,7 @@ export default {
             await alert(response.message || '永久刪除專案失敗', '錯誤', this.isDarkMode)
           }
         } catch (error) {
-          console.error('永久刪除專案錯誤:', error)
+          log.error('永久刪除專案錯誤:', error)
           await alert('永久刪除專案時發生錯誤，請稍後再試', '錯誤', this.isDarkMode)
         }
       }
@@ -3006,14 +3009,14 @@ export default {
     // 下載報告
     downloadReport(report) {
       // 模擬下載功能
-      console.log('下載報告:', report.title)
+      log.debug('下載報告:', report.title)
       // 這裡可以實現實際的下載邏輯
     },
     
     // 上傳報告
     uploadReport() {
       // 模擬上傳功能
-      console.log('上傳報告')
+      log.debug('上傳報告')
       // 這裡可以實現實際的上傳邏輯
     },
     
@@ -3023,14 +3026,14 @@ export default {
     
     async loadProjects() {
       try {
-        console.log('開始載入母專案列表...')
+        log.debug('開始載入母專案列表...')
         const response = await this.$api.get('/parent-projects')
-        console.log('API 響應:', response)
+        log.debug('API 響應:', response)
         
         if (response && response.success) {
           // 載入母專案列表
           this.parentProjects = response.data || []
-          console.log('成功載入母專案列表，專案數量:', this.parentProjects.length)
+          log.debug('成功載入母專案列表，專案數量:', this.parentProjects.length)
           
           // 載入每個母專案的子專案
           for (const parent of this.parentProjects) {
@@ -3058,11 +3061,11 @@ export default {
           }))
           
           // 再加入所有子專案
-          console.log('開始加入子專案到 projects 數組')
-          console.log('childProjectsMap:', this.childProjectsMap)
+          log.debug('開始加入子專案到 projects 數組')
+          log.debug('childProjectsMap:', this.childProjectsMap)
           this.parentProjects.forEach(parent => {
             const children = this.getChildProjects(parent.project_id) || []
-            console.log(`母專案 ${parent.project_id} (${parent.name}) 的子專案數量:`, children.length)
+            log.debug(`母專案 ${parent.project_id} (${parent.name}) 的子專案數量:`, children.length)
             children.forEach(child => {
               const childProject = {
                 projectId: child.project_id,
@@ -3081,7 +3084,7 @@ export default {
                 is_parent: false,
                 parent_project_id: parent.project_id
               }
-              console.log('加入子專案:', {
+              log.debug('加入子專案:', {
                 projectId: childProject.projectId,
                 name: childProject.name,
                 is_parent: childProject.is_parent,
@@ -3091,19 +3094,19 @@ export default {
             })
           })
           
-          console.log('專案列表載入完成，總數:', this.projects.length, '（母專案:', this.parentProjects.length, '子專案:', this.projects.length - this.parentProjects.length, '）')
-          console.log('完整的 projects 列表:', this.projects.map(p => ({
+          log.debug('專案列表載入完成，總數:', this.projects.length, '（母專案:', this.parentProjects.length, '子專案:', this.projects.length - this.parentProjects.length, '）')
+          log.debug('完整的 projects 列表:', this.projects.map(p => ({
             id: p.projectId,
             name: p.name,
             is_parent: p.is_parent,
             parent_project_id: p.parent_project_id
           })))
         } else {
-          console.error('載入母專案列表失敗:', response?.message || '未知錯誤')
+          log.error('載入母專案列表失敗:', response?.message || '未知錯誤')
           this.parentProjects = []
         }
       } catch (error) {
-        console.error('載入母專案列表錯誤:', error)
+        log.error('載入母專案列表錯誤:', error)
         this.loadSampleData()
       }
     },
@@ -3117,10 +3120,10 @@ export default {
             ...this.childProjectsMap,
             [parentId]: response.data.children || []
           }
-          console.log(`母專案 ${parentId} 的子專案:`, response.data.children.length, '個')
+          log.debug(`母專案 ${parentId} 的子專案:`, response.data.children.length, '個')
         }
       } catch (error) {
-        console.error(`載入母專案 ${parentId} 的子專案失敗:`, error)
+        log.error(`載入母專案 ${parentId} 的子專案失敗:`, error)
         this.childProjectsMap = {
           ...this.childProjectsMap,
           [parentId]: []
@@ -3196,7 +3199,7 @@ export default {
     
     // 處理母專案創建成功
     async handleParentCreated(parentProject) {
-      console.log('母專案創建成功:', parentProject)
+      log.debug('母專案創建成功:', parentProject)
       await this.loadProjects()
     },
     
@@ -3208,14 +3211,14 @@ export default {
     
     // 處理子專案創建成功
     async handleChildCreated(childProject) {
-      console.log('子專案創建成功:', childProject)
+      log.debug('子專案創建成功:', childProject)
       // 重新載入該母專案的子專案列表
       await this.loadChildProjects(childProject.parent_project_id)
     },
     
     // 處理定位母專案
     handleOpenParentProject(parentProject) {
-      console.log('打開母專案:', parentProject)
+      log.debug('打開母專案:', parentProject)
       
       // 構建專案對象，確保包含所有必要屬性
       const project = {
@@ -3264,14 +3267,14 @@ export default {
     
     // 處理編輯母專案
     handleEditParent(parentProject) {
-      console.log('編輯母專案:', parentProject)
+      log.debug('編輯母專案:', parentProject)
       this.selectedParentForEdit = parentProject
       this.showEditParentModal = true
     },
     
     // 處理母專案更新成功
     async handleParentUpdated(updatedParent) {
-      console.log('母專案更新成功:', updatedParent)
+      log.debug('母專案更新成功:', updatedParent)
       // 重新載入母專案列表
       await this.loadParentProjects()
       // 關閉模態框
@@ -3281,12 +3284,12 @@ export default {
     
     // 地圖準備完成事件處理（自動加載里程點，類似預警模組）
     onMapReady(map) {
-      console.log('[DisasterCollection] 🗺️ 地圖準備完成，自動加載里程點...')
+      log.debug('[DisasterCollection] 🗺️ 地圖準備完成，自動加載里程點...')
       
       // 監聽地圖縮放事件（用於控制數字標籤顯示）
       map.on('zoomend', () => {
         const currentZoom = map.getZoom()
-        console.log('[DisasterCollection] 地圖縮放變化:', currentZoom)
+        log.debug('[DisasterCollection] 地圖縮放變化:', currentZoom)
         // 當縮放級別在 16-20 之間且開啟了標籤顯示時，更新 tooltip
         if (this.mileageLabelVisible) {
           this.toggleMileageLabel() // 重新應用 tooltip 狀態
@@ -3303,11 +3306,11 @@ export default {
     // 切換省道里程樁號顯示（保留作為備用，但主要是自動顯示）
     async toggleHighwayMileage() {
       this.highwayMileageVisible = !this.highwayMileageVisible
-      console.log('[DisasterCollection] 🔄 切換省道里程樁號顯示:', this.highwayMileageVisible)
+      log.debug('[DisasterCollection] 🔄 切換省道里程樁號顯示:', this.highwayMileageVisible)
       
       const map = this.$refs.projectMapRef?.map
       if (!map) {
-        console.warn('[DisasterCollection] ❌ 地圖未初始化')
+        log.warn('[DisasterCollection] ❌ 地圖未初始化')
         return
       }
       
@@ -3315,56 +3318,56 @@ export default {
         // 顯示桩號
         if (this.mileagePointsLayer && !map.hasLayer(this.mileagePointsLayer)) {
           this.mileagePointsLayer.addTo(map)
-          console.log('[DisasterCollection] ✅ 顯示桩號圖層')
+          log.debug('[DisasterCollection] ✅ 顯示桩號圖層')
         }
       } else {
         // 隱藏桩號
         if (this.mileagePointsLayer && map.hasLayer(this.mileagePointsLayer)) {
           map.removeLayer(this.mileagePointsLayer)
-          console.log('[DisasterCollection] ✅ 隱藏桩號圖層')
+          log.debug('[DisasterCollection] ✅ 隱藏桩號圖層')
         }
       }
     },
     
     // 載入桩號點位數據（類似預警模組）
     async loadMileagePoints() {
-      console.log('='.repeat(80))
-      console.log('[DisasterCollection] 🚀 開始載入桩號數據...')
-      console.log('[DisasterCollection] 調用堆棧:', new Error().stack)
+      log.debug('='.repeat(80))
+      log.debug('[DisasterCollection] 🚀 開始載入桩號數據...')
+      log.debug('[DisasterCollection] 調用堆棧:', new Error().stack)
       
       try {
         // 確保地圖已初始化
-        console.log('[DisasterCollection] 檢查 $refs.projectMapRef:', !!this.$refs.projectMapRef)
-        console.log('[DisasterCollection] 檢查 $refs.projectMapRef.map:', !!this.$refs.projectMapRef?.map)
+        log.debug('[DisasterCollection] 檢查 $refs.projectMapRef:', !!this.$refs.projectMapRef)
+        log.debug('[DisasterCollection] 檢查 $refs.projectMapRef.map:', !!this.$refs.projectMapRef?.map)
         
         if (!this.$refs.projectMapRef || !this.$refs.projectMapRef.map) {
-          console.warn('[DisasterCollection] ❌ 地圖未初始化，無法載入桩號')
+          log.warn('[DisasterCollection] ❌ 地圖未初始化，無法載入桩號')
           return
         }
         
         const map = this.$refs.projectMapRef.map
-        console.log('[DisasterCollection] ✅ 地圖實例獲取成功, map:', map)
-        console.log('[DisasterCollection] 地圖中心:', map.getCenter())
-        console.log('[DisasterCollection] 地圖縮放:', map.getZoom())
+        log.debug('[DisasterCollection] ✅ 地圖實例獲取成功, map:', map)
+        log.debug('[DisasterCollection] 地圖中心:', map.getCenter())
+        log.debug('[DisasterCollection] 地圖縮放:', map.getZoom())
         
         // 載入 GeoJSON 文件
         const response = await fetch('/uploads/monitoring/taiwan7/alertRoad.geojson')
-        console.log('[DisasterCollection] 📥 Fetch 完成 - ok:', response.ok, 'status:', response.status)
+        log.debug('[DisasterCollection] 📥 Fetch 完成 - ok:', response.ok, 'status:', response.status)
         
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`)
         }
         
-        console.log('[DisasterCollection] 🔄 開始解析 JSON...')
+        log.debug('[DisasterCollection] 🔄 開始解析 JSON...')
         const geojsonData = await response.json()
-        console.log('[DisasterCollection] ✅ JSON 解析成功')
-        console.log('[DisasterCollection] 數據類型:', geojsonData.type)
-        console.log('[DisasterCollection] Features 數量:', geojsonData.features?.length)
-        console.log('[DisasterCollection] 第一個 feature:', geojsonData.features?.[0])
+        log.debug('[DisasterCollection] ✅ JSON 解析成功')
+        log.debug('[DisasterCollection] 數據類型:', geojsonData.type)
+        log.debug('[DisasterCollection] Features 數量:', geojsonData.features?.length)
+        log.debug('[DisasterCollection] 第一個 feature:', geojsonData.features?.[0])
         
         // 移除舊圖層
         if (this.mileagePointsLayer) {
-          console.log('[DisasterCollection] 🗑️ 移除舊圖層')
+          log.debug('[DisasterCollection] 🗑️ 移除舊圖層')
           if (map.hasLayer(this.mileagePointsLayer)) {
             map.removeLayer(this.mileagePointsLayer)
           }
@@ -3372,10 +3375,10 @@ export default {
         }
         
         // 創建新的 GeoJSON 圖層
-        console.log('[DisasterCollection] 🎨 開始創建 GeoJSON 圖層...')
+        log.debug('[DisasterCollection] 🎨 開始創建 GeoJSON 圖層...')
         this.mileagePointsLayer = L.geoJSON(geojsonData, {
           pointToLayer: (feature, latlng) => {
-            console.log('[DisasterCollection] 創建點位:', latlng, feature.properties?.里程數)
+            log.debug('[DisasterCollection] 創建點位:', latlng, feature.properties?.里程數)
             return L.circleMarker(latlng, {
               radius: 4,
               fillColor: '#ef4444', // 紅色
@@ -3404,34 +3407,34 @@ export default {
           }
         })
         
-        console.log('[DisasterCollection] ✅ GeoJSON 圖層創建完成:', this.mileagePointsLayer)
-        console.log('[DisasterCollection] 圖層中的 layers 數量:', this.mileagePointsLayer.getLayers().length)
+        log.debug('[DisasterCollection] ✅ GeoJSON 圖層創建完成:', this.mileagePointsLayer)
+        log.debug('[DisasterCollection] 圖層中的 layers 數量:', this.mileagePointsLayer.getLayers().length)
         
         // 添加到地圖
-        console.log('[DisasterCollection] 📌 開始將圖層添加到地圖...')
+        log.debug('[DisasterCollection] 📌 開始將圖層添加到地圖...')
         this.mileagePointsLayer.addTo(map)
-        console.log('[DisasterCollection] ✅ 圖層已添加到地圖')
-        console.log('[DisasterCollection] 地圖中是否包含該圖層:', map.hasLayer(this.mileagePointsLayer))
+        log.debug('[DisasterCollection] ✅ 圖層已添加到地圖')
+        log.debug('[DisasterCollection] 地圖中是否包含該圖層:', map.hasLayer(this.mileagePointsLayer))
         
         // 驗證圖層是否真的在地圖上
         const allLayers = []
         map.eachLayer((layer) => {
           allLayers.push(layer.constructor.name)
         })
-        console.log('[DisasterCollection] 地圖上所有圖層:', allLayers)
+        log.debug('[DisasterCollection] 地圖上所有圖層:', allLayers)
         
       } catch (error) {
-        console.error('[DisasterCollection] ❌ 載入桩號數據失敗:', error)
-        console.error('[DisasterCollection] 錯誤堆棧:', error.stack)
+        log.error('[DisasterCollection] ❌ 載入桩號數據失敗:', error)
+        log.error('[DisasterCollection] 錯誤堆棧:', error.stack)
       }
       
-      console.log('='.repeat(80))
+      log.debug('='.repeat(80))
     },
     
     // 切換里程數字標籤顯示（類似預警模組）
     toggleMileageLabel() {
       this.mileageLabelVisible = !this.mileageLabelVisible
-      console.log('[DisasterCollection] 切換里程數字標籤顯示:', this.mileageLabelVisible)
+      log.debug('[DisasterCollection] 切換里程數字標籤顯示:', this.mileageLabelVisible)
       
       // 更新里程點圖層的 tooltip 顯示狀態
       if (this.mileagePointsLayer) {
@@ -3467,7 +3470,7 @@ export default {
           }
         })
         
-        console.log('[DisasterCollection] 里程數字標籤更新完成，狀態:', shouldShow)
+        log.debug('[DisasterCollection] 里程數字標籤更新完成，狀態:', shouldShow)
       }
     },
     
@@ -3480,14 +3483,14 @@ export default {
       try {
         const response = await this.$api.delete(`/parent-projects/${parentProject.project_id}`)
         if (response && response.success) {
-          console.log('母專案刪除成功')
+          log.debug('母專案刪除成功')
           await this.loadProjects()
           await success('地點專案已刪除', '刪除成功', this.isDarkMode)
         } else {
           await alert(response?.message || '刪除失敗', '錯誤', this.isDarkMode)
         }
       } catch (error) {
-        console.error('刪除母專案失敗:', error)
+        log.error('刪除母專案失敗:', error)
         // 顯示後端返回的具體錯誤訊息
         const errorMessage = error.response?.data?.message || error.message || '刪除地點專案時發生錯誤，請稍後再試'
         await alert(errorMessage, '錯誤', this.isDarkMode)
@@ -3510,7 +3513,7 @@ export default {
           })
         )
       } catch (error) {
-        console.error('批次載入報告連結失敗:', error)
+        log.error('批次載入報告連結失敗:', error)
       }
     },
 
@@ -3542,7 +3545,7 @@ export default {
           this.syncReportLinksToParent(this.reportLinkTargetProject.project_id, response.data)
         }
       } catch (error) {
-        console.error('取得報告連結失敗:', error)
+        log.error('取得報告連結失敗:', error)
       }
     },
 
@@ -3576,7 +3579,7 @@ export default {
           await alert(response?.message || '新增失敗', '錯誤', this.isDarkMode)
         }
       } catch (error) {
-        console.error('新增報告連結失敗:', error)
+        log.error('新增報告連結失敗:', error)
         await alert('新增報告連結失敗，請稍後再試', '錯誤', this.isDarkMode)
       } finally {
         this.isSavingReportLink = false
@@ -3615,7 +3618,7 @@ export default {
           await alert(response?.message || '更新失敗', '錯誤', this.isDarkMode)
         }
       } catch (error) {
-        console.error('更新報告連結失敗:', error)
+        log.error('更新報告連結失敗:', error)
         await alert('更新報告連結失敗，請稍後再試', '錯誤', this.isDarkMode)
       } finally {
         this.isSavingEditLink = false
@@ -3634,7 +3637,7 @@ export default {
           await alert(response?.message || '刪除失敗', '錯誤', this.isDarkMode)
         }
       } catch (error) {
-        console.error('刪除報告連結失敗:', error)
+        log.error('刪除報告連結失敗:', error)
         await alert('刪除報告連結失敗，請稍後再試', '錯誤', this.isDarkMode)
       }
     },
@@ -3642,7 +3645,7 @@ export default {
 
     // 處理開啟子專案
     async handleOpenChild(childProject) {
-      console.log('開啟子專案:', childProject)
+      log.debug('開啟子專案:', childProject)
       
       // 提取座標（從母專案資訊或子專案本身）
       let lat = null
@@ -3688,7 +3691,7 @@ export default {
           lng: parseFloat(lng)
         }
       } else {
-        console.warn('子專案沒有有效的座標資訊:', childProject)
+        log.warn('子專案沒有有效的座標資訊:', childProject)
         await alert('此時期專案沒有有效的座標資訊，無法顯示地圖', '提示', this.isDarkMode)
         return
       }
@@ -3698,14 +3701,14 @@ export default {
     
     // 處理編輯子專案
     handleEditChild(childProject) {
-      console.log('編輯子專案:', childProject)
+      log.debug('編輯子專案:', childProject)
       this.selectedChildProject = childProject
       this.showEditChildModal = true
     },
     
     // 處理子專案更新完成
     async handleChildUpdated(updatedChildProject) {
-      console.log('子專案更新完成:', updatedChildProject)
+      log.debug('子專案更新完成:', updatedChildProject)
       // 重新載入該母專案的子專案列表
       if (updatedChildProject.parent_project_id) {
         await this.loadChildProjects(updatedChildProject.parent_project_id)
@@ -3717,16 +3720,16 @@ export default {
     
     // 處理刪除子專案
     async handleDeleteChild(childProject) {
-      console.log('DisasterCollection: handleDeleteChild 被調用', childProject)
+      log.debug('DisasterCollection: handleDeleteChild 被調用', childProject)
       // 注意：確認對話框已在 ChildProjectTimeline 組件中處理
       // 這裡直接執行刪除操作
       try {
-        console.log('開始刪除子專案:', childProject.project_id)
+        log.debug('開始刪除子專案:', childProject.project_id)
         const response = await this.$api.delete(`/child-projects/${childProject.project_id}`)
-        console.log('刪除API響應:', response)
+        log.debug('刪除API響應:', response)
         
         if (response && response.success) {
-          console.log('子專案刪除成功')
+          log.debug('子專案刪除成功')
           // 重新載入該母專案的子專案列表
           if (childProject.parent_project_id) {
             await this.loadChildProjects(childProject.parent_project_id)
@@ -3735,12 +3738,12 @@ export default {
           await this.loadProjects()
           await success('時期專案已刪除', '刪除成功', this.isDarkMode)
         } else {
-          console.error('刪除失敗，響應:', response)
+          log.error('刪除失敗，響應:', response)
           await alert(response?.message || '刪除失敗', '錯誤', this.isDarkMode)
         }
       } catch (error) {
-        console.error('刪除子專案失敗:', error)
-        console.error('錯誤詳情:', {
+        log.error('刪除子專案失敗:', error)
+        log.error('錯誤詳情:', {
           message: error.message,
           response: error.response,
           data: error.response?.data
@@ -3775,7 +3778,7 @@ export default {
           isBookmarked: false
         }
       ]
-      console.log('載入範例資料，專案數量:', this.projects.length)
+      log.debug('載入範例資料，專案數量:', this.projects.length)
     },
     
     // 獲取資料圖標樣式
@@ -3845,7 +3848,7 @@ export default {
             await alert(response?.message || '還原資料失敗', '錯誤', this.isDarkMode)
           }
         } catch (error) {
-          console.error('還原資料錯誤:', error)
+          log.error('還原資料錯誤:', error)
           await alert('還原資料時發生錯誤，請稍後再試', '錯誤', this.isDarkMode)
         }
       }
@@ -3868,7 +3871,7 @@ export default {
             await alert(response?.message || '永久刪除資料失敗', '錯誤', this.isDarkMode)
           }
         } catch (error) {
-          console.error('永久刪除資料錯誤:', error)
+          log.error('永久刪除資料錯誤:', error)
           await alert('永久刪除資料時發生錯誤，請稍後再試', '錯誤', this.isDarkMode)
         }
       }
@@ -3891,7 +3894,7 @@ export default {
           await alert(response.message || '標記操作失敗', '錯誤', this.isDarkMode)
         }
       } catch (error) {
-        console.error('標記報告錯誤:', error)
+        log.error('標記報告錯誤:', error)
         // 如果 API 失敗，恢復原狀態
         report.isBookmarked = !report.isBookmarked
         await alert('標記報告時發生錯誤，請稍後再試', '錯誤', this.isDarkMode)
@@ -3929,7 +3932,7 @@ export default {
             await alert(response.message || '刪除報告失敗', '錯誤', this.isDarkMode)
           }
         } catch (error) {
-          console.error('刪除報告錯誤:', error)
+          log.error('刪除報告錯誤:', error)
           await alert('刪除報告時發生錯誤，請稍後再試', '錯誤', this.isDarkMode)
         }
       }
@@ -3952,7 +3955,7 @@ export default {
       if (file) {
         this.newReport.fileName = file.name
         this.newReport.filePath = file.name // 暫時使用檔案名稱，實際應該上傳到服務器
-        console.log('選擇的檔案:', file.name)
+        log.debug('選擇的檔案:', file.name)
       }
     },
     
@@ -3989,7 +3992,7 @@ export default {
           fileName: this.newReport.fileName || ''
         }
         
-        console.log('創建報告數據:', reportData)
+        log.debug('創建報告數據:', reportData)
         
         // 調用後端 API 創建報告
         const response = await this.$api.reportAPI.create(reportData)
@@ -4007,7 +4010,7 @@ export default {
           await alert(response?.message || '創建報告失敗', '錯誤', this.isDarkMode)
         }
       } catch (error) {
-        console.error('創建報告錯誤:', error)
+        log.error('創建報告錯誤:', error)
         await alert('創建報告時發生錯誤，請稍後再試', '錯誤', this.isDarkMode)
       }
     }
@@ -4016,13 +4019,51 @@ export default {
 </script> 
 
 <style scoped>
+.dc-root.dc-light {
+  background:
+    linear-gradient(180deg, rgba(30, 92, 138, 0.07), transparent 260px),
+    #f3f7fa;
+}
+
+.dc-root.dc-dark {
+  background:
+    linear-gradient(180deg, rgba(51, 120, 181, 0.12), transparent 260px),
+    #0f172a;
+}
+
+.dc-topbar,
+.dc-toolbar,
+.dc-sidebar {
+  backdrop-filter: blur(10px);
+}
+
+.dc-sidebar {
+  box-shadow: 10px 0 28px rgba(15, 45, 71, 0.04);
+}
+
+.dc-light .dc-workspace {
+  background:
+    radial-gradient(circle at top right, rgba(30, 92, 138, 0.08), transparent 320px),
+    transparent;
+}
+
+.dc-dark .dc-workspace {
+  background:
+    radial-gradient(circle at top right, rgba(51, 120, 181, 0.12), transparent 320px),
+    transparent;
+}
+
+.dc-list {
+  width: 100%;
+}
+
 /* ── 左側導航項目 ─────────────────────── */
 .dc-nav-item {
   display: flex;
   align-items: center;
-  padding: 0.375rem 0.5rem;
+  padding: 0.5rem 0.625rem;
   font-size: 0.8125rem;
-  border-radius: 0;
+  border-radius: 8px;
   border-left: 2px solid transparent;
   transition: background-color 0.15s, color 0.15s, border-color 0.15s;
 }
@@ -4045,10 +4086,12 @@ export default {
   border-left-color: #1e5c8a;
   color: #111827;
   font-weight: 500;
+  background: rgba(30, 92, 138, 0.08);
 }
 .dc-nav-dark.dc-nav-active {
   border-left-color: #3378b5;
   color: #f1f5f9;
+  background: rgba(51, 120, 181, 0.16);
 }
 
 /* ── 工具欄按鈕 ───────────────────────── */
@@ -4058,7 +4101,7 @@ export default {
   justify-content: center;
   width: 2rem;
   height: 2rem;
-  border-radius: 2px;
+  border-radius: 8px;
   border: 1px solid transparent;
 }
 .toolbar-btn-light {

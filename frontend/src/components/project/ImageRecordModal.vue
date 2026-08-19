@@ -374,13 +374,14 @@ export default {
 
         if (response.success && response.data?.[0]) {
           const uploaded = response.data[0]
+          const staticBase = import.meta.env.VITE_STATIC_URL || window.location.origin
           // 用真實資料替換暫存項目
           const idx = this.mediaList.findIndex(m => m.id === tempId)
           if (idx > -1) {
             this.mediaList.splice(idx, 1, {
               ...uploaded,
-              url: `http://localhost:3001${uploaded.url}`,
-              thumbnail: uploaded.thumbnail ? `http://localhost:3001${uploaded.thumbnail}` : null
+              url: `${staticBase}${uploaded.url}`,
+              thumbnail: uploaded.thumbnail ? `${staticBase}${uploaded.thumbnail}` : null
             })
           }
         } else {

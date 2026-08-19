@@ -14,7 +14,6 @@ import {
   getPointColorsById,
   upsertPointColor,
   upsertPointColorById,
-  importInspectionRecordFromExcel,
   getInspectionRecords,
   getInspectionRecordsById,
   createInspectionRecord,
@@ -80,9 +79,6 @@ router.post('/id/:regionId/point-colors', authenticate, upsertPointColorById);
 
 // 更新或創建點位顏色配置（使用 region_code，向后兼容）
 router.post('/:regionCode/point-colors', authenticate, upsertPointColor);
-
-// 導入 Excel 巡查紀錄（僅第一筆數據）
-router.post('/:regionCode/import-inspection', authenticate, importInspectionRecordFromExcel);
 
 // 獲取指定地區的巡查紀錄（使用 region_id）- 必須在 /:regionCode 路由之前
 router.get('/id/:regionId/inspection-records', getInspectionRecordsById);

@@ -3,6 +3,8 @@ import { useAlert } from '@/composables/useAlert'
 // 創建全局alert實例
 const { showAlert } = useAlert()
 
+export const show = (options = {}) => showAlert(options)
+
 // 簡化方法
 export const alert = (message, title = '提示', isDarkMode = false) => {
   return showAlert({
@@ -51,6 +53,7 @@ export const error = (message, title = '錯誤', isDarkMode = false) => {
 }
 
 export default {
+  show,
   alert,
   confirm,
   success,

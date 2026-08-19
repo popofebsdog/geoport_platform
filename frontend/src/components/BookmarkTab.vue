@@ -3,6 +3,7 @@
     class="nav-tab"
     :class="{ 'is-active': isActive, 'is-dark': isDarkMode }"
     @click="$emit('click')"
+    :aria-current="isActive ? 'page' : undefined"
   >
     <span class="nav-title">{{ tab.title }}</span>
     <span class="nav-sub">{{ tab.subtitle }}</span>
@@ -39,6 +40,11 @@ export default {
   white-space: nowrap;
 }
 
+.nav-tab:focus-visible {
+  outline: 2px solid #5f97cc;
+  outline-offset: -4px;
+}
+
 /* 淺色模式 */
 .nav-tab { color: #6b7280; }          /* gray-500 */
 .nav-tab:hover { color: #111827; border-bottom-color: #d1d5db; }   /* gray-900 / gray-300 */
@@ -72,7 +78,7 @@ export default {
 }
 
 @media (max-width: 768px) {
-  .nav-tab    { padding: 0 12px; }
+  .nav-tab    { padding: 0 10px; min-width: 88px; }
   .nav-sub    { display: none; }
 }
 </style>

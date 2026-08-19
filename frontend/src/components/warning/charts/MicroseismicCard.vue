@@ -1,5 +1,5 @@
 <template>
-  <div class="microseismic-card w-full h-full p-4 flex flex-col">
+  <div class="microseismic-card w-full h-full min-h-0 p-3 flex flex-col overflow-auto">
     <!-- 載入中 -->
     <div v-if="loading" class="flex items-center justify-center h-full">
       <div class="text-center">
@@ -20,7 +20,7 @@
     </div>
 
     <!-- 有數據 -->
-    <div v-else class="flex flex-col h-full gap-3">
+    <div v-else class="flex flex-col min-h-0 gap-2">
       <!-- 標題列 -->
       <div class="flex items-center justify-between">
         <span class="text-[11px] font-semibold uppercase tracking-wider"
@@ -36,23 +36,23 @@
       </div>
 
       <!-- 三欄計數 -->
-      <div class="grid grid-cols-3 rounded overflow-hidden"
+      <div class="grid grid-cols-3 rounded overflow-hidden min-h-[66px]"
            :style="isDarkMode ? 'border:1px solid #1e293b;' : 'border:1px solid #f3f4f6;'">
-        <div class="py-3 text-center min-w-0"
+        <div class="py-2 text-center min-w-0 flex flex-col items-center justify-center"
              :style="isDarkMode ? 'border-right:1px solid #1e293b;' : 'border-right:1px solid #f3f4f6;'">
           <div class="text-[10px] font-medium tracking-wide mb-1"
                :class="isDarkMode ? 'text-slate-500' : 'text-gray-400'">TYPE I</div>
           <div class="text-xl font-semibold tabular-nums"
                :class="isDarkMode ? 'text-slate-200' : 'text-gray-800'">{{ typeCounts.typeI }}</div>
         </div>
-        <div class="py-3 text-center min-w-0"
+        <div class="py-2 text-center min-w-0 flex flex-col items-center justify-center"
              :style="isDarkMode ? 'border-right:1px solid #1e293b;' : 'border-right:1px solid #f3f4f6;'">
           <div class="text-[10px] font-medium tracking-wide mb-1"
                :class="isDarkMode ? 'text-slate-500' : 'text-gray-400'">TYPE II</div>
           <div class="text-xl font-semibold tabular-nums"
                :class="isDarkMode ? 'text-amber-400' : 'text-amber-600'">{{ typeCounts.typeII }}</div>
         </div>
-        <div class="py-3 text-center min-w-0">
+        <div class="py-2 text-center min-w-0 flex flex-col items-center justify-center">
           <div class="text-[10px] font-medium tracking-wide mb-1"
                :class="isDarkMode ? 'text-slate-500' : 'text-gray-400'">TYPE III</div>
           <div class="text-xl font-semibold tabular-nums"
@@ -286,6 +286,6 @@ export default {
 
 <style scoped>
 .microseismic-card {
-  min-height: 200px;
+  min-height: 0;
 }
 </style>

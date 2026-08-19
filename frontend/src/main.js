@@ -3,6 +3,9 @@ import App from './App.vue'
 import router from './router'
 import './assets/styles/main.css'
 import api, { projectAPI, dataAPI, dataFileAPI, reportAPI, authAPI } from './services/api.js'
+import { installConsolePolicy } from './utils/consolePolicy.js'
+
+installConsolePolicy()
 
 const app = createApp(App)
 

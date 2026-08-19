@@ -40,7 +40,7 @@
       </div>
     </div>
     
-      <div v-if="!panelCollapsed" class="flex gap-4 h-[clamp(390px,42vh,520px)] min-h-[390px]">
+      <div v-if="!panelCollapsed" class="flex gap-4 h-[clamp(280px,32vh,380px)] min-h-[280px]">
       <!-- 圖表區域 1 -->
       <div
         class="border rounded overflow-hidden flex flex-col flex-1 min-w-[100px] h-full transition-colors"
@@ -292,7 +292,6 @@ import RainfallCard from './charts/RainfallCard.vue';
 import RainfallChart from './charts/RainfallChart.vue';
 import StrongMotionCard from './charts/StrongMotionCard.vue';
 import StrongMotionChart from './charts/StrongMotionChart.vue';
-// import ApiStatusChecker from './ApiStatusChecker.vue';
 
 export default {
   name: 'ChartDataPanel',
@@ -304,7 +303,6 @@ export default {
     RainfallChart,
     StrongMotionCard,
     StrongMotionChart
-    // ApiStatusChecker
   },
   inject: ['isDarkMode'],
   props: {
@@ -340,8 +338,8 @@ export default {
       panelCollapsed: false,
       viewMode: {
         chart1: 'card',
-        chart2: 'card',
-        chart3: 'card'
+        chart2: 'chart',
+        chart3: 'chart'
       },
       refreshIntervals: {
         chart1: null,
@@ -701,6 +699,18 @@ export default {
   width: 100%;
 }
 
+.chart-data-panel :deep(.rounded) {
+  border-radius: 10px;
+}
+
+.chart-data-panel :deep(.border) {
+  box-shadow: 0 8px 18px rgba(15, 45, 71, 0.05);
+}
+
+:global(.dark) .chart-data-panel :deep(.border) {
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.2);
+}
+
 pre {
   font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
   line-height: 1.5;
@@ -718,4 +728,3 @@ pre {
   -ms-overflow-style: none; /* IE and Edge */
 }
 </style>
-

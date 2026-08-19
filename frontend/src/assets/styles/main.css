@@ -9,9 +9,21 @@
 
   html, body {
     @apply bg-surface-50 text-gray-900;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    border: 0 !important;
+    outline: 0 !important;
+    box-shadow: none !important;
     font-family: 'Inter', system-ui, -apple-system, 'Helvetica Neue', sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+  }
+
+  #app {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
   }
 
   /* 緊縮行高讓標題更俐落 */
@@ -105,33 +117,18 @@
 }
 
 /* ── 字體大小偏好 ───────────────────────────── */
-.font-small  { font-size: 16px; }
-.font-medium { font-size: 18px; }
-.font-large  { font-size: 21px; }
-
-.font-small h1, .font-small .text-lg   { font-size: 18px; }
-.font-small h2, .font-small .text-base { font-size: 16px; }
-.font-small h3, .font-small .text-sm   { font-size: 14px; }
-.font-small .text-xs                   { font-size: 12px; }
-
-.font-medium h1, .font-medium .text-lg   { font-size: 21px; }
-.font-medium h2, .font-medium .text-base { font-size: 18px; }
-.font-medium h3, .font-medium .text-sm   { font-size: 16px; }
-.font-medium .text-xs                    { font-size: 14px; }
-
-.font-large h1, .font-large .text-lg   { font-size: 24px; }
-.font-large h2, .font-large .text-base { font-size: 21px; }
-.font-large h3, .font-large .text-sm   { font-size: 18px; }
-.font-large .text-xs                   { font-size: 16px; }
+html.font-small  { font-size: 16px; }
+html.font-medium { font-size: 18px; }
+html.font-large  { font-size: 21px; }
 
 @media (max-width: 1024px) {
-  .font-small  { font-size: 12px; }
-  .font-medium { font-size: 14px; }
-  .font-large  { font-size: 16px; }
+  html.font-small  { font-size: 12px; }
+  html.font-medium { font-size: 14px; }
+  html.font-large  { font-size: 16px; }
 }
 
 @media (max-width: 768px) {
-  .font-small  { font-size: 11px; }
-  .font-medium { font-size: 13px; }
-  .font-large  { font-size: 15px; }
+  html.font-small  { font-size: 11px; }
+  html.font-medium { font-size: 13px; }
+  html.font-large  { font-size: 15px; }
 }

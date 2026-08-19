@@ -1,6 +1,6 @@
 <template>
-  <div class="fixed top-16 left-0 right-0 bottom-0 z-50 transition-colors duration-300 flex flex-col"
-       :class="isDarkMode ? 'bg-gray-900' : 'bg-gray-100'">
+  <div class="pd-root fixed top-14 sm:top-16 left-0 right-0 bottom-0 z-50 transition-colors duration-300 flex flex-col"
+       :class="isDarkMode ? 'pd-dark bg-gray-900' : 'pd-light bg-gray-100'">
     <!-- 專案地圖標題欄 -->
     <ProjectTitleBar 
       :project="project"
@@ -19,9 +19,9 @@
       <!-- 上方內容區域 -->
       <div class="flex-1 flex overflow-hidden">
         <!-- 側邊欄或時間軸 -->
-        <div class="w-96 flex flex-col overflow-hidden">
+        <div class="pd-sidebar w-96 flex flex-col overflow-hidden">
           <!-- 如果是母專案，顯示時間軸 -->
-          <div v-if="isParentProject" class="flex-1 overflow-y-auto overflow-x-visible p-4" style="overflow-x: visible;">
+          <div v-if="isParentProject" class="flex-1 overflow-y-auto overflow-x-visible p-3 pl-2" style="overflow-x: visible;">
             <ChildProjectTimeline
               :child-projects="childProjects"
               :is-dark-mode="isDarkMode"
@@ -88,7 +88,7 @@
         </div>
         
         <!-- 地圖容器 -->
-        <div class="flex-1 relative ml-2">
+        <div class="pd-map-shell flex-1 relative">
           <!-- 災點瀏覽專用模態框（固定在地圖右上） -->
           <DisasterPointBrowseModal
             :is-visible="showDisasterPointBrowseModal"
@@ -1122,6 +1122,9 @@ import CustomAlert from '@/components/CustomAlert.vue'
 import { useAlert } from '@/composables/useAlert'
 import { disasterPointAPI } from '@/services/api'
 import { confirm as showConfirm } from '@/utils/simpleAlertService'
+import { logger } from '@/utils/logger.js'
+
+const log = logger.scoped('ProjectDetail')
 
 export default {
   name: 'ProjectDetail',
@@ -1171,8 +1174,8 @@ export default {
     const { showAlert } = useAlert()
     
     // 調試：檢查 project 對象
-    console.log('ProjectDetail project:', props.project)
-    console.log('ProjectDetail project.projectId:', props.project?.projectId)
+    log.debug('ProjectDetail project:', props.project)
+    log.debug('ProjectDetail project.projectId:', props.project?.projectId)
     
     return { showAlert }
   },
@@ -1190,34 +1193,34 @@ export default {
     
     // 當前子專案的所有災點（用於顯示所有照片）
     currentAnimationDisasterPoints() {
-      console.log('===== [currentAnimationDisasterPoints] 開始計算 =====')
-      console.log('[currentAnimationDisasterPoints] showAnimationBrowseModal:', this.showAnimationBrowseModal)
-      console.log('[currentAnimationDisasterPoints] currentAnimationChildIndex:', this.currentAnimationChildIndex)
-      console.log('[currentAnimationDisasterPoints] childProjects 總數:', this.childProjects?.length)
+      log.debug('===== [currentAnimationDisasterPoints] 開始計算 =====')
+      log.debug('[currentAnimationDisasterPoints] showAnimationBrowseModal:', this.showAnimationBrowseModal)
+      log.debug('[currentAnimationDisasterPoints] currentAnimationChildIndex:', this.currentAnimationChildIndex)
+      log.debug('[currentAnimationDisasterPoints] childProjects 總數:', this.childProjects?.length)
       
       if (!this.currentAnimationChild) {
-        console.log('[currentAnimationDisasterPoints] ❌ 沒有當前子專案')
+        log.debug('[currentAnimationDisasterPoints] ❌ 沒有當前子專案')
         return []
       }
       
       const childId = this.currentAnimationChild.project_id
       const disasterPoints = this.allChildProjectsDisasterPoints[childId]
       
-      console.log('[currentAnimationDisasterPoints] ✅ 子專案名稱:', this.currentAnimationChild.name)
-      console.log('[currentAnimationDisasterPoints] ✅ 子專案ID:', childId)
-      console.log('[currentAnimationDisasterPoints] 所有災點數據鍵:', Object.keys(this.allChildProjectsDisasterPoints))
-      console.log('[currentAnimationDisasterPoints] 該子專案的災點數據:', disasterPoints)
+      log.debug('[currentAnimationDisasterPoints] ✅ 子專案名稱:', this.currentAnimationChild.name)
+      log.debug('[currentAnimationDisasterPoints] ✅ 子專案ID:', childId)
+      log.debug('[currentAnimationDisasterPoints] 所有災點數據鍵:', Object.keys(this.allChildProjectsDisasterPoints))
+      log.debug('[currentAnimationDisasterPoints] 該子專案的災點數據:', disasterPoints)
       
       if (!disasterPoints || disasterPoints.length === 0) {
-        console.log('[currentAnimationDisasterPoints] ❌ 沒有災點數據或數組為空')
+        log.debug('[currentAnimationDisasterPoints] ❌ 沒有災點數據或數組為空')
         return []
       }
       
-      console.log('[currentAnimationDisasterPoints] ✅ 災點數量:', disasterPoints.length)
+      log.debug('[currentAnimationDisasterPoints] ✅ 災點數量:', disasterPoints.length)
       
       // 詳細記錄每個災點的媒體文件信息
       disasterPoints.forEach((dp, idx) => {
-        console.log(`[currentAnimationDisasterPoints] 災點 ${idx + 1}:`, {
+        log.debug(`[currentAnimationDisasterPoints] 災點 ${idx + 1}:`, {
           disaster_point_id: dp.disaster_point_id,
           description: dp.description,
           has_media_files: !!dp.media_files,
@@ -1228,7 +1231,7 @@ export default {
         
         if (dp.media_files && Array.isArray(dp.media_files)) {
           dp.media_files.forEach((media, mediaIdx) => {
-            console.log(`  媒體 ${mediaIdx + 1}:`, {
+            log.debug(`  媒體 ${mediaIdx + 1}:`, {
               media_id: media.media_id,
               original_name: media.original_name,
               media_type: media.media_type,
@@ -1239,8 +1242,8 @@ export default {
         }
       })
       
-      console.log('[currentAnimationDisasterPoints] ✅ 返回所有災點:', disasterPoints.length)
-      console.log('===== [currentAnimationDisasterPoints] 計算完成 =====')
+      log.debug('[currentAnimationDisasterPoints] ✅ 返回所有災點:', disasterPoints.length)
+      log.debug('===== [currentAnimationDisasterPoints] 計算完成 =====')
       
       // 返回所有災點數組
       return disasterPoints || []
@@ -1276,7 +1279,7 @@ export default {
       
       // 優先使用 featureUploads 中的數據，確保與側邊欄同步
       const uploads = this.featureUploads[this.featureDisplayData.featureId] || this.featureDisplayData.uploads || []
-      console.log('imageUploads 計算:', {
+      log.debug('imageUploads 計算:', {
         featureId: this.featureDisplayData.featureId,
         featureUploadsLength: this.featureUploads[this.featureDisplayData.featureId]?.length || 0,
         displayDataLength: this.featureDisplayData.uploads?.length || 0,
@@ -1289,11 +1292,11 @@ export default {
     // 獲取底圖服務
     baseMapService() {
       const service = this.$refs.projectMap?.baseMapService || null
-      console.log('baseMapService 計算屬性被調用:', !!service)
-      console.log('this.$refs.projectMap:', !!this.$refs.projectMap)
+      log.debug('baseMapService 計算屬性被調用:', !!service)
+      log.debug('this.$refs.projectMap:', !!this.$refs.projectMap)
       if (this.$refs.projectMap) {
-        console.log('this.$refs.projectMap.baseMapService:', !!this.$refs.projectMap.baseMapService)
-        console.log('baseMapService 類型:', typeof this.$refs.projectMap.baseMapService)
+        log.debug('this.$refs.projectMap.baseMapService:', !!this.$refs.projectMap.baseMapService)
+        log.debug('baseMapService 類型:', typeof this.$refs.projectMap.baseMapService)
       }
       return service
     },
@@ -1318,7 +1321,7 @@ export default {
       
       // 如果有 parent_project_id，一定是子專案（優先判斷）
       if (hasParentId) {
-        console.log('isParentProject 計算: 有 parent_project_id，判斷為子專案', {
+        log.debug('isParentProject 計算: 有 parent_project_id，判斷為子專案', {
           is_parent: this.project?.is_parent,
           parent_project_id: this.project?.parent_project_id,
           result: false,
@@ -1329,7 +1332,7 @@ export default {
       
       // 如果 is_parent 明確為 false，也是子專案
       if (this.project?.is_parent === false) {
-        console.log('isParentProject 計算: is_parent 為 false，判斷為子專案', {
+        log.debug('isParentProject 計算: is_parent 為 false，判斷為子專案', {
           is_parent: this.project?.is_parent,
           parent_project_id: this.project?.parent_project_id,
           result: false,
@@ -1338,7 +1341,7 @@ export default {
         return false
       }
       
-      console.log('isParentProject 計算:', {
+      log.debug('isParentProject 計算:', {
         is_parent: this.project?.is_parent,
         parent_project_id: this.project?.parent_project_id,
         hasParentId,
@@ -1495,8 +1498,8 @@ export default {
         
         // 如果專案 ID 改變，或者專案類型改變，都需要重新載入
         if (newProject && (newProjectId !== oldProjectId || newIsParent !== oldIsParent)) {
-          console.log('=== project prop 變化 ===')
-          console.log('專案變化詳情:', {
+          log.debug('=== project prop 變化 ===')
+          log.debug('專案變化詳情:', {
             oldProjectId,
             newProjectId,
             oldIsParent,
@@ -1509,7 +1512,7 @@ export default {
           // 如果有 parent_project_id，一定是子專案
           if (newProject.parent_project_id) {
             newProject.is_parent = false
-            console.log('檢測到 parent_project_id，強制設置為子專案')
+            log.debug('檢測到 parent_project_id，強制設置為子專案')
           }
           
           // 檢查專案類型屬性是否已經完整
@@ -1519,7 +1522,7 @@ export default {
             (newProject.is_parent === false && !newProject.parent_project_id)     // 子專案（無 parent_project_id）
           )
           
-          console.log('專案類型信息完整性:', {
+          log.debug('專案類型信息完整性:', {
             hasCompleteTypeInfo,
             is_parent: newProject.is_parent,
             parent_project_id: newProject.parent_project_id
@@ -1527,10 +1530,10 @@ export default {
           
           // 只有在專案類型信息不完整時才調用 API
           if (!hasCompleteTypeInfo) {
-            console.log('專案類型信息不完整，調用 API 載入')
+            log.debug('專案類型信息不完整，調用 API 載入')
           await this.loadFullProjectInfo()
           } else {
-            console.log('專案類型信息已完整，跳過 API 調用')
+            log.debug('專案類型信息已完整，跳過 API 調用')
           }
           
           // 等待響應式更新完成後再檢查
@@ -1538,17 +1541,17 @@ export default {
           
           // 強制觸發計算屬性
           const isParentResult = this.isParentProject
-          console.log('=== 專案狀態檢查 ===')
-          console.log('is_parent:', this.project?.is_parent)
-          console.log('parent_project_id:', this.project?.parent_project_id)
-          console.log('isParentProject (計算結果):', isParentResult)
+          log.debug('=== 專案狀態檢查 ===')
+          log.debug('is_parent:', this.project?.is_parent)
+          log.debug('parent_project_id:', this.project?.parent_project_id)
+          log.debug('isParentProject (計算結果):', isParentResult)
           
           // 如果是母專案，載入子專案列表
           if (isParentResult) {
-            console.log('是母專案，載入子專案列表')
+            log.debug('是母專案，載入子專案列表')
             await this.loadChildProjects()
           } else {
-            console.log('是子專案，不需要載入子專案列表')
+            log.debug('是子專案，不需要載入子專案列表')
           }
           
           // 再次等待響應式更新
@@ -1556,17 +1559,17 @@ export default {
           
           // 強制更新視圖以確保側邊欄正確顯示
           this.$forceUpdate()
-          console.log('視圖已強制更新')
+          log.debug('視圖已強制更新')
           
           // 更新地圖
           await this.$nextTick()
         if (this.map && this.project) {
-            console.log('準備更新地圖')
+            log.debug('準備更新地圖')
             // 通過 ref 調用 ProjectMap 組件的 updateMap 方法
             if (this.$refs.projectMap && typeof this.$refs.projectMap.updateMap === 'function') {
               this.$refs.projectMap.updateMap()
             } else {
-              console.warn('ProjectMap 組件的 updateMap 方法不可用')
+              log.warn('ProjectMap 組件的 updateMap 方法不可用')
             }
           }
         }
@@ -1576,14 +1579,14 @@ export default {
     }
   },
   async mounted() {
-    console.log('=== ProjectDetail 組件已掛載 ===')
-    console.log('接收到的 project:', JSON.parse(JSON.stringify(this.project)))
-    console.log('初始 layerVisibility:', this.layerVisibility)
+    log.debug('=== ProjectDetail 組件已掛載 ===')
+    log.debug('接收到的 project:', JSON.parse(JSON.stringify(this.project)))
+    log.debug('初始 layerVisibility:', this.layerVisibility)
     
     // 先檢查初始狀態
-    console.log('初始狀態檢查 - isParentProject:', this.isParentProject)
-    console.log('初始狀態檢查 - project.is_parent:', this.project?.is_parent)
-    console.log('初始狀態檢查 - project.parent_project_id:', this.project?.parent_project_id)
+    log.debug('初始狀態檢查 - isParentProject:', this.isParentProject)
+    log.debug('初始狀態檢查 - project.is_parent:', this.project?.is_parent)
+    log.debug('初始狀態檢查 - project.parent_project_id:', this.project?.parent_project_id)
     
     // 重新從 API 獲取完整的專案信息（包含 is_parent 和 parent_project_id）
     await this.loadFullProjectInfo()
@@ -1593,20 +1596,20 @@ export default {
     
     // 強制觸發計算屬性
     const isParent = this.isParentProject
-    console.log('=== 載入完成後的專案信息 ===')
-    console.log('projectId:', this.project?.projectId)
-    console.log('is_parent:', this.project?.is_parent)
-    console.log('parent_project_id:', this.project?.parent_project_id)
-    console.log('isParentProject (計算結果):', isParent)
-    console.log('完整專案對象:', JSON.parse(JSON.stringify(this.project)))
+    log.debug('=== 載入完成後的專案信息 ===')
+    log.debug('projectId:', this.project?.projectId)
+    log.debug('is_parent:', this.project?.is_parent)
+    log.debug('parent_project_id:', this.project?.parent_project_id)
+    log.debug('isParentProject (計算結果):', isParent)
+    log.debug('完整專案對象:', JSON.parse(JSON.stringify(this.project)))
     
     // 檢查 ProjectMap 組件是否被創建
     this.$nextTick(() => {
-      console.log('檢查 ProjectMap 組件:', !!this.$refs.projectMap)
+      log.debug('檢查 ProjectMap 組件:', !!this.$refs.projectMap)
       if (this.$refs.projectMap) {
-        console.log('ProjectMap 組件已創建')
+        log.debug('ProjectMap 組件已創建')
       } else {
-        console.log('ProjectMap 組件未創建')
+        log.debug('ProjectMap 組件未創建')
       }
     })
     
@@ -1630,19 +1633,19 @@ export default {
     
     // 監聽 baseMapService 的變化
     this.$watch('baseMapService', (newService) => {
-      console.log('baseMapService 變化:', !!newService)
+      log.debug('baseMapService 變化:', !!newService)
       if (newService) {
-        console.log('baseMapService 已準備好，通知子組件')
+        log.debug('baseMapService 已準備好，通知子組件')
       }
     }, { immediate: true })
     
     // 等待父組件響應狀態更新
     await this.$nextTick()
-    console.log('載入完成後的 layerVisibility:', this.layerVisibility)
+    log.debug('載入完成後的 layerVisibility:', this.layerVisibility)
   },
   
   beforeUnmount() {
-    console.log('ProjectDetail 組件即將卸載，清理數據')
+    log.debug('ProjectDetail 組件即將卸載，清理數據')
     // 清理災點標記
     this.clearDisasterPointMarkers()
     // 清理所有響應式數據
@@ -1663,11 +1666,11 @@ export default {
       try {
         const projectId = this.project?.projectId || this.project?.project_id
         if (!projectId) {
-          console.warn('無法載入專案信息：缺少專案 ID')
+          log.warn('無法載入專案信息：缺少專案 ID')
           return
         }
 
-        console.log('loadFullProjectInfo 開始，當前專案狀態:', {
+        log.debug('loadFullProjectInfo 開始，當前專案狀態:', {
           projectId,
           is_parent: this.project?.is_parent,
           parent_project_id: this.project?.parent_project_id
@@ -1680,7 +1683,7 @@ export default {
 
         // 如果專案已明確標記為子專案（is_parent === false 或有 parent_project_id）
         if (this.project?.is_parent === false || this.project?.parent_project_id) {
-          console.log('專案已標記為子專案，直接載入子專案信息')
+          log.debug('專案已標記為子專案，直接載入子專案信息')
           try {
             const childResponse = await this.$api.get(`/child-projects/${projectId}`)
             if (childResponse && childResponse.success) {
@@ -1707,7 +1710,7 @@ export default {
               if (!this.project.parent_project_id && childResponse.data.parent_project_id) {
                 this.project.parent_project_id = childResponse.data.parent_project_id
               }
-              console.log('從子專案 API 獲取專案信息成功', {
+              log.debug('從子專案 API 獲取專案信息成功', {
                 is_parent: this.project.is_parent,
                 parent_project_id: this.project.parent_project_id,
                 projectId: this.project.projectId
@@ -1715,7 +1718,7 @@ export default {
               
               // 強制觸發計算屬性以檢查狀態
               const currentIsParent = this.isParentProject
-              console.log('設置後立即檢查 isParentProject:', currentIsParent)
+              log.debug('設置後立即檢查 isParentProject:', currentIsParent)
               
               // 強制更新視圖
               await this.$nextTick()
@@ -1723,21 +1726,21 @@ export default {
               
               // 再次檢查
               const afterUpdateIsParent = this.isParentProject
-              console.log('強制更新後 isParentProject:', afterUpdateIsParent)
+              log.debug('強制更新後 isParentProject:', afterUpdateIsParent)
               
               return
             }
           } catch (error) {
-            console.log('子專案 API 調用失敗:', error.message)
+            log.debug('子專案 API 調用失敗:', error.message)
             // 即使 API 失敗，也保持子專案狀態
-            console.log('保持子專案狀態，不再嘗試母專案 API')
+            log.debug('保持子專案狀態，不再嘗試母專案 API')
             return
           }
         }
 
         // 如果專案已明確標記為母專案（is_parent === true）
         if (this.project?.is_parent === true) {
-          console.log('專案已標記為母專案，直接載入母專案信息')
+          log.debug('專案已標記為母專案，直接載入母專案信息')
         try {
           const parentResponse = await this.$api.get(`/parent-projects/${projectId}`)
           if (parentResponse && parentResponse.success) {
@@ -1746,17 +1749,17 @@ export default {
               // Vue 3 直接賦值即可，響應式系統會自動處理
               this.project.is_parent = true
               this.project.parent_project_id = null
-              console.log('從母專案 API 獲取專案信息成功')
+              log.debug('從母專案 API 獲取專案信息成功')
               return
             }
           } catch (error) {
-            console.log('母專案 API 調用失敗:', error.message)
+            log.debug('母專案 API 調用失敗:', error.message)
             return
           }
         }
 
         // 專案類型未明確，先嘗試母專案 API，再嘗試子專案 API
-        console.log('專案類型未明確，先嘗試母專案 API')
+        log.debug('專案類型未明確，先嘗試母專案 API')
         try {
           const parentResponse = await this.$api.get(`/parent-projects/${projectId}`)
           if (parentResponse && parentResponse.success) {
@@ -1765,18 +1768,18 @@ export default {
             // Vue 3 直接賦值即可，響應式系統會自動處理
             this.project.is_parent = true
             this.project.parent_project_id = null
-            console.log('從母專案 API 獲取專案信息成功，設置 is_parent=true')
+            log.debug('從母專案 API 獲取專案信息成功，設置 is_parent=true')
             return
           }
         } catch (error) {
-          console.log('不是母專案，嘗試子專案 API:', error.message)
+          log.debug('不是母專案，嘗試子專案 API:', error.message)
         }
 
         // 如果不是母專案，嘗試從子專案 API 獲取
         try {
           const childResponse = await this.$api.get(`/child-projects/${projectId}`)
           if (childResponse && childResponse.success) {
-            console.log('子專案 API 返回數據:', childResponse.data)
+            log.debug('子專案 API 返回數據:', childResponse.data)
             
             // 先保存原有的 parent_project_id（如果有的話）
             const existingParentId = this.project.parent_project_id
@@ -1804,9 +1807,9 @@ export default {
               this.project.parent_project_id = childResponse.data.parent_project_id
             } else if (!this.project.parent_project_id) {
               // 如果 API 沒有返回且原本也沒有，嘗試從當前專案推斷
-              console.warn('子專案 API 沒有返回 parent_project_id，嘗試從當前上下文推斷')
+              log.warn('子專案 API 沒有返回 parent_project_id，嘗試從當前上下文推斷')
             }
-            console.log('從子專案 API 獲取專案信息成功', {
+            log.debug('從子專案 API 獲取專案信息成功', {
               is_parent: this.project.is_parent,
               parent_project_id: this.project.parent_project_id,
               projectId: this.project.projectId
@@ -1814,7 +1817,7 @@ export default {
             
             // 強制觸發計算屬性以檢查狀態
             const currentIsParent = this.isParentProject
-            console.log('設置後立即檢查 isParentProject:', currentIsParent)
+            log.debug('設置後立即檢查 isParentProject:', currentIsParent)
             
             // 強制更新視圖
             await this.$nextTick()
@@ -1822,38 +1825,38 @@ export default {
             
             // 再次檢查
             const afterUpdateIsParent = this.isParentProject
-            console.log('強制更新後 isParentProject:', afterUpdateIsParent)
+            log.debug('強制更新後 isParentProject:', afterUpdateIsParent)
             
             return
           }
         } catch (error) {
-          console.log('子專案 API 調用失敗:', error.message)
+          log.debug('子專案 API 調用失敗:', error.message)
           // 如果子專案 API 也失敗，檢查是否已有 parent_project_id
           if (this.project?.parent_project_id) {
             // 有 parent_project_id 說明是子專案
             this.project.is_parent = false
-            console.log('專案是子專案（已有 parent_project_id）:', {
+            log.debug('專案是子專案（已有 parent_project_id）:', {
               is_parent: this.project.is_parent,
               parent_project_id: this.project.parent_project_id
             })
             return
           }
           // 如果都沒有，默認設置為子專案（顯示側邊欄）
-          console.log('API 調用失敗，默認設置為子專案（顯示側邊欄）')
+          log.debug('API 調用失敗，默認設置為子專案（顯示側邊欄）')
           this.project.is_parent = false
         }
       } catch (error) {
-        console.error('載入專案信息失敗:', error)
+        log.error('載入專案信息失敗:', error)
         // 即使出錯，也確保設置默認值
         if (!this.project.hasOwnProperty('is_parent') || this.project.is_parent === undefined) {
           // 如果有 parent_project_id，一定是子專案
           if (this.project?.parent_project_id) {
             this.project.is_parent = false
-            console.log('根據 parent_project_id 設置為子專案')
+            log.debug('根據 parent_project_id 設置為子專案')
           } else {
             // 默認設置為子專案（顯示側邊欄）
             this.project.is_parent = false
-            console.log('錯誤處理：默認設置為子專案（顯示側邊欄）')
+            log.debug('錯誤處理：默認設置為子專案（顯示側邊欄）')
           }
         }
       }
@@ -1868,14 +1871,14 @@ export default {
       try {
         const projectId = this.project?.projectId || this.project?.project_id
         if (!projectId) {
-          console.warn('無法載入子專案：缺少專案 ID')
+          log.warn('無法載入子專案：缺少專案 ID')
           return
         }
 
         const response = await this.$api.get(`/parent-projects/${projectId}/children`)
         if (response && response.success) {
           this.childProjects = response.data.children || []
-          console.log('子專案載入成功:', this.childProjects.length, '個')
+          log.debug('子專案載入成功:', this.childProjects.length, '個')
           
           // 按 event_date 排序並分配順序號
           this.childProjects.sort((a, b) => {
@@ -1889,7 +1892,7 @@ export default {
           })
         }
       } catch (error) {
-        console.error('載入子專案失敗:', error)
+        log.error('載入子專案失敗:', error)
       }
     },
 
@@ -1897,11 +1900,11 @@ export default {
     async handleBackToParent() {
       const parentProjectId = this.project?.parent_project_id
       if (!parentProjectId) {
-        console.warn('無法返回母專案：缺少 parent_project_id')
+        log.warn('無法返回母專案：缺少 parent_project_id')
         return
       }
       
-      console.log('返回母專案:', parentProjectId)
+      log.debug('返回母專案:', parentProjectId)
       
       try {
         // 從 API 載入母專案的完整信息
@@ -1926,7 +1929,7 @@ export default {
             }
           }
           
-          console.log('成功載入母專案信息，準備切換:', {
+          log.debug('成功載入母專案信息，準備切換:', {
             projectId: project.projectId,
             is_parent: project.is_parent,
             parent_project_id: project.parent_project_id,
@@ -1936,10 +1939,10 @@ export default {
           // 發送事件給父組件，讓它切換到母專案
           this.$emit('switch-project', project)
         } else {
-          console.error('無法載入母專案信息')
+          log.error('無法載入母專案信息')
         }
       } catch (error) {
-        console.error('載入母專案失敗:', error)
+        log.error('載入母專案失敗:', error)
       }
     },
 
@@ -1947,11 +1950,11 @@ export default {
     async handleOpenChildProject(childProject) {
       const childProjectId = childProject.project_id || childProject.projectId
       if (!childProjectId) {
-        console.warn('無法打開子專案：缺少專案 ID')
+        log.warn('無法打開子專案：缺少專案 ID')
         return
       }
       
-      console.log('打開子專案:', childProjectId)
+      log.debug('打開子專案:', childProjectId)
       
       try {
         // 嘗試從 API 載入子專案的完整信息
@@ -1973,12 +1976,12 @@ export default {
             if (this.project?.projectId && this.isParentProject) {
               // 如果當前是母專案，設置當前專案為父專案
               project.parent_project_id = this.project.projectId
-              console.log('設置 parent_project_id 為當前母專案 ID:', this.project.projectId)
+              log.debug('設置 parent_project_id 為當前母專案 ID:', this.project.projectId)
             } else if (childResponse.data.parent_project_id) {
               // 使用 API 返回的
               project.parent_project_id = childResponse.data.parent_project_id
             } else {
-              console.warn('無法確定 parent_project_id，專案可能無法正確識別為子專案')
+              log.warn('無法確定 parent_project_id，專案可能無法正確識別為子專案')
             }
           }
           
@@ -2002,7 +2005,7 @@ export default {
             }
           }
           
-          console.log('成功載入子專案信息，準備切換專案:', {
+          log.debug('成功載入子專案信息，準備切換專案:', {
             projectId: project.projectId,
             is_parent: project.is_parent,
             parent_project_id: project.parent_project_id,
@@ -2027,12 +2030,12 @@ export default {
             })
           }
         } else {
-          console.error('無法載入子專案信息')
+          log.error('無法載入子專案信息')
           // 回退到原來的導航方式
           this.fallbackNavigation(childProjectId)
         }
       } catch (error) {
-        console.error('載入子專案失敗，使用備用方案:', error)
+        log.error('載入子專案失敗，使用備用方案:', error)
         // 如果 API 載入失敗，回退到原來的導航方式
         this.fallbackNavigation(childProjectId)
       }
@@ -2049,7 +2052,7 @@ export default {
           }
         }).catch(err => {
           // 如果路由失敗，回退到直接更新 URL
-          console.warn('路由導航失敗，使用 URL 更新:', err)
+          log.warn('路由導航失敗，使用 URL 更新:', err)
           const url = new URL(window.location.origin + '/disaster-collection')
           url.searchParams.set('project', childProjectId)
           window.location.href = url.toString()
@@ -2065,27 +2068,27 @@ export default {
     // 處理定位子專案（從時間軸點擊定位）
     handleDisasterRecord(childProject) {
       // 處理影像紀錄按鈕點擊
-      console.log('開啟影像紀錄:', childProject)
+      log.debug('開啟影像紀錄:', childProject)
       this.selectedChildProjectForImageRecord = childProject
       this.showImageRecordModal = true
     },
     
     handleAddRecord() {
       // 處理新增紀錄按鈕點擊
-      console.log('開啟新增紀錄:', this.project)
+      log.debug('開啟新增紀錄:', this.project)
       this.selectedParentProjectForChild = this.project
       this.showCreateChildModal = true
     },
     
     async handleChildCreated(childProject) {
       // 處理子專案創建成功
-      console.log('子專案創建成功:', childProject)
+      log.debug('子專案創建成功:', childProject)
       // 重新載入子專案列表（時間軸）
       await this.loadChildProjects()
       
       // 刷新地圖上的子專案標記
       if (this.$refs.projectMap && this.$refs.projectMap.loadChildProjects) {
-        console.log('刷新地圖標記')
+        log.debug('刷新地圖標記')
         await this.$refs.projectMap.loadChildProjects()
       }
       
@@ -2096,20 +2099,20 @@ export default {
     
     handleEditChildProject(childProject) {
       // 處理編輯子專案按鈕點擊
-      console.log('開啟編輯子專案:', childProject)
+      log.debug('開啟編輯子專案:', childProject)
       this.selectedChildProjectForEdit = childProject
       this.showEditChildModal = true
     },
     
     async handleChildUpdated(updatedChildProject) {
       // 處理子專案更新成功
-      console.log('子專案更新成功:', updatedChildProject)
+      log.debug('子專案更新成功:', updatedChildProject)
       // 重新載入子專案列表（時間軸）
       await this.loadChildProjects()
       
       // 刷新地圖上的子專案標記
       if (this.$refs.projectMap && this.$refs.projectMap.loadChildProjects) {
-        console.log('刷新地圖標記')
+        log.debug('刷新地圖標記')
         await this.$refs.projectMap.loadChildProjects()
       }
       
@@ -2120,7 +2123,7 @@ export default {
     
     async handleParentUpdated(updatedParentProject) {
       // 處理母專案更新成功
-      console.log('母專案更新成功:', updatedParentProject)
+      log.debug('母專案更新成功:', updatedParentProject)
       
       // 發送事件給父組件更新專案資料
       this.$emit('project-updated', updatedParentProject)
@@ -2136,20 +2139,20 @@ export default {
     
     async handleDeleteChildProject(childProject) {
       // 處理刪除子專案按鈕點擊（確認對話框已在 ChildProjectTimeline 組件中處理）
-      console.log('ProjectDetail: handleDeleteChildProject 被調用', childProject)
+      log.debug('ProjectDetail: handleDeleteChildProject 被調用', childProject)
       try {
-        console.log('開始刪除子專案:', childProject.project_id)
+        log.debug('開始刪除子專案:', childProject.project_id)
         const response = await this.$api.delete(`/child-projects/${childProject.project_id}`)
-        console.log('刪除API響應:', response)
+        log.debug('刪除API響應:', response)
         
         if (response && response.success) {
-          console.log('子專案刪除成功')
+          log.debug('子專案刪除成功')
           // 重新載入子專案列表（時間軸）
           await this.loadChildProjects()
           
           // 刷新地圖上的子專案標記
           if (this.$refs.projectMap && this.$refs.projectMap.loadChildProjects) {
-            console.log('刷新地圖標記')
+            log.debug('刷新地圖標記')
             await this.$refs.projectMap.loadChildProjects()
           }
           
@@ -2162,7 +2165,7 @@ export default {
             isDarkMode: this.isDarkMode
           })
         } else {
-          console.error('刪除失敗，響應:', response)
+          log.error('刪除失敗，響應:', response)
           // 顯示錯誤提示
           const { showAlert } = useAlert()
           await showAlert({
@@ -2173,8 +2176,8 @@ export default {
           })
         }
       } catch (error) {
-        console.error('刪除子專案失敗:', error)
-        console.error('錯誤詳情:', {
+        log.error('刪除子專案失敗:', error)
+        log.error('錯誤詳情:', {
           message: error.message,
           response: error.response,
           data: error.response?.data
@@ -2193,20 +2196,20 @@ export default {
     
     handleShowChildDetail(childProject) {
       // 處理顯示事件詳情
-      console.log('顯示事件詳情:', childProject)
+      log.debug('顯示事件詳情:', childProject)
       this.selectedChildProjectForDetail = childProject
       this.showChildDetailModal = true
     },
     
     handleViewPhotos() {
       // 處理瀏覽所有子專案照片
-      console.log('打開照片瀏覽模態框')
+      log.debug('打開照片瀏覽模態框')
       this.showPhotoGalleryModal = true
     },
     
     async handleAnimationMode() {
       // 處理動畫模式 - 開啟照片瀏覽動畫
-      console.log('開啟動畫瀏覽模式')
+      log.debug('開啟動畫瀏覽模式')
       
       // 載入所有子專案的災點數據
       await this.loadAllChildProjectsDisasterPoints()
@@ -2228,23 +2231,23 @@ export default {
     async loadAllChildProjectsDisasterPoints() {
       // 載入所有子專案的災點數據
       if (!this.childProjects || this.childProjects.length === 0) {
-        console.log('沒有子專案，跳過載入災點數據')
+        log.debug('沒有子專案，跳過載入災點數據')
         return
       }
       
-      console.log('開始載入所有子專案的災點數據...', `共 ${this.childProjects.length} 個子專案`)
+      log.debug('開始載入所有子專案的災點數據...', `共 ${this.childProjects.length} 個子專案`)
       
       try {
         const promises = this.childProjects.map(async (child) => {
           try {
-            console.log(`載入子專案 ${child.name} (${child.project_id}) 的災點...`)
+            log.debug(`載入子專案 ${child.name} (${child.project_id}) 的災點...`)
             const response = await this.$api.get(`/disaster-points/project/${child.project_id}`)
-            console.log(`子專案 ${child.name} 災點回應:`, response)
+            log.debug(`子專案 ${child.name} 災點回應:`, response)
             
             if (response && response.success && response.data) {
-              console.log(`子專案 ${child.name} 有 ${response.data.length} 個災點`)
+              log.debug(`子專案 ${child.name} 有 ${response.data.length} 個災點`)
               response.data.forEach((dp, idx) => {
-                console.log(`  災點 ${idx + 1}:`, {
+                log.debug(`  災點 ${idx + 1}:`, {
                   id: dp.disaster_point_id,
                   description: dp.description,
                   mediaCount: dp.media_files?.length || 0,
@@ -2257,13 +2260,13 @@ export default {
                 disasterPoints: response.data
               }
             }
-            console.log(`子專案 ${child.name} 沒有災點數據`)
+            log.debug(`子專案 ${child.name} 沒有災點數據`)
             return {
               childProjectId: child.project_id,
               disasterPoints: []
             }
           } catch (error) {
-            console.error(`載入子專案 ${child.name} (${child.project_id}) 災點失敗:`, error)
+            log.error(`載入子專案 ${child.name} (${child.project_id}) 災點失敗:`, error)
             return {
               childProjectId: child.project_id,
               disasterPoints: []
@@ -2280,13 +2283,13 @@ export default {
         })
         
         this.allChildProjectsDisasterPoints = disasterPointsMap
-        console.log('所有子專案災點數據載入完成，總覽:', this.allChildProjectsDisasterPoints)
+        log.debug('所有子專案災點數據載入完成，總覽:', this.allChildProjectsDisasterPoints)
         
         // 顯示統計
         const totalDisasterPoints = Object.values(disasterPointsMap).reduce((sum, points) => sum + points.length, 0)
-        console.log(`載入完成：共 ${totalDisasterPoints} 個災點`)
+        log.debug(`載入完成：共 ${totalDisasterPoints} 個災點`)
       } catch (error) {
-        console.error('載入所有子專案災點失敗:', error)
+        log.error('載入所有子專案災點失敗:', error)
       }
     },
     
@@ -2314,7 +2317,7 @@ export default {
       if (!this.childProjects || this.childProjects.length === 0) return
       
       this.currentAnimationChildIndex = (this.currentAnimationChildIndex + 1) % this.childProjects.length
-      console.log('切換到子專案:', this.currentAnimationChildIndex, this.currentAnimationChild?.name)
+      log.debug('切換到子專案:', this.currentAnimationChildIndex, this.currentAnimationChild?.name)
       
       // 地圖定位到子專案座標
       this.flyToChildProject()
@@ -2325,7 +2328,7 @@ export default {
       if (!this.childProjects || this.childProjects.length === 0) return
       
       this.currentAnimationChildIndex = (this.currentAnimationChildIndex - 1 + this.childProjects.length) % this.childProjects.length
-      console.log('切換到子專案:', this.currentAnimationChildIndex, this.currentAnimationChild?.name)
+      log.debug('切換到子專案:', this.currentAnimationChildIndex, this.currentAnimationChild?.name)
       
       // 地圖定位到子專案座標
       this.flyToChildProject()
@@ -2334,7 +2337,7 @@ export default {
     flyToChildProject() {
       // 地圖定位到當前子專案的座標
       if (!this.currentAnimationChild) {
-        console.log('[flyToChildProject] 沒有當前子專案')
+        log.debug('[flyToChildProject] 沒有當前子專案')
         return
       }
       
@@ -2342,23 +2345,23 @@ export default {
       const lng = this.currentAnimationChild.longitude
       
       if (!lat || !lng) {
-        console.log('[flyToChildProject] 子專案沒有座標:', this.currentAnimationChild.name)
+        log.debug('[flyToChildProject] 子專案沒有座標:', this.currentAnimationChild.name)
         return
       }
       
-      console.log('[flyToChildProject] 定位到:', lat, lng, '子專案:', this.currentAnimationChild.name)
+      log.debug('[flyToChildProject] 定位到:', lat, lng, '子專案:', this.currentAnimationChild.name)
       
       // 獲取地圖實例
       const projectMapComponent = this.$refs.projectMap
       if (!projectMapComponent) {
-        console.log('[flyToChildProject] 找不到 ProjectMap 組件')
+        log.debug('[flyToChildProject] 找不到 ProjectMap 組件')
         return
       }
       
       // 訪問 Leaflet map 實例
       const map = projectMapComponent.map
       if (!map) {
-        console.log('[flyToChildProject] 找不到 Leaflet map 實例')
+        log.debug('[flyToChildProject] 找不到 Leaflet map 實例')
         return
       }
       
@@ -2368,7 +2371,7 @@ export default {
         easeLinearity: 0.25
       })
       
-      console.log('[flyToChildProject] 地圖已定位到子專案座標')
+      log.debug('[flyToChildProject] 地圖已定位到子專案座標')
     },
     
     closeAnimationBrowse() {
@@ -2380,7 +2383,7 @@ export default {
     
     async handleDisasterPointCreated(disasterPoint) {
       // 處理災點紀錄創建成功
-      console.log('災點紀錄創建成功:', disasterPoint)
+      log.debug('災點紀錄創建成功:', disasterPoint)
       // 重新載入災點列表
       await this.loadDisasterPoints()
       // 關閉模態框，但保持災點紀錄模式（允許繼續創建）
@@ -2394,37 +2397,37 @@ export default {
       const projectId = this.project?.projectId || this.project?.project_id
       
       if (!projectId) {
-        console.warn('無法載入災點紀錄：缺少專案ID', this.project)
+        log.warn('無法載入災點紀錄：缺少專案ID', this.project)
         return
       }
       
       // 只為子專案載入災點
       if (this.isParentProject) {
-        console.log('是母專案，跳過載入災點紀錄')
+        log.debug('是母專案，跳過載入災點紀錄')
         return
       }
       
       // 確保地圖已準備好
       if (!this.map) {
-        console.warn('無法載入災點紀錄：地圖未初始化')
+        log.warn('無法載入災點紀錄：地圖未初始化')
         return
       }
       
       // 確保地圖容器已準備好
       if (!this.map.getContainer() || !this.map.getContainer().parentNode) {
-        console.warn('無法載入災點紀錄：地圖容器未準備好，將在下一幀重試')
+        log.warn('無法載入災點紀錄：地圖容器未準備好，將在下一幀重試')
         this.$nextTick(() => {
           this.loadDisasterPoints()
         })
         return
       }
       
-      console.log('開始載入災點紀錄，專案ID:', projectId)
+      log.debug('開始載入災點紀錄，專案ID:', projectId)
       
       try {
         const response = await this.$api.get(`/disaster-points/project/${projectId}`)
         
-        console.log('災點紀錄 API 響應:', response)
+        log.debug('災點紀錄 API 響應:', response)
         
         if (response && response.success) {
           // 清除現有標記
@@ -2435,7 +2438,7 @@ export default {
           
           // 添加新的災點標記
           if (response.data && Array.isArray(response.data)) {
-            console.log(`準備添加 ${response.data.length} 個災點標記`)
+            log.debug(`準備添加 ${response.data.length} 個災點標記`)
             
             // 根據 disaster_time 排序（有時間的在前，然後按時間升序）
             const sortedData = [...response.data].sort((a, b) => {
@@ -2453,19 +2456,19 @@ export default {
             // 添加標記並分配序號
             sortedData.forEach((disasterPoint, index) => {
               const orderNumber = index + 1
-              console.log('添加災點標記:', disasterPoint.name, disasterPoint.latitude, disasterPoint.longitude, `序號: ${orderNumber}`)
+              log.debug('添加災點標記:', disasterPoint.name, disasterPoint.latitude, disasterPoint.longitude, `序號: ${orderNumber}`)
               this.addDisasterPointMarker(disasterPoint, orderNumber)
             })
-            console.log(`成功載入 ${response.data.length} 個災點紀錄`)
+            log.debug(`成功載入 ${response.data.length} 個災點紀錄`)
           } else {
-            console.warn('災點紀錄數據格式不正確:', response.data)
+            log.warn('災點紀錄數據格式不正確:', response.data)
           }
         } else {
-          console.warn('災點紀錄 API 返回失敗:', response)
+          log.warn('災點紀錄 API 返回失敗:', response)
         }
       } catch (error) {
-        console.error('載入災點紀錄失敗:', error)
-        console.error('錯誤詳情:', error.response || error.message)
+        log.error('載入災點紀錄失敗:', error)
+        log.error('錯誤詳情:', error.response || error.message)
       }
     },
     
@@ -2483,22 +2486,22 @@ export default {
     
     addDisasterPointMarker(disasterPoint, orderNumber = null) {
       if (!this.map) {
-        console.warn('無法添加災點標記：地圖未初始化', { map: !!this.map })
+        log.warn('無法添加災點標記：地圖未初始化', { map: !!this.map })
         return
       }
       
       // 檢查地圖容器是否已準備好
       if (!this.map.getContainer() || !this.map.getContainer().parentNode) {
-        console.warn('無法添加災點標記：地圖容器未準備好')
+        log.warn('無法添加災點標記：地圖容器未準備好')
         return
       }
       
       if (!disasterPoint.latitude || !disasterPoint.longitude) {
-        console.warn('無法添加災點標記：缺少座標', disasterPoint)
+        log.warn('無法添加災點標記：缺少座標', disasterPoint)
         return
       }
       
-      console.log('添加災點標記:', {
+      log.debug('添加災點標記:', {
         name: disasterPoint.name,
         lat: disasterPoint.latitude,
         lng: disasterPoint.longitude,
@@ -2554,7 +2557,7 @@ export default {
         
         // 點擊事件 - 根據模式打開編輯、刪除、瀏覽或查看模態框
         marker.on('click', () => {
-          console.log('[marker click] 災點:', disasterPoint.name, '| 目前模式:', this.disasterPointMode)
+          log.debug('[marker click] 災點:', disasterPoint.name, '| 目前模式:', this.disasterPointMode)
           if (this.disasterPointMode === 'edit') {
             // 編輯模式：打開編輯模態框
             this.selectedDisasterPointForEdit = disasterPoint
@@ -2586,13 +2589,13 @@ export default {
             marker.disasterPointData = disasterPoint
             this.disasterPointMarkers.push(marker)
             
-            console.log('災點標記已添加到地圖:', disasterPoint.name)
+            log.debug('災點標記已添加到地圖:', disasterPoint.name)
           } else {
-            console.warn('地圖容器未準備好，延遲添加標記')
+            log.warn('地圖容器未準備好，延遲添加標記')
           }
         })
       } catch (error) {
-        console.error('添加災點標記時發生錯誤:', error)
+        log.error('添加災點標記時發生錯誤:', error)
       }
     },
     
@@ -2645,7 +2648,7 @@ export default {
           }
         }
       } else {
-        console.warn('子專案沒有有效的座標資訊:', childProject)
+        log.warn('子專案沒有有效的座標資訊:', childProject)
         this.showAlert({
           type: 'warning',
           title: '無法定位',
@@ -2656,8 +2659,8 @@ export default {
 
     // 地圖相關方法
     async onMapReady(map) {
-      console.log('=== 地圖已準備好 ===')
-      console.log('地圖物件:', map)
+      log.debug('=== 地圖已準備好 ===')
+      log.debug('地圖物件:', map)
       this.map = map
       
       // 等待地圖完全初始化和專案類型判斷完成
@@ -2677,47 +2680,47 @@ export default {
       
       // 如果是子專案，載入災點紀錄
       if (!this.isParentProject && this.project) {
-        console.log('地圖準備完成，開始載入災點紀錄')
+        log.debug('地圖準備完成，開始載入災點紀錄')
         await this.loadDisasterPoints()
       }
       
       // 地圖準備好後，重新創建時序資料標記
       this.$nextTick(() => {
-        console.log('檢查時序資料列表:', this.temporalDataList)
+        log.debug('檢查時序資料列表:', this.temporalDataList)
         if (this.temporalDataList && this.temporalDataList.length > 0) {
-          console.log('地圖準備好，創建時序資料標記:', this.temporalDataList.length, '筆')
+          log.debug('地圖準備好，創建時序資料標記:', this.temporalDataList.length, '筆')
           this.createTemporalDataMarkers()
         } else {
-          console.log('沒有時序資料需要創建標記')
+          log.debug('沒有時序資料需要創建標記')
         }
       })
       
       // 自動載入里程樁號（常駐顯示）
-      console.log('[ProjectDetail] 地圖準備完成，自動載入里程樁號')
+      log.debug('[ProjectDetail] 地圖準備完成，自動載入里程樁號')
       await this.loadMileagePoints()
       
       // 監聽地圖縮放事件以更新里程標籤顯示
       if (this.map) {
-        console.log('[ProjectDetail] 添加 zoomend 監聽器')
+        log.debug('[ProjectDetail] 添加 zoomend 監聽器')
         this.map.on('zoomend', () => {
-          console.log('[ProjectDetail] 地圖縮放結束，更新里程標籤顯示')
+          log.debug('[ProjectDetail] 地圖縮放結束，更新里程標籤顯示')
           this.updateMileageLabel()
         })
       }
       
-      console.log('✅ [ProjectDetail] onMapReady 執行完成')
+      log.debug('✅ [ProjectDetail] onMapReady 執行完成')
     },
     
     // BaseMapService 準備好回調
     onBaseMapServiceReady(baseMapService) {
-      console.log('收到 BaseMapService 準備好事件:', !!baseMapService)
-      console.log('baseMapService 對象:', baseMapService)
+      log.debug('收到 BaseMapService 準備好事件:', !!baseMapService)
+      log.debug('baseMapService 對象:', baseMapService)
       // 強制觸發計算屬性更新
       this.$forceUpdate()
       // 等待下一個 tick 後再次強制更新
       this.$nextTick(() => {
         this.$forceUpdate()
-        console.log('強制更新完成，baseMapService 計算屬性應該已更新')
+        log.debug('強制更新完成，baseMapService 計算屬性應該已更新')
       })
     },
     
@@ -2772,7 +2775,7 @@ export default {
         this.showEditChildModal = true
       } else {
         // 母專案：打開母專案編輯模態框
-        console.log('開啟編輯母專案:', this.project)
+        log.debug('開啟編輯母專案:', this.project)
         this.showEditParentModal = true
       }
     },
@@ -2788,12 +2791,12 @@ export default {
     },
     
     async onFeatureClick(event) {
-      console.log('=== onFeatureClick 開始 ===')
-      console.log('接收到的 event:', event)
+      log.debug('=== onFeatureClick 開始 ===')
+      log.debug('接收到的 event:', event)
       
       const { feature, featureId, hasUploads, latlng, fileId } = event
       
-      console.log('解析的參數:', {
+      log.debug('解析的參數:', {
         featureId,
         fileId,
         hasUploads,
@@ -2803,12 +2806,12 @@ export default {
       
       // 檢查 fileId 是否有效
       if (!fileId) {
-        console.warn('onFeatureClick: fileId 為空，跳過載入關聯上傳數據')
+        log.warn('onFeatureClick: fileId 為空，跳過載入關聯上傳數據')
         return
       }
       
       // 總是重新載入關聯上傳數據，確保數據是最新的
-      console.log(`開始載入 Feature ${featureId} 的關聯上傳數據...`)
+      log.debug(`開始載入 Feature ${featureId} 的關聯上傳數據...`)
       try {
         // 按需載入單個 feature 的上傳資料
         const result = await this.$api.get(`/data/feature/${fileId}/${featureId}`)
@@ -2819,27 +2822,27 @@ export default {
           this.featureUploads[featureId] = []
           }
         } catch (error) {
-          console.error('載入關聯上傳數據失敗:', error)
+          log.error('載入關聯上傳數據失敗:', error)
         this.featureUploads[featureId] = []
         }
       
       // 確保 featureUploads 數據已正確設置
       if (!this.featureUploads[featureId]) {
         this.featureUploads[featureId] = []
-        console.log(`確保 Feature ${featureId} 的 featureUploads 已初始化`)
+        log.debug(`確保 Feature ${featureId} 的 featureUploads 已初始化`)
       }
       
       // 檢查載入後是否有關聯上傳數據
       const currentHasUploads = this.featureUploads[featureId] && this.featureUploads[featureId].length > 0
-      console.log('最終關聯上傳數據狀態:', currentHasUploads)
-      console.log('featureUploads[featureId]:', this.featureUploads[featureId])
+      log.debug('最終關聯上傳數據狀態:', currentHasUploads)
+      log.debug('featureUploads[featureId]:', this.featureUploads[featureId])
       
       // 總是顯示模態框，即使沒有關聯上傳數據
-      console.log('準備顯示模態框...')
+      log.debug('準備顯示模態框...')
       const uploadsToShow = this.featureUploads[featureId] || []
-      console.log('要顯示的上傳數據:', uploadsToShow.length, '筆')
+      log.debug('要顯示的上傳數據:', uploadsToShow.length, '筆')
       this.showFeatureUploadsPanel(featureId, uploadsToShow, fileId)
-      console.log('=== onFeatureClick 結束 ===')
+      log.debug('=== onFeatureClick 結束 ===')
     },
     
     onMapClick(e) {
@@ -2856,7 +2859,7 @@ export default {
     setDisasterPointMode(mode) {
       // 設置災點模式：'add' | 'edit' | 'delete'
       this.disasterPointMode = mode
-      console.log('設置災點模式:', mode)
+      log.debug('設置災點模式:', mode)
       
       // 根據模式顯示不同的提示
       if (mode === 'add') {
@@ -2941,7 +2944,7 @@ export default {
     
     // 處理刪除災點紀錄
     async handleDeleteDisasterPoint(disasterPoint) {
-      console.log('[handleDeleteDisasterPoint] 災點:', disasterPoint?.name, '|', disasterPoint?.disaster_point_id)
+      log.debug('[handleDeleteDisasterPoint] 災點:', disasterPoint?.name, '|', disasterPoint?.disaster_point_id)
       if (!disasterPoint || !disasterPoint.disaster_point_id) {
         this.showCustomAlert('error', '錯誤', '無法刪除：災點資料不完整')
         return
@@ -2949,7 +2952,7 @@ export default {
       
       // 使用自定義確認框
       this.deleteDisasterPointPending = disasterPoint
-      console.log('[handleDeleteDisasterPoint] deleteDisasterPointPending 已設定，顯示確認框')
+      log.debug('[handleDeleteDisasterPoint] deleteDisasterPointPending 已設定，顯示確認框')
       this.showCustomAlert('warning', '確認刪除', `確定要刪除災點「${disasterPoint.name}」嗎？此操作無法復原。`)
     },
     
@@ -2995,7 +2998,7 @@ export default {
           throw new Error(response.message || '刪除失敗')
         }
       } catch (error) {
-        console.error('刪除災點紀錄失敗:', error)
+        log.error('刪除災點紀錄失敗:', error)
         this.showCustomAlert('error', '錯誤', `刪除失敗：${error.response?.data?.message || error.message || '未知錯誤'}`)
       }
     },
@@ -3010,7 +3013,7 @@ export default {
     
     // 處理提示框確認
     handleAlertConfirm() {
-      console.log('[handleAlertConfirm] alertType:', this.alertType, 'deleteDisasterPointPending:', !!this.deleteDisasterPointPending)
+      log.debug('[handleAlertConfirm] alertType:', this.alertType, 'deleteDisasterPointPending:', !!this.deleteDisasterPointPending)
       if (this.deleteDisasterPointPending) {
         // 有待刪除的災點，確認刪除
         this.confirmDeleteDisasterPoint()
@@ -3117,7 +3120,7 @@ export default {
             this.selectedDisasterPointForView = response.data
           }
         } catch (error) {
-          console.error('重新載入災點數據失敗:', error)
+          log.error('重新載入災點數據失敗:', error)
         }
       }
       // 如果正在瀏覽災點，重新載入數據
@@ -3128,14 +3131,14 @@ export default {
             this.selectedDisasterPointForBrowse = response.data
           }
         } catch (error) {
-          console.error('重新載入災點數據失敗:', error)
+          log.error('重新載入災點數據失敗:', error)
         }
       }
     },
     
     async handleDisasterPointUpdated(updatedDisasterPoint) {
       // 處理災點紀錄更新成功
-      console.log('災點紀錄更新成功:', updatedDisasterPoint)
+      log.debug('災點紀錄更新成功:', updatedDisasterPoint)
       // 重新載入災點列表
       await this.loadDisasterPoints()
       // 關閉模態框
@@ -3162,7 +3165,7 @@ export default {
     },
     
     openTemporalUpload() {
-      console.log('開啟時序資料上傳')
+      log.debug('開啟時序資料上傳')
       this.showTemporalUploadModal = true
     },
     
@@ -3194,13 +3197,13 @@ export default {
     
     // 處理時序資料編輯
     onEditTemporalData(temporalData) {
-      console.log('編輯時序資料:', temporalData)
+      log.debug('編輯時序資料:', temporalData)
       this.editingTemporalData = temporalData
       this.showTemporalUploadModal = true
     },
     
     async handleTemporalUploadSuccess(data) {
-      console.log('時序資料上傳成功:', data)
+      log.debug('時序資料上傳成功:', data)
       
       // 關閉模態框
       this.closeTemporalUploadModal()
@@ -3216,7 +3219,7 @@ export default {
     },
     
     async handleTemporalUpdateSuccess(data) {
-      console.log('時序資料更新成功:', data)
+      log.debug('時序資料更新成功:', data)
       
       // 關閉模態框
       this.closeTemporalUploadModal()
@@ -3234,35 +3237,35 @@ export default {
     async loadTemporalData() {
       try {
         const response = await this.$api.get(`/temporal-data-enhanced/${this.project.projectId}/list`)
-        console.log('時序資料 API 響應:', response)
+        log.debug('時序資料 API 響應:', response)
         if (response.success) {
           this.temporalDataList = response.data
-          console.log('時序資料載入成功:', this.temporalDataList.length, '筆')
+          log.debug('時序資料載入成功:', this.temporalDataList.length, '筆')
           
           // 只有在有地圖的情況下才創建標記
           if (this.map) {
-            console.log('地圖已準備好，創建時序資料標記')
+            log.debug('地圖已準備好，創建時序資料標記')
             this.createTemporalDataMarkers()
           } else {
-            console.log('地圖尚未準備好，等待地圖準備完成')
+            log.debug('地圖尚未準備好，等待地圖準備完成')
           }
         } else {
-          console.error('時序資料 API 返回失敗:', response)
+          log.error('時序資料 API 返回失敗:', response)
         }
       } catch (error) {
-        console.error('載入時序資料失敗:', error)
+        log.error('載入時序資料失敗:', error)
       }
     },
     
     // 為所有時序資料創建地圖標記
     createTemporalDataMarkers() {
-      console.log('=== 開始創建時序資料標記 ===')
-      console.log('地圖物件:', !!this.map)
-      console.log('時序資料列表:', this.temporalDataList)
-      console.log('時序資料數量:', this.temporalDataList?.length || 0)
+      log.debug('=== 開始創建時序資料標記 ===')
+      log.debug('地圖物件:', !!this.map)
+      log.debug('時序資料列表:', this.temporalDataList)
+      log.debug('時序資料數量:', this.temporalDataList?.length || 0)
       
       if (!this.map || !this.temporalDataList) {
-        console.log('地圖或時序資料列表不存在，跳過創建標記')
+        log.debug('地圖或時序資料列表不存在，跳過創建標記')
         return
       }
       
@@ -3271,7 +3274,7 @@ export default {
       
       // 為每個時序資料創建標記
       this.temporalDataList.forEach((temporalData, index) => {
-        console.log(`處理時序資料 ${index + 1}:`, {
+        log.debug(`處理時序資料 ${index + 1}:`, {
           name: temporalData.name,
           longitude: temporalData.longitude,
           latitude: temporalData.latitude
@@ -3280,11 +3283,11 @@ export default {
         if (temporalData.longitude && temporalData.latitude) {
           this.createTemporalDataMarker(temporalData)
         } else {
-          console.log('時序資料缺少座標資訊，跳過:', temporalData.name)
+          log.debug('時序資料缺少座標資訊，跳過:', temporalData.name)
         }
       })
       
-      console.log('=== 時序資料標記創建完成 ===')
+      log.debug('=== 時序資料標記創建完成 ===')
     },
     
     // 清除所有時序資料標記
@@ -3301,10 +3304,10 @@ export default {
     
     // 為單個時序資料創建標記
     createTemporalDataMarker(temporalData) {
-      console.log('創建時序資料標記:', temporalData.name)
+      log.debug('創建時序資料標記:', temporalData.name)
       
       if (!this.map) {
-        console.log('地圖不存在，無法創建標記')
+        log.debug('地圖不存在，無法創建標記')
         return
       }
       
@@ -3322,7 +3325,7 @@ export default {
         zIndexOffset: 1000
       })
       
-      console.log('創建標記，座標:', [parseFloat(temporalData.latitude), parseFloat(temporalData.longitude)])
+      log.debug('創建標記，座標:', [parseFloat(temporalData.latitude), parseFloat(temporalData.longitude)])
       
       // 預設隱藏標記
       marker.setOpacity(0)
@@ -3330,11 +3333,11 @@ export default {
       // 添加到地圖（但不可見）
       marker.addTo(this.map)
       
-      console.log('標記已添加到地圖（預設隱藏）')
+      log.debug('標記已添加到地圖（預設隱藏）')
       
       // 添加點擊事件，直接顯示圖表（不顯示 popup）
       marker.on('click', () => {
-        console.log('標記被點擊:', temporalData.name)
+        log.debug('標記被點擊:', temporalData.name)
         this.showTemporalChart(temporalData.temporal_id)
       })
       
@@ -3344,8 +3347,8 @@ export default {
       }
       this.temporalDataMarkers.push(marker)
       
-      console.log('時序資料標記創建成功:', temporalData.name, '座標:', [parseFloat(temporalData.latitude), parseFloat(temporalData.longitude)])
-      console.log('標記已創建（預設隱藏）')
+      log.debug('時序資料標記創建成功:', temporalData.name, '座標:', [parseFloat(temporalData.latitude), parseFloat(temporalData.longitude)])
+      log.debug('標記已創建（預設隱藏）')
     },
     
     // 獲取時序資料類型顏色
@@ -3393,7 +3396,7 @@ export default {
             }
           }
         } catch (error) {
-          console.error('重新載入圖層資料失敗:', error)
+          log.error('重新載入圖層資料失敗:', error)
         }
       }
       
@@ -3415,7 +3418,7 @@ export default {
 
     // 處理顏色變更事件
     handleColorChanged({ fileId, newColor }) {
-      console.log('ProjectDetail: 處理顏色變更', fileId, newColor)
+      log.debug('ProjectDetail: 處理顏色變更', fileId, newColor)
       
       // 通知地圖組件更新圖層顏色
       this.$refs.projectMap.updateLayerColor(fileId, newColor)
@@ -3451,7 +3454,7 @@ export default {
           this.geojsonData = null
         }
       } catch (error) {
-        console.error('載入 GeoJSON 圖層失敗:', error)
+        log.error('載入 GeoJSON 圖層失敗:', error)
         this.geojsonLayers = []
         this.geojsonData = null
       }
@@ -3470,7 +3473,7 @@ export default {
           await this.initAvailableFeatures()
         }
       } catch (error) {
-        console.error('載入特定 GeoJSON 圖層失敗:', error)
+        log.error('載入特定 GeoJSON 圖層失敗:', error)
       }
     },
 
@@ -3483,7 +3486,7 @@ export default {
             this.loadedGeojsonLayers[layer.file_id] = result.data
           }
         } catch (error) {
-          console.error('載入圖層錯誤:', layer.file_name, error)
+          log.error('載入圖層錯誤:', layer.file_name, error)
         }
       })
 
@@ -3512,8 +3515,8 @@ export default {
     },
 
     async toggleGeojsonLayerVisibility(fileId) {
-      console.log('切換圖層可見性:', fileId, '當前狀態:', this.layerVisibility[fileId])
-      console.log('完整的 layerVisibility:', this.layerVisibility)
+      log.debug('切換圖層可見性:', fileId, '當前狀態:', this.layerVisibility[fileId])
+      log.debug('完整的 layerVisibility:', this.layerVisibility)
       
       // 切換圖層的可見性
       let newVisible
@@ -3524,7 +3527,7 @@ export default {
         newVisible = !this.layerVisibility[fileId]
       }
       
-      console.log('新狀態:', newVisible)
+      log.debug('新狀態:', newVisible)
       
       // 通知父組件更新狀態
       this.$emit('update-layer-visibility', this.project.projectId, fileId, newVisible)
@@ -3541,7 +3544,7 @@ export default {
             await this.$nextTick()
           }
         } catch (error) {
-          console.error('載入圖層數據失敗:', error)
+          log.error('載入圖層數據失敗:', error)
         }
       }
       
@@ -3556,7 +3559,7 @@ export default {
     async loadUploadedData() {
       try {
         if (!this.project?.projectId) {
-          console.log('沒有專案 ID，跳過載入已上傳資料')
+          log.debug('沒有專案 ID，跳過載入已上傳資料')
           return
         }
 
@@ -3572,11 +3575,11 @@ export default {
             }
           })
         } else {
-          console.log('載入已上傳資料失敗:', result.message)
+          log.debug('載入已上傳資料失敗:', result.message)
           this.uploadedData = []
         }
       } catch (error) {
-        console.error('載入已上傳資料失敗:', error)
+        log.error('載入已上傳資料失敗:', error)
         this.uploadedData = []
       }
     },
@@ -3595,7 +3598,7 @@ export default {
           }
         })
         
-        console.log('初始化 features:', this.availableFeatures.map(f => ({ id: f.id, name: f.name })))
+        log.debug('初始化 features:', this.availableFeatures.map(f => ({ id: f.id, name: f.name })))
         
         // 初始化每個 feature 的上傳表單
         this.availableFeatures.forEach(feature => {
@@ -3608,7 +3611,7 @@ export default {
             this.featureUploads[feature.id] = []
             this.featureExpanded[feature.id] = true
           } else {
-            console.warn('Feature 沒有有效的 ID:', feature)
+            log.warn('Feature 沒有有效的 ID:', feature)
           }
         })
         
@@ -3628,7 +3631,7 @@ export default {
     // 載入所有 feature 的上傳資料（分批處理，避免資源耗盡）
     async loadAllFeatureUploads() {
       if (!this.geojsonData || !this.geojsonData.file_id) {
-        console.log('沒有 GeoJSON 資料或 file_id，跳過載入 feature 上傳資料')
+        log.debug('沒有 GeoJSON 資料或 file_id，跳過載入 feature 上傳資料')
         return
       }
 
@@ -3636,14 +3639,14 @@ export default {
       const batchSize = 5 // 每批處理 5 個請求
       const totalBatches = Math.ceil(features.length / batchSize)
       
-      console.log(`開始分批載入 ${features.length} 個 features 的上傳資料，分 ${totalBatches} 批處理`)
+      log.debug(`開始分批載入 ${features.length} 個 features 的上傳資料，分 ${totalBatches} 批處理`)
 
       for (let i = 0; i < totalBatches; i++) {
         const startIndex = i * batchSize
         const endIndex = Math.min(startIndex + batchSize, features.length)
         const batch = features.slice(startIndex, endIndex)
         
-        console.log(`載入第 ${i + 1}/${totalBatches} 批，features ${startIndex + 1}-${endIndex}`)
+        log.debug(`載入第 ${i + 1}/${totalBatches} 批，features ${startIndex + 1}-${endIndex}`)
         
         const batchPromises = batch.map(async (feature) => {
           try {
@@ -3655,7 +3658,7 @@ export default {
               this.featureUploads[feature.id] = []
             }
           } catch (error) {
-            console.error(`載入 Feature ${feature.id} 上傳資料錯誤:`, error)
+            log.error(`載入 Feature ${feature.id} 上傳資料錯誤:`, error)
             this.featureUploads[feature.id] = []
           }
         })
@@ -3668,7 +3671,7 @@ export default {
         }
       }
       
-      console.log('所有 features 上傳資料載入完成')
+      log.debug('所有 features 上傳資料載入完成')
     },
     
     // 資料操作方法
@@ -3677,10 +3680,10 @@ export default {
       if (data.file_extension === '.geojson' || data.file_extension === '.kml') {
         if (this.$refs.projectMap) {
           try {
-            console.log('=== 定位開始 ===')
-            console.log('定位的圖層:', data.file_name, data.file_id)
-            console.log('當前 WMS 圖層狀態:', this.$refs.projectMap.wmsLayerActive)
-            console.log('當前 WMS 圖層數量:', Object.keys(this.$refs.projectMap.geologicalLayers || {}).length)
+            log.debug('=== 定位開始 ===')
+            log.debug('定位的圖層:', data.file_name, data.file_id)
+            log.debug('當前 WMS 圖層狀態:', this.$refs.projectMap.wmsLayerActive)
+            log.debug('當前 WMS 圖層數量:', Object.keys(this.$refs.projectMap.geologicalLayers || {}).length)
             
             // 檢查是否為潛勢分析類型
             const isPotentialAnalysis = data.metadata?.data_type === 'potential_analysis'
@@ -3694,11 +3697,11 @@ export default {
               if (isVisible === undefined) {
                 // 如果沒有記錄，所有圖層默認隱藏
                 isVisible = false
-                console.log('圖層默認隱藏:', data.file_name)
+                log.debug('圖層默認隱藏:', data.file_name)
               }
               
               if (isVisible && !this.$refs.projectMap.map.hasLayer(layer)) {
-                console.log('定位時自動顯示圖層:', data.file_name, '可見性:', isVisible)
+                log.debug('定位時自動顯示圖層:', data.file_name, '可見性:', isVisible)
                 layer.addTo(this.$refs.projectMap.map)
               }
               
@@ -3707,7 +3710,7 @@ export default {
                 // 優先使用資料庫中的邊界框（如果可用）
                 const layerData = this.loadedGeojsonLayers[data.file_id]
                 if (layerData && layerData.bbox) {
-                  console.log('使用資料庫邊界框進行定位:', layerData.bbox)
+                  log.debug('使用資料庫邊界框進行定位:', layerData.bbox)
                   
                   // 檢查邊界框是否有效
                   if (layerData.bbox.minX && layerData.bbox.minY && layerData.bbox.maxX && layerData.bbox.maxY) {
@@ -3717,7 +3720,7 @@ export default {
                       [layerData.bbox.maxY, layerData.bbox.maxX]  // 東北角 [lat, lng]
                     )
                     
-                    console.log('資料庫邊界框:', bounds)
+                    log.debug('資料庫邊界框:', bounds)
                     this.$refs.projectMap.fitBounds(bounds, {
                       padding: [20, 20]
                     })
@@ -3726,10 +3729,10 @@ export default {
                   }
                 } else {
                   // 回退到使用 Leaflet 的 getBounds()
-                  console.log('使用 Leaflet getBounds() 進行定位')
+                  log.debug('使用 Leaflet getBounds() 進行定位')
                 const bounds = layer.getBounds()
                 if (bounds && bounds.isValid && bounds.isValid()) {
-                    console.log('Leaflet 邊界框:', bounds)
+                    log.debug('Leaflet 邊界框:', bounds)
                   this.$refs.projectMap.fitBounds(bounds, {
                     padding: [20, 20]
                   })
@@ -3738,7 +3741,7 @@ export default {
                   }
                 }
               } catch (error) {
-                console.log('使用定位方法失敗，嘗試其他定位方法:', error)
+                log.debug('使用定位方法失敗，嘗試其他定位方法:', error)
                 // 對於 KML 圖層，可能需要特殊處理
                 if (data.file_extension === '.kml') {
                   // 嘗試從圖層數據中獲取邊界
@@ -3759,12 +3762,12 @@ export default {
                 
               // 定位成功後強制恢復地質圖層
               if (this.$refs.projectMap && this.$refs.projectMap.forceRestoreWMSLayers) {
-                console.log('定位成功，準備恢復 WMS 圖層')
+                log.debug('定位成功，準備恢復 WMS 圖層')
                 // 延遲一點時間確保地圖視圖已經穩定
                 setTimeout(() => {
-                  console.log('開始強制恢復 WMS 圖層')
+                  log.debug('開始強制恢復 WMS 圖層')
                   this.$refs.projectMap.forceRestoreWMSLayers()
-                  console.log('WMS 圖層恢復完成')
+                  log.debug('WMS 圖層恢復完成')
                 }, 500)
               }
               
@@ -3791,11 +3794,11 @@ export default {
                 if (isVisible === undefined) {
                   // 如果沒有記錄，所有圖層默認隱藏
                   isVisible = false
-                  console.log('新載入的圖層默認隱藏:', data.file_name)
+                  log.debug('新載入的圖層默認隱藏:', data.file_name)
                 }
                 
                 if (isVisible && !this.$refs.projectMap.map.hasLayer(newLayer)) {
-                  console.log('定位時自動顯示新載入的圖層:', data.file_name, '可見性:', isVisible)
+                  log.debug('定位時自動顯示新載入的圖層:', data.file_name, '可見性:', isVisible)
                   newLayer.addTo(this.$refs.projectMap.map)
                 }
                 
@@ -3804,7 +3807,7 @@ export default {
                   // 優先使用資料庫中的邊界框（如果可用）
                   const layerData = this.loadedGeojsonLayers[data.file_id]
                   if (layerData && layerData.bbox) {
-                    console.log('使用後端轉換的邊界框進行定位:', layerData.bbox)
+                    log.debug('使用後端轉換的邊界框進行定位:', layerData.bbox)
                     
                     // 檢查邊界框是否有效
                     if (layerData.bbox.minX && layerData.bbox.minY && layerData.bbox.maxX && layerData.bbox.maxY) {
@@ -3814,7 +3817,7 @@ export default {
                         [layerData.bbox.maxY, layerData.bbox.maxX]  // 東北角 [lat, lng]
                       )
                       
-                      console.log('後端轉換的邊界框:', bounds)
+                      log.debug('後端轉換的邊界框:', bounds)
                       this.$refs.projectMap.fitBounds(bounds, {
                         padding: [20, 20]
                       })
@@ -3823,10 +3826,10 @@ export default {
                     }
                   } else {
                     // 回退到使用 Leaflet 的 getBounds()
-                    console.log('回退到使用 Leaflet getBounds() 進行定位')
+                    log.debug('回退到使用 Leaflet getBounds() 進行定位')
                   const bounds = newLayer.getBounds()
                   if (bounds && bounds.isValid && bounds.isValid()) {
-                      console.log('Leaflet 邊界框:', bounds)
+                      log.debug('Leaflet 邊界框:', bounds)
                     this.$refs.projectMap.fitBounds(bounds, {
                       padding: [20, 20]
                     })
@@ -3835,7 +3838,7 @@ export default {
                     }
                   }
                 } catch (error) {
-                  console.log('定位失敗:', error)
+                  log.debug('定位失敗:', error)
                   throw error
                 }
                 
@@ -3845,12 +3848,12 @@ export default {
                   
                 // 定位成功後強制恢復地質圖層
                 if (this.$refs.projectMap && this.$refs.projectMap.forceRestoreWMSLayers) {
-                  console.log('定位成功（載入後），準備恢復 WMS 圖層')
+                  log.debug('定位成功（載入後），準備恢復 WMS 圖層')
                   // 延遲一點時間確保地圖視圖已經穩定
                   setTimeout(() => {
-                    console.log('開始強制恢復 WMS 圖層（載入後）')
+                    log.debug('開始強制恢復 WMS 圖層（載入後）')
                     this.$refs.projectMap.forceRestoreWMSLayers()
-                    console.log('WMS 圖層恢復完成（載入後）')
+                    log.debug('WMS 圖層恢復完成（載入後）')
                   }, 500)
                 }
                 
@@ -3864,7 +3867,7 @@ export default {
               }
             }
           } catch (error) {
-            console.error('定位失敗:', error)
+            log.error('定位失敗:', error)
             this.showAlert({
               type: 'error',
               title: '定位失敗',
@@ -3930,12 +3933,12 @@ export default {
           
           // 定位成功後強制恢復地質圖層
           if (this.$refs.projectMap && this.$refs.projectMap.forceRestoreWMSLayers) {
-            console.log('KML 定位成功，準備恢復 WMS 圖層')
+            log.debug('KML 定位成功，準備恢復 WMS 圖層')
             // 延遲一點時間確保地圖視圖已經穩定
             setTimeout(() => {
-              console.log('開始強制恢復 WMS 圖層（KML）')
+              log.debug('開始強制恢復 WMS 圖層（KML）')
               this.$refs.projectMap.forceRestoreWMSLayers()
-              console.log('WMS 圖層恢復完成（KML）')
+              log.debug('WMS 圖層恢復完成（KML）')
             }, 500)
           }
           
@@ -3948,7 +3951,7 @@ export default {
           throw new Error('無法從 KML 中提取座標')
         }
       } catch (error) {
-        console.error('KML 定位失敗:', error)
+        log.error('KML 定位失敗:', error)
         this.showAlert({
           type: 'error',
           title: '定位失敗',
@@ -4026,11 +4029,11 @@ export default {
         const targetFileId = fileId || this.associateTargetData?.file_id
         
         if (!targetFileId) {
-          console.error(`載入 ${featureId} 上傳資料失敗: 沒有 fileId`)
+          log.error(`載入 ${featureId} 上傳資料失敗: 沒有 fileId`)
           return
         }
         
-        console.log(`載入 Feature ${featureId} 上傳資料，使用 fileId: ${targetFileId}`)
+        log.debug(`載入 Feature ${featureId} 上傳資料，使用 fileId: ${targetFileId}`)
         
         const result = await this.$api.get(`/data/feature/${targetFileId}/${featureId}`)
 
@@ -4040,7 +4043,7 @@ export default {
           this.featureUploads[featureId] = []
         }
       } catch (error) {
-        console.error(`載入 ${featureId} 上傳資料失敗:`, error)
+        log.error(`載入 ${featureId} 上傳資料失敗:`, error)
         this.featureUploads[featureId] = []
       }
     },
@@ -4054,7 +4057,7 @@ export default {
         // 打開上傳模態框
         this.showLayerUploadModal = true
         
-        console.log('編輯資料:', data)
+        log.debug('編輯資料:', data)
       } catch (error) {
         this.showAlert({
           type: 'error',
@@ -4117,13 +4120,13 @@ export default {
     // 外部圖層控制
     toggleExternalLayer(layerType) {
       // 外部圖層切換邏輯
-      console.log('切換外部圖層:', layerType)
+      log.debug('切換外部圖層:', layerType)
     },
     
     // 時序圖層控制
     toggleTemporalLayer(layerType) {
       // 時序圖層切換邏輯
-      console.log('切換時序圖層:', layerType)
+      log.debug('切換時序圖層:', layerType)
       this.showAlert({
         type: 'info',
         title: '時序圖層',
@@ -4133,7 +4136,7 @@ export default {
     
     // 地質圖層控制
     toggleGeologicalMap(data) {
-      console.log('地質圖層切換:', data)
+      log.debug('地質圖層切換:', data)
       
       // 通知地圖組件切換地質圖層
       this.$refs.projectMap?.toggleGeologicalLayer(data)
@@ -4164,7 +4167,7 @@ export default {
           this.analysisConfig.intervals = this.generateDefaultIntervals(analysis)
         }
       } catch (error) {
-        console.error('分析潛勢數據失敗:', error)
+        log.error('分析潛勢數據失敗:', error)
         this.showAlert({
           type: 'error',
           title: '分析失敗',
@@ -4285,7 +4288,7 @@ export default {
     
     async applyAnalysis() {
       try {
-        console.log('應用潛勢評估分析:', this.analysisConfig)
+        log.debug('應用潛勢評估分析:', this.analysisConfig)
         
         // 這裡可以添加實際的分析邏輯
         // 例如：渲染潛勢評估圖層
@@ -4298,7 +4301,7 @@ export default {
         
         this.closeAnalysisModal()
       } catch (error) {
-        console.error('應用分析失敗:', error)
+        log.error('應用分析失敗:', error)
         this.showAlert({
           type: 'error',
           title: '分析失敗',
@@ -4408,12 +4411,12 @@ export default {
     
     // 顯示相關方法
     async showFeatureUploads(featureId, uploads) {
-      console.log('顯示 feature 上傳資料:', { featureId, uploads })
+      log.debug('顯示 feature 上傳資料:', { featureId, uploads })
       
       // 找到對應的 feature 資料
       const feature = this.availableFeatures.find(f => f.id === featureId)
       if (!feature) {
-        console.log('找不到對應的 feature:', featureId)
+        log.debug('找不到對應的 feature:', featureId)
         return
       }
       
@@ -4442,21 +4445,21 @@ export default {
       // 載入該 feature 的關聯上傳資料
       try {
           await this.loadFeatureUploads(featureId, this.associateTargetData.file_id)
-        console.log('已載入關聯上傳資料，featureId:', featureId, 'uploads:', this.featureUploads[featureId])
+        log.debug('已載入關聯上傳資料，featureId:', featureId, 'uploads:', this.featureUploads[featureId])
       } catch (error) {
-        console.error('載入關聯上傳資料失敗:', error)
+        log.error('載入關聯上傳資料失敗:', error)
         // 如果載入失敗，使用傳入的 uploads 資料
         this.featureUploads[featureId] = uploads || []
       }
     },
     
     showSimpleTooltip(featureId, latlng) {
-      console.log('顯示簡單 tooltip:', { featureId, latlng })
+      log.debug('顯示簡單 tooltip:', { featureId, latlng })
       
       // 找到對應的 feature 資料
       const feature = this.availableFeatures.find(f => f.id === featureId)
       if (!feature) {
-        console.log('找不到對應的 feature:', featureId)
+        log.debug('找不到對應的 feature:', featureId)
         return
       }
       
@@ -4470,14 +4473,14 @@ export default {
 
     // 顯示關聯上傳的資料面板（不是上傳視窗）
     showFeatureUploadsPanel(featureId, uploads, fileId) {
-      console.log('=== showFeatureUploadsPanel 開始 ===')
-      console.log('參數:', { featureId, uploads, fileId })
-      console.log('uploads 長度:', uploads?.length || 0)
-      console.log('availableFeatures:', this.availableFeatures)
+      log.debug('=== showFeatureUploadsPanel 開始 ===')
+      log.debug('參數:', { featureId, uploads, fileId })
+      log.debug('uploads 長度:', uploads?.length || 0)
+      log.debug('availableFeatures:', this.availableFeatures)
       
       // 找到對應的 feature 資料，如果找不到則創建一個虛擬的 feature
       let feature = this.availableFeatures.find(f => f.id === featureId)
-      console.log('找到的 feature:', feature)
+      log.debug('找到的 feature:', feature)
       
       if (!feature) {
         // 為特殊圖層創建虛擬 feature
@@ -4506,7 +4509,7 @@ export default {
               Description: `Feature ${featureId}`
             }
           }
-          console.log('為圖層創建虛擬 feature:', featureId)
+          log.debug('為圖層創建虛擬 feature:', featureId)
         }
       }
       
@@ -4519,9 +4522,9 @@ export default {
         fileId: fileId
       }
       
-      console.log('設置的 featureDisplayData:', this.featureDisplayData)
-      console.log('featureDisplayData.uploads 長度:', this.featureDisplayData.uploads.length)
-      console.log('featureUploads[featureId] 長度:', this.featureUploads[featureId]?.length || 0)
+      log.debug('設置的 featureDisplayData:', this.featureDisplayData)
+      log.debug('featureDisplayData.uploads 長度:', this.featureDisplayData.uploads.length)
+      log.debug('featureUploads[featureId] 長度:', this.featureUploads[featureId]?.length || 0)
       
       // 重置標籤頁狀態
       this.activeTab = 'view'
@@ -4531,8 +4534,8 @@ export default {
       
       // 顯示資料面板模態框
       this.showFeatureDisplayModal = true
-      console.log('showFeatureDisplayModal 設置為:', this.showFeatureDisplayModal)
-      console.log('=== showFeatureUploadsPanel 結束 ===')
+      log.debug('showFeatureDisplayModal 設置為:', this.showFeatureDisplayModal)
+      log.debug('=== showFeatureUploadsPanel 結束 ===')
     },
 
     // 輔助函數：判斷是否為圖片檔案
@@ -4627,20 +4630,20 @@ export default {
 
     // 處理圖片載入錯誤
     handleImageError(event) {
-      console.error('圖片載入失敗:', event.target.src)
+      log.error('圖片載入失敗:', event.target.src)
       event.target.style.display = 'none'
     },
 
     // 下載檔案
     downloadFile(upload) {
       if (!upload || !upload.storage_path || !upload.original_name) {
-        console.warn('下載檔案失敗：缺少必要資訊', upload)
+        log.warn('下載檔案失敗：缺少必要資訊', upload)
         return
       }
       
       const url = this.getFileUrl(upload.storage_path)
       if (!url) {
-        console.warn('下載檔案失敗：無法構建檔案 URL')
+        log.warn('下載檔案失敗：無法構建檔案 URL')
         return
       }
       
@@ -4654,20 +4657,20 @@ export default {
     
     // 底圖選擇相關方法
     onBaseMapSelected(baseMap) {
-      console.log('底圖被選擇:', baseMap)
+      log.debug('底圖被選擇:', baseMap)
       // 只設置 ID，不觸發 watcher
       this.currentBaseMapId = baseMap.id
     },
     
     onBaseMapChanged(baseMap) {
-      console.log('底圖變更:', baseMap)
+      log.debug('底圖變更:', baseMap)
       // 統一處理底圖變更
       this.currentBaseMap = baseMap
       this.currentBaseMapId = baseMap ? baseMap.id : ''
     },
     
     onBaseMapLocated(baseMap) {
-      console.log('定位正射影像:', baseMap)
+      log.debug('定位正射影像:', baseMap)
       
       if (!this.$refs.projectMap || !this.$refs.projectMap.map) {
         this.showAlert({
@@ -4693,12 +4696,13 @@ export default {
     // 定位 COG 正射影像
     async locateCOGBaseMap(baseMap) {
       try {
-        const staticBase = import.meta.env.VITE_STATIC_URL || 'http://localhost:3001'
+        const staticBase = import.meta.env.VITE_STATIC_URL || window.location.origin
         const tiTilerBase = import.meta.env.VITE_TITILER_URL || 'http://localhost:8080'
         const imageUrl = `${staticBase}/${baseMap.storagePath.replace(/^\//, '')}`
+        const tiTilerAssetUrl = this.$refs.projectMap.baseMapService?.getTiTilerAssetUrl(imageUrl) || imageUrl
         
         // 從 TiTiler 獲取邊界
-        const response = await fetch(`${tiTilerBase}/cog/bounds?url=${encodeURIComponent(imageUrl)}`)
+        const response = await fetch(`${tiTilerBase}/cog/info.geojson?url=${encodeURIComponent(tiTilerAssetUrl)}`)
         if (!response.ok) {
           const errBody = await response.json().catch(() => ({}))
           if (response.status === 404) {
@@ -4727,7 +4731,7 @@ export default {
           throw new Error('無法獲取 COG 文件邊界')
         }
       } catch (error) {
-        console.error('COG 定位失敗:', error)
+        log.error('COG 定位失敗:', error)
         this.showAlert({
           type: 'error',
           title: '定位失敗',
@@ -4739,7 +4743,7 @@ export default {
     // 定位傳統 TIF 正射影像
     async locateTraditionalBaseMap(baseMap) {
       try {
-        const staticBase = import.meta.env.VITE_STATIC_URL || 'http://localhost:3001'
+        const staticBase = import.meta.env.VITE_STATIC_URL || window.location.origin
         const imageUrl = `${staticBase}/${baseMap.storagePath.replace(/^\//, '')}`
         
         // 使用 BaseMapService 計算邊界
@@ -4762,7 +4766,7 @@ export default {
           message: `已定位到正射影像「${baseMap.name}」的範圍`
         })
       } catch (error) {
-        console.error('傳統 TIF 定位失敗:', error)
+        log.error('傳統 TIF 定位失敗:', error)
         this.showAlert({
           type: 'error',
           title: '定位失敗',
@@ -4776,28 +4780,28 @@ export default {
     async loadBaseMapsAndPreloadTif() {
       try {
         if (!this.project?.projectId) {
-          console.log('沒有專案 ID，跳過載入底圖數據')
+          log.debug('沒有專案 ID，跳過載入底圖數據')
           return
         }
 
-        console.log('開始載入底圖數據...')
+        log.debug('開始載入底圖數據...')
         const result = await this.$api.get(`/data/project/${this.project.projectId}/basemaps`)
         
         if (result.success && result.data && result.data.length > 0) {
-          console.log('底圖數據載入成功:', result.data.length, '個底圖')
+          log.debug('底圖數據載入成功:', result.data.length, '個底圖')
           
           // COG 文件不需要預載入，直接使用 TiTiler 服務
         } else {
-          console.log('沒有底圖數據或載入失敗')
+          log.debug('沒有底圖數據或載入失敗')
         }
       } catch (error) {
-        console.error('載入底圖數據失敗:', error)
+        log.error('載入底圖數據失敗:', error)
       }
     },
     
     // 載入開始
     onShowLoading(message) {
-      console.log('載入開始:', message)
+      log.debug('載入開始:', message)
       // 通知 BaseMapSelector 載入完成
       if (this.$refs.projectSidebar?.$refs?.baseMapSelector) {
         // 載入動畫由 BaseMapSelector 自己管理
@@ -4806,7 +4810,7 @@ export default {
     
     // 載入結束
     onHideLoading() {
-      console.log('載入結束')
+      log.debug('載入結束')
       // 通知 BaseMapSelector 載入完成
       if (this.$refs.projectSidebar?.$refs?.baseMapSelector) {
         this.$refs.projectSidebar.$refs.baseMapSelector.onLoadingComplete()
@@ -4815,24 +4819,24 @@ export default {
     
     // 地質圖層切換
     toggleGeologicalMap(data) {
-      console.log('地質圖層切換:', data)
+      log.debug('地質圖層切換:', data)
       this.$refs.projectMap?.toggleGeologicalLayer(data)
     },
 
     // 省道里程樁號圖層切換（僅顯示/隱藏圖層，不重新加載）
     toggleHighwayMileage() {
-      console.log('[ProjectDetail] toggleHighwayMileage 被調用')
+      log.debug('[ProjectDetail] toggleHighwayMileage 被調用')
       if (!this.mileagePointsLayer) {
-        console.log('[ProjectDetail] mileagePointsLayer 不存在，無法切換')
+        log.debug('[ProjectDetail] mileagePointsLayer 不存在，無法切換')
         return
       }
       
       if (this.map) {
         if (this.map.hasLayer(this.mileagePointsLayer)) {
-          console.log('[ProjectDetail] 隱藏里程樁號圖層')
+          log.debug('[ProjectDetail] 隱藏里程樁號圖層')
           this.map.removeLayer(this.mileagePointsLayer)
         } else {
-          console.log('[ProjectDetail] 顯示里程樁號圖層')
+          log.debug('[ProjectDetail] 顯示里程樁號圖層')
           this.map.addLayer(this.mileagePointsLayer)
         }
       }
@@ -4840,25 +4844,25 @@ export default {
     
     // 載入里程樁號數據
     async loadMileagePoints() {
-      console.log('[ProjectDetail] loadMileagePoints 開始')
+      log.debug('[ProjectDetail] loadMileagePoints 開始')
       if (!this.map) {
-        console.error('[ProjectDetail] 地圖未初始化')
+        log.error('[ProjectDetail] 地圖未初始化')
         return
       }
       
       try {
-        console.log('[ProjectDetail] 請求 GeoJSON 數據...')
+        log.debug('[ProjectDetail] 請求 GeoJSON 數據...')
         const response = await fetch('/uploads/monitoring/taiwan7/alertRoad.geojson')
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`)
         }
         
         const geojsonData = await response.json()
-        console.log('[ProjectDetail] GeoJSON 數據載入成功，特徵數量:', geojsonData.features?.length)
+        log.debug('[ProjectDetail] GeoJSON 數據載入成功，特徵數量:', geojsonData.features?.length)
         
         // 清理舊圖層
         if (this.mileagePointsLayer && this.map.hasLayer(this.mileagePointsLayer)) {
-          console.log('[ProjectDetail] 清理舊里程樁號圖層')
+          log.debug('[ProjectDetail] 清理舊里程樁號圖層')
           this.map.removeLayer(this.mileagePointsLayer)
         }
         
@@ -4902,25 +4906,25 @@ export default {
         
         // 默認添加到地圖（常駐顯示）
         if (this.highwayMileageVisible) {
-          console.log('[ProjectDetail] 添加里程樁號圖層到地圖')
+          log.debug('[ProjectDetail] 添加里程樁號圖層到地圖')
           this.mileagePointsLayer.addTo(this.map)
         }
         
         // 觸發初始的標籤顯示狀態
         this.updateMileageLabel()
         
-        console.log('[ProjectDetail] 里程樁號載入完成')
+        log.debug('[ProjectDetail] 里程樁號載入完成')
       } catch (error) {
-        console.error('[ProjectDetail] 載入里程樁號失敗:', error)
+        log.error('[ProjectDetail] 載入里程樁號失敗:', error)
       }
     },
     
     // 切換里程標籤顯示狀態（響應按鈕點擊）
     toggleMileageLabel() {
-      console.log('[ProjectDetail] toggleMileageLabel 被調用（按鈕點擊）')
+      log.debug('[ProjectDetail] toggleMileageLabel 被調用（按鈕點擊）')
       // ✅ 切換狀態
       this.mileageLabelVisible = !this.mileageLabelVisible
-      console.log('[ProjectDetail] 切換里程數字標籤顯示:', this.mileageLabelVisible)
+      log.debug('[ProjectDetail] 切換里程數字標籤顯示:', this.mileageLabelVisible)
       
       // 更新顯示
       this.updateMileageLabel()
@@ -4928,18 +4932,18 @@ export default {
     
     // 更新里程標籤顯示（根據當前狀態和縮放層級）
     updateMileageLabel() {
-      console.log('[ProjectDetail] updateMileageLabel 被調用')
+      log.debug('[ProjectDetail] updateMileageLabel 被調用')
       if (!this.mileagePointsLayer || !this.map) {
-        console.log('[ProjectDetail] 里程樁號圖層或地圖不存在')
+        log.debug('[ProjectDetail] 里程樁號圖層或地圖不存在')
         return
       }
       
       const currentZoom = this.map.getZoom()
-      console.log('[ProjectDetail] 當前縮放層級:', currentZoom)
+      log.debug('[ProjectDetail] 當前縮放層級:', currentZoom)
       
       // 根據縮放層級和用戶設置決定是否顯示標籤
       const shouldShowLabel = this.mileageLabelVisible && currentZoom >= 14
-      console.log('[ProjectDetail] 是否顯示標籤:', shouldShowLabel, '(mileageLabelVisible:', this.mileageLabelVisible, ', zoom:', currentZoom, ')')
+      log.debug('[ProjectDetail] 是否顯示標籤:', shouldShowLabel, '(mileageLabelVisible:', this.mileageLabelVisible, ', zoom:', currentZoom, ')')
       
       this.mileagePointsLayer.eachLayer((layer) => {
         if (shouldShowLabel && layer.feature && layer.feature.properties) {
@@ -4965,14 +4969,14 @@ export default {
     
     // 圖層順序變更處理
     onLayerOrderChanged(layerOrder) {
-      console.log('圖層順序已更新:', layerOrder)
+      log.debug('圖層順序已更新:', layerOrder)
       // 可以在這裡保存圖層順序到後端或本地存儲
       // 目前只在客戶端維護順序
     },
     
     // 更新圖層 z-index 處理
     onUpdateLayerZIndex(layerOrder) {
-      console.log('更新圖層 z-index:', layerOrder)
+      log.debug('更新圖層 z-index:', layerOrder)
       // 通知地圖組件更新圖層的 z-index
       if (this.$refs.projectMap) {
         this.$refs.projectMap.updateLayerZIndex(layerOrder)
@@ -4983,13 +4987,13 @@ export default {
     
     // 時序資料相關方法
     onLocateTemporalData(temporalData) {
-      console.log('定位時序資料:', temporalData)
+      log.debug('定位時序資料:', temporalData)
       // 如果時序資料有座標信息，定位到該位置
       if (temporalData.longitude && temporalData.latitude) {
         if (this.map) {
           // 只移動地圖到該位置，不影響標記可見性（統一使用縮放層級 18）
           this.map.setView([parseFloat(temporalData.latitude), parseFloat(temporalData.longitude)], 18)
-          console.log('地圖已移動到位置:', [parseFloat(temporalData.latitude), parseFloat(temporalData.longitude)])
+          log.debug('地圖已移動到位置:', [parseFloat(temporalData.latitude), parseFloat(temporalData.longitude)])
         }
       } else {
         // 如果沒有座標信息，顯示提示
@@ -5102,11 +5106,11 @@ export default {
     },
     
     async onDeleteTemporalData(temporalData) {
-      console.log('刪除時序資料:', temporalData)
+      log.debug('刪除時序資料:', temporalData)
       if (await showConfirm(`確定要刪除時序資料「${temporalData.name}」嗎？`, '刪除確認', this.isDarkMode)) {
         try {
           const response = await this.$api.delete(`/temporal-data-enhanced/${temporalData.temporal_id}`)
-          console.log('刪除響應:', response)
+          log.debug('刪除響應:', response)
           
           if (response.success) {
             // 從列表中移除已刪除的時序資料
@@ -5123,7 +5127,7 @@ export default {
             throw new Error(response.message || '刪除失敗')
           }
         } catch (error) {
-          console.error('刪除時序資料失敗:', error)
+          log.error('刪除時序資料失敗:', error)
           this.showAlert({
             type: 'error',
             title: '刪除失敗',
@@ -5134,29 +5138,29 @@ export default {
     },
     
     onToggleTemporalDataVisibility(temporalData) {
-      console.log('=== 接收可見性切換事件 ===')
-      console.log('時序資料:', temporalData)
-      console.log('temporalData 的鍵:', Object.keys(temporalData))
-      console.log('isVisible:', temporalData.isVisible)
-      console.log('temporalId:', temporalData.temporalId)
-      console.log('temporal_id:', temporalData.temporal_id)
+      log.debug('=== 接收可見性切換事件 ===')
+      log.debug('時序資料:', temporalData)
+      log.debug('temporalData 的鍵:', Object.keys(temporalData))
+      log.debug('isVisible:', temporalData.isVisible)
+      log.debug('temporalId:', temporalData.temporalId)
+      log.debug('temporal_id:', temporalData.temporal_id)
       
       // 如果 isVisible 是 undefined，從 temporalDataVisibility 中計算
       let isVisible = temporalData.isVisible
       if (isVisible === undefined) {
         const currentVisibility = this.temporalDataVisibility[temporalData.temporal_id] === true
         isVisible = !currentVisibility
-        console.log('isVisible 是 undefined，計算新值:', isVisible)
+        log.debug('isVisible 是 undefined，計算新值:', isVisible)
       }
       
       // 更新可見性狀態
       this.temporalDataVisibility[temporalData.temporal_id] = isVisible
       
-      console.log('更新後的可見性狀態:', this.temporalDataVisibility[temporalData.temporal_id])
+      log.debug('更新後的可見性狀態:', this.temporalDataVisibility[temporalData.temporal_id])
       
       // 找到對應的標記並更新可見性
-      console.log('標記陣列長度:', this.temporalDataMarkers?.length || 0)
-      console.log('時序資料座標:', temporalData.latitude, temporalData.longitude)
+      log.debug('標記陣列長度:', this.temporalDataMarkers?.length || 0)
+      log.debug('時序資料座標:', temporalData.latitude, temporalData.longitude)
       
       // 如果座標是 undefined，從 temporalDataList 中查找
       let latitude = temporalData.latitude
@@ -5167,7 +5171,7 @@ export default {
         if (originalData) {
           latitude = originalData.latitude
           longitude = originalData.longitude
-          console.log('從 temporalDataList 中獲取座標:', latitude, longitude)
+          log.debug('從 temporalDataList 中獲取座標:', latitude, longitude)
         }
       }
       
@@ -5175,23 +5179,23 @@ export default {
         const dataLat = parseFloat(latitude)
         const dataLng = parseFloat(longitude)
         
-        console.log('尋找匹配的標記，目標座標:', [dataLat, dataLng])
+        log.debug('尋找匹配的標記，目標座標:', [dataLat, dataLng])
         
         this.temporalDataMarkers.forEach((marker, index) => {
           const markerLat = marker.getLatLng().lat
           const markerLng = marker.getLatLng().lng
           
-          console.log(`標記 ${index} 座標:`, [markerLat, markerLng])
+          log.debug(`標記 ${index} 座標:`, [markerLat, markerLng])
           
           // 如果座標匹配，更新可見性
           if (Math.abs(markerLat - dataLat) < 0.0001 && Math.abs(markerLng - dataLng) < 0.0001) {
-            console.log('找到匹配的標記!')
+            log.debug('找到匹配的標記!')
             if (isVisible) {
               marker.setOpacity(1)
-              console.log('標記已顯示:', temporalData.name)
+              log.debug('標記已顯示:', temporalData.name)
             } else {
               marker.setOpacity(0)
-              console.log('標記已隱藏:', temporalData.name)
+              log.debug('標記已隱藏:', temporalData.name)
             }
           }
         })
@@ -5199,19 +5203,19 @@ export default {
     },
     
     onTemporalDataOrderChanged(newOrder) {
-      console.log('時序資料順序已更新:', newOrder)
+      log.debug('時序資料順序已更新:', newOrder)
       this.temporalDataOrder = newOrder
       // 可以在這裡保存時序資料順序到後端或本地存儲
     },
     
     onShowError(errorInfo) {
-      console.log('顯示錯誤訊息:', errorInfo)
+      log.debug('顯示錯誤訊息:', errorInfo)
       this.showAlert(errorInfo)
     },
     
     // 顯示時序圖表
     async showTemporalChart(temporalId) {
-      console.log('顯示時序圖表:', temporalId)
+      log.debug('顯示時序圖表:', temporalId)
       
       // 先清空舊的圖表數據
       this.temporalChartData = null
@@ -5227,16 +5231,16 @@ export default {
           return
         }
         
-        console.log('點擊的時序資料 ID:', temporalId)
-        console.log('找到的時序資料:', temporalData)
-        console.log('時序資料名稱:', temporalData.name)
-        console.log('X軸:', temporalData.x_axis_columns)
-        console.log('Y軸:', temporalData.y_axis_columns)
+        log.debug('點擊的時序資料 ID:', temporalId)
+        log.debug('找到的時序資料:', temporalData)
+        log.debug('時序資料名稱:', temporalData.name)
+        log.debug('X軸:', temporalData.x_axis_columns)
+        log.debug('Y軸:', temporalData.y_axis_columns)
         
         // 獲取時序資料的圖表數據
-        console.log('請求圖表數據 API:', `/temporal-data-enhanced/${temporalId}/chart`)
+        log.debug('請求圖表數據 API:', `/temporal-data-enhanced/${temporalId}/chart`)
         const response = await this.$api.get(`/temporal-data-enhanced/${temporalId}/chart`)
-        console.log('圖表數據 API 響應:', response)
+        log.debug('圖表數據 API 響應:', response)
         
         if (response.success && response.data) {
           // 設置圖表數據並顯示圖表模態框
@@ -5246,26 +5250,26 @@ export default {
             apexConfig: response.data.apexConfig
           }
           
-          console.log('===== 設置新的圖表數據 =====')
-          console.log('temporalData.temporal_id:', temporalData.temporal_id)
-          console.log('temporalData.name:', temporalData.name)
-          console.log('temporalData.chart_config:', temporalData.chart_config)
-          console.log('完整圖表數據:', this.temporalChartData)
+          log.debug('===== 設置新的圖表數據 =====')
+          log.debug('temporalData.temporal_id:', temporalData.temporal_id)
+          log.debug('temporalData.name:', temporalData.name)
+          log.debug('temporalData.chart_config:', temporalData.chart_config)
+          log.debug('完整圖表數據:', this.temporalChartData)
           
           // 生成 ApexCharts 配置
           this.generateApexChartConfig(response.data.chartData, temporalData)
           
-          console.log('準備顯示模態框')
+          log.debug('準備顯示模態框')
           // 使用 nextTick 確保 DOM 更新後再顯示
           await this.$nextTick()
           this.showTemporalChartModal = true
-          console.log('模態框已顯示')
+          log.debug('模態框已顯示')
         } else {
           this.showAlert('無法載入圖表數據', 'error')
         }
       } catch (error) {
-        console.error('載入時序圖表失敗:', error)
-        console.error('錯誤詳情:', {
+        log.error('載入時序圖表失敗:', error)
+        log.error('錯誤詳情:', {
           message: error.message,
           response: error.response,
           status: error.response?.status,
@@ -5292,26 +5296,26 @@ export default {
     
     // 生成 ApexCharts 配置
     generateApexChartConfig(chartData, temporalData) {
-      console.log('生成 ApexCharts 配置:', chartData)
-      console.log('temporalData:', temporalData)
-      console.log('temporalData.chart_config:', temporalData.chart_config)
-      console.log('temporalData.chart_config 類型:', typeof temporalData.chart_config)
+      log.debug('生成 ApexCharts 配置:', chartData)
+      log.debug('temporalData:', temporalData)
+      log.debug('temporalData.chart_config:', temporalData.chart_config)
+      log.debug('temporalData.chart_config 類型:', typeof temporalData.chart_config)
       
       // 解析 chart_config（可能是字符串）
       let chartConfig = temporalData.chart_config
       if (typeof chartConfig === 'string') {
         try {
           chartConfig = JSON.parse(chartConfig)
-          console.log('解析後的 chart_config:', chartConfig)
+          log.debug('解析後的 chart_config:', chartConfig)
         } catch (e) {
-          console.error('解析 chart_config 失敗:', e)
+          log.error('解析 chart_config 失敗:', e)
           chartConfig = {}
         }
       }
       
       // 從 chart_config 獲取圖表類型，默認為 'line'
       const chartType = chartConfig?.chartType || temporalData.chartType || 'line'
-      console.log('最終圖表類型:', chartType)
+      log.debug('最終圖表類型:', chartType)
       
       // 生成 series 數據
       this.apexChartSeries = chartData.datasets.map(dataset => ({
@@ -5363,8 +5367,8 @@ export default {
         }
       }
       
-      console.log('ApexCharts 配置:', this.apexChartOptions)
-      console.log('ApexCharts Series:', this.apexChartSeries)
+      log.debug('ApexCharts 配置:', this.apexChartOptions)
+      log.debug('ApexCharts Series:', this.apexChartSeries)
     },
     
     // 關閉時序圖表模態框
@@ -5389,7 +5393,7 @@ export default {
     
     // 處理時間範圍變化
     onTimeRangeChanged(newTimeRange) {
-      console.log('時間範圍已變更:', newTimeRange)
+      log.debug('時間範圍已變更:', newTimeRange)
       // 可以在這裡添加額外的邏輯，比如更新其他相關數據
     },
     
@@ -5397,7 +5401,7 @@ export default {
     handleFileSelect(event) {
       const files = Array.from(event.target.files)
       this.selectedFiles = files
-      console.log('選擇的檔案:', files.map(f => f.name))
+      log.debug('選擇的檔案:', files.map(f => f.name))
     },
     
     // 重置上傳表單
@@ -5422,10 +5426,10 @@ export default {
     
     // 處理 Feature 上傳
     async handleFeatureUpload() {
-      console.log('=== handleFeatureUpload 開始 ===')
-      console.log('selectedFiles:', this.selectedFiles.length)
-      console.log('uploadForm:', this.uploadForm)
-      console.log('featureDisplayData:', this.featureDisplayData)
+      log.debug('=== handleFeatureUpload 開始 ===')
+      log.debug('selectedFiles:', this.selectedFiles.length)
+      log.debug('uploadForm:', this.uploadForm)
+      log.debug('featureDisplayData:', this.featureDisplayData)
       
       if (!this.selectedFiles.length || !this.uploadForm.upload_name) {
         this.showAlert({
@@ -5439,8 +5443,8 @@ export default {
       const featureId = this.featureDisplayData?.feature?.properties?.Id || this.featureDisplayData?.featureId
       const fileId = this.featureDisplayData?.fileId
       
-      console.log('提取的信息:', { featureId, fileId })
-      console.log('featureDisplayData 詳細:', {
+      log.debug('提取的信息:', { featureId, fileId })
+      log.debug('featureDisplayData 詳細:', {
         featureId: this.featureDisplayData?.featureId,
         feature: this.featureDisplayData?.feature,
         fileId: this.featureDisplayData?.fileId,
@@ -5448,7 +5452,7 @@ export default {
       })
       
       if (!featureId || !fileId) {
-        console.error('缺少必要信息:', { featureId, fileId })
+        log.error('缺少必要信息:', { featureId, fileId })
         this.showAlert({
           type: 'error',
           title: '上傳失敗',
@@ -5508,7 +5512,7 @@ export default {
         })
         
       } catch (error) {
-        console.error('上傳失敗:', error)
+        log.error('上傳失敗:', error)
         this.showAlert({
           type: 'error',
           title: '上傳失敗',
@@ -5531,7 +5535,7 @@ export default {
           this.syncModalData(featureId)
         }
       } catch (error) {
-        console.error('重新載入關聯上傳數據失敗:', error)
+        log.error('重新載入關聯上傳數據失敗:', error)
       }
     },
     
@@ -5541,7 +5545,7 @@ export default {
         const latestUploads = this.featureUploads[featureId] || []
         // Vue 3 直接賦值即可
         this.featureDisplayData.uploads = latestUploads
-        console.log('同步模態框數據:', {
+        log.debug('同步模態框數據:', {
           featureId,
           uploadsLength: latestUploads.length,
           featureUploadsLength: this.featureUploads[featureId]?.length || 0
@@ -5554,8 +5558,8 @@ export default {
     
     // 統一的數據同步方法
     async syncAllFeatureData(featureId, fileId) {
-      console.log('=== 開始統一數據同步 ===')
-      console.log('同步參數:', { featureId, fileId })
+      log.debug('=== 開始統一數據同步 ===')
+      log.debug('同步參數:', { featureId, fileId })
       
       try {
         // 1. 重新載入 featureUploads 數據
@@ -5566,18 +5570,18 @@ export default {
         
         // 3. 確保側邊欄數據同步
         if (this.associateTargetData && this.associateTargetData.file_id === fileId) {
-          console.log('側邊欄數據已同步')
+          log.debug('側邊欄數據已同步')
         }
         
-        console.log('=== 統一數據同步完成 ===')
-        console.log('最終數據狀態:', {
+        log.debug('=== 統一數據同步完成 ===')
+        log.debug('最終數據狀態:', {
           featureId,
           featureUploadsLength: this.featureUploads[featureId]?.length || 0,
           modalDataLength: this.featureDisplayData?.uploads?.length || 0
         })
         
       } catch (error) {
-        console.error('統一數據同步失敗:', error)
+        log.error('統一數據同步失敗:', error)
       }
     }
   },
@@ -5590,7 +5594,7 @@ export default {
     
     // 清理里程樁號圖層
     if (this.mileagePointsLayer && this.map) {
-      console.log('[ProjectDetail] 清理里程樁號圖層')
+      log.debug('[ProjectDetail] 清理里程樁號圖層')
       this.map.removeLayer(this.mileagePointsLayer)
       this.mileagePointsLayer = null
     }
@@ -5599,6 +5603,37 @@ export default {
 </script>
 
 <style>
+.pd-root.pd-light {
+  background:
+    linear-gradient(180deg, rgba(30, 92, 138, 0.08), transparent 220px),
+    #eef4f8;
+}
+
+.pd-root.pd-dark {
+  background:
+    linear-gradient(180deg, rgba(51, 120, 181, 0.12), transparent 220px),
+    #020617;
+}
+
+.pd-sidebar {
+  margin: 10px 0 10px 10px;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 14px 34px rgba(15, 45, 71, 0.12);
+}
+
+.pd-map-shell {
+  margin: 10px;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 14px 34px rgba(15, 45, 71, 0.12);
+}
+
+.pd-dark .pd-sidebar,
+.pd-dark .pd-map-shell {
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.32);
+}
+
 /* 時序資料標記樣式（地圖上的紅色正方形）*/
 :global(.custom-temporal-marker) {
   background: transparent !important;

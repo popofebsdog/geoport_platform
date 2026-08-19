@@ -42,6 +42,18 @@
                     :class="isDarkMode ? 'text-slate-500' : 'text-gray-400'">即時監控</span>
             </div>
           </div>
+
+          <div class="home-actions">
+            <router-link to="/disaster-collection"
+                         class="home-action-primary">
+              災情資料搜集
+            </router-link>
+            <router-link to="/early-warning"
+                         class="home-action-secondary transition-colors duration-150"
+                         :class="isDarkMode ? 'border-slate-700 text-slate-200 hover:bg-slate-800' : 'border-gray-200 text-gray-700 hover:bg-gray-50'">
+              預警分析
+            </router-link>
+          </div>
         </div>
 
         <div class="home-rule transition-colors duration-150"
@@ -192,7 +204,7 @@ export default {
 
 .home-content-inner {
   width: 100%;
-  padding: 40px 36px 32px 24px;
+  padding: 48px 36px 32px 28px;
   display: flex;
   flex-direction: column;
 }
@@ -228,6 +240,37 @@ export default {
   font-size: 16px;
   font-weight: 400;
   line-height: 1.4;
+}
+
+.home-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 24px;
+}
+
+.home-action-primary,
+.home-action-secondary {
+  min-height: 40px;
+  padding: 0 14px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.home-action-primary {
+  background: #1e5c8a;
+  color: #ffffff;
+}
+
+.home-action-primary:hover {
+  background: #153f62;
+}
+
+.home-action-secondary {
+  border: 1px solid;
 }
 
 /* ── 段落標籤 ─────────────────────────────── */
@@ -273,5 +316,40 @@ export default {
 .home-feat-body {
   font-size: 13px;
   line-height: 1.75;
+}
+
+@media (max-width: 1024px) {
+  .home-root {
+    height: auto;
+    min-height: calc(100vh - 33px);
+    overflow: visible;
+  }
+
+  .home-photo {
+    display: none;
+  }
+
+  .home-content-inner {
+    padding: 40px;
+  }
+}
+
+@media (max-width: 640px) {
+  .home-content-inner {
+    padding: 28px 24px 36px;
+  }
+
+  .home-title {
+    font-size: 34px;
+  }
+
+  .home-actions {
+    flex-direction: column;
+  }
+
+  .home-action-primary,
+  .home-action-secondary {
+    width: 100%;
+  }
 }
 </style>

@@ -567,7 +567,10 @@
 </template>
 
 <script>
-import alertService from '@/utils/alertService.js'
+import { show as showAlert } from '@/utils/simpleAlertService'
+import { logger } from '@/utils/logger.js'
+
+const log = logger.scoped('TemporalDataUploadModal')
 
 export default {
   name: 'TemporalDataUploadModal',
@@ -602,12 +605,12 @@ export default {
       
       // 先檢查基本條件
       if (!this.editingData) {
-        console.log('[isEditMode] editingData 為空')
+        log.debug('[isEditMode] editingData 為空')
         return false
       }
       
       if (typeof this.editingData !== 'object') {
-        console.log('[isEditMode] editingData 不是對象:', typeof this.editingData)
+        log.debug('[isEditMode] editingData 不是對象:', typeof this.editingData)
         return false
       }
       
@@ -616,7 +619,7 @@ export default {
       const hasKeys = Object.keys(this.editingData).length > 0
       const result = hasId || hasKeys
       
-      console.log('[isEditMode] 計算:', {
+      log.debug('[isEditMode] 計算:', {
         editingData: this.editingData,
         hasId,
         hasKeys,
@@ -683,7 +686,7 @@ export default {
   watch: {
     editingData: {
       handler(newData, oldData) {
-        console.log('editingData 變化:', {
+        log.debug('editingData 變化:', {
           newData,
           oldData,
           isVisible: this.isVisible,
@@ -700,7 +703,7 @@ export default {
       deep: true
     },
     isVisible(newVisible, oldVisible) {
-      console.log('[isVisible] 變化:', {
+      log.debug('[isVisible] 變化:', {
         newVisible,
         oldVisible,
         editingData: this.editingData,
@@ -709,21 +712,21 @@ export default {
       if (newVisible) {
         // 模態框打開時，等待下一個 tick 確保 props 已更新
         this.$nextTick(() => {
-          console.log('[isVisible] $nextTick 後:', {
+          log.debug('[isVisible] $nextTick 後:', {
             editingData: this.editingData,
             isEditMode: this.isEditMode
           })
           // 如果有 editingData，則載入編輯數據
           if (this.editingData) {
-            console.log('[isVisible] 模態框打開，載入編輯數據:', this.editingData)
+            log.debug('[isVisible] 模態框打開，載入編輯數據:', this.editingData)
             this.loadEditingData(this.editingData)
           } else {
-            console.log('[isVisible] 模態框打開，但沒有 editingData，這是上傳模式')
+            log.debug('[isVisible] 模態框打開，但沒有 editingData，這是上傳模式')
           }
         })
       } else if (!newVisible) {
         // 模態框關閉時重置表單
-        console.log('[isVisible] 模態框關閉，重置表單')
+        log.debug('[isVisible] 模態框關閉，重置表單')
         this.resetForm()
       }
     }
@@ -731,7 +734,7 @@ export default {
   mounted() {
     // 組件掛載時，如果模態框可見且有編輯數據，載入數據
     if (this.isVisible && this.editingData) {
-      console.log('組件掛載，載入編輯數據:', this.editingData)
+      log.debug('組件掛載，載入編輯數據:', this.editingData)
       this.$nextTick(() => {
         this.loadEditingData(this.editingData)
       })
@@ -773,7 +776,7 @@ export default {
     },
     
     resetForm() {
-      console.log('[resetForm] 重置表單，isEditMode:', this.isEditMode, 'editingData:', this.editingData)
+      log.debug('[resetForm] 重置表單，isEditMode:', this.isEditMode, 'editingData:', this.editingData)
       // 只有在非編輯模式下才重置表單
       // 編輯模式下保留已載入的數據
       if (!this.isEditMode) {
@@ -801,19 +804,19 @@ export default {
       this.tempXAxisColumns = []
       this.tempYAxisColumns = []
       } else {
-        console.log('[resetForm] 編輯模式下跳過重置')
+        log.debug('[resetForm] 編輯模式下跳過重置')
       }
     },
     
     // 載入編輯資料（只載入名稱和描述）
     async loadEditingData(temporalData) {
-      console.log('載入編輯資料:', temporalData)
-      console.log('temporalData 類型:', typeof temporalData)
-      console.log('temporalData 是否為 null:', temporalData === null)
-      console.log('temporalData 是否為 undefined:', temporalData === undefined)
+      log.debug('載入編輯資料:', temporalData)
+      log.debug('temporalData 類型:', typeof temporalData)
+      log.debug('temporalData 是否為 null:', temporalData === null)
+      log.debug('temporalData 是否為 undefined:', temporalData === undefined)
       
       if (!temporalData) {
-        console.warn('loadEditingData: temporalData 為空')
+        log.warn('loadEditingData: temporalData 為空')
         return
       }
       
@@ -825,8 +828,8 @@ export default {
         description: temporalData.description || ''
       }
       
-      console.log('載入後的 formData:', this.formData)
-      console.log('isEditMode 應該為:', this.isEditMode)
+      log.debug('載入後的 formData:', this.formData)
+      log.debug('isEditMode 應該為:', this.isEditMode)
       
       // 編輯模式下不需要載入圖表配置，保持預設值
     },
@@ -938,7 +941,7 @@ export default {
           this.isParsingFile = false
           
         } catch (error) {
-          console.error('CSV 解析錯誤:', error)
+          log.error('CSV 解析錯誤:', error)
           this.previewData = []
           this.previewColumns = []
           this.isParsingFile = false
@@ -946,7 +949,7 @@ export default {
       }
       
       reader.onerror = () => {
-        console.error('檔案讀取錯誤')
+        log.error('檔案讀取錯誤')
         this.previewData = []
         this.previewColumns = []
         this.isParsingFile = false
@@ -1093,7 +1096,7 @@ export default {
           await this.handleUpload()
         }
       } catch (error) {
-        console.error('提交失敗:', error)
+        log.error('提交失敗:', error)
         this.showAlert({
           type: 'error',
           title: this.isEditMode ? '更新失敗' : '上傳失敗',
@@ -1105,7 +1108,7 @@ export default {
     },
     
     async handleUpload() {
-      console.log('===== 開始上傳表單 =====')
+      log.debug('===== 開始上傳表單 =====')
       
         const formData = new FormData()
         formData.append('name', this.formData.name)
@@ -1165,7 +1168,7 @@ export default {
     },
     
     async handleUpdate() {
-      console.log('===== 開始更新表單 =====')
+      log.debug('===== 開始更新表單 =====')
       
       if (!this.editingData || !this.editingData.temporal_id) {
         throw new Error('缺少編輯資料 ID')
@@ -1195,7 +1198,7 @@ export default {
     
     // 顯示提示信息
     showAlert(options) {
-      return alertService.show(options)
+      return showAlert(options)
     }
   }
 }

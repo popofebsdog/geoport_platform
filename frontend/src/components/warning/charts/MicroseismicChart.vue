@@ -213,9 +213,7 @@ export default {
           options: {
             ...base,
             clip: false,
-            layout: {
-              padding: { bottom: 4, left: 0, right: 4, top: 2 }
-            },
+            layout: { padding: { bottom: 2, left: 0, right: 6, top: 0 } },
             plugins: {
               ...base.plugins,
               tooltip: {
@@ -245,7 +243,7 @@ export default {
                 max: 24,
                 ticks: {
                   ...axisScale('x', '', dark).ticks,
-                  stepSize: 2,
+                  stepSize: 3,
                   maxRotation: 0,
                   minRotation: 0,
                   padding: 4,
@@ -270,8 +268,8 @@ export default {
                 border: { display: false },
                 ticks: {
                   display: true,
-                  color: dark ? '#94a3b8' : '#9ca3af',
-                  font: { size: 10 },
+                  color: dark ? '#a8b5c4' : '#526579',
+                  font: { size: 10, weight: '600' },
                   padding: 8,
                   autoSkip: false,
                   callback(value) {
@@ -304,11 +302,11 @@ export default {
       };
       
       const colorMap = {
-        'TYPE I':         { border: '#3b82f6', bg: 'rgba(59,130,246,0.55)' },
-        'TYPE II':        { border: '#d97706', bg: 'rgba(217,119,6,0.55)'  },
-        'TYPE III':       { border: '#dc2626', bg: 'rgba(220,38,38,0.55)'  },
-        'TYPE NOISE':     { border: '#9ca3af', bg: 'rgba(156,163,175,0.4)' },
-        'TYPE EARTHQUAKE':{ border: '#7c3aed', bg: 'rgba(124,58,237,0.55)' }
+        'TYPE I':         { border: '#1e88e5', bg: 'rgba(30,136,229,0.72)' },
+        'TYPE II':        { border: '#f59e0b', bg: 'rgba(245,158,11,0.78)' },
+        'TYPE III':       { border: '#ef4444', bg: 'rgba(239,68,68,0.8)' },
+        'TYPE NOISE':     { border: '#94a3b8', bg: 'rgba(148,163,184,0.44)' },
+        'TYPE EARTHQUAKE':{ border: '#7c3aed', bg: 'rgba(124,58,237,0.7)' }
       };
       
       // 過濾並處理數據：保留當日的所有類型
@@ -336,9 +334,11 @@ export default {
             data: [],
             borderColor: colorMap[type].border,
             backgroundColor: colorMap[type].bg,
-            pointRadius: 4,
-            pointHoverRadius: 6,
-            borderWidth: 2
+            pointRadius: 5,
+            pointHoverRadius: 7,
+            pointBorderColor: this.isDarkMode ? '#0f172a' : '#ffffff',
+            pointBorderWidth: 1.5,
+            borderWidth: 0
           }))
         };
       }
@@ -408,9 +408,11 @@ export default {
         data: typeDatasets[type],
         borderColor: colorMap[type].border,
         backgroundColor: colorMap[type].bg,
-        pointRadius: 4,
-        pointHoverRadius: 6,
-        borderWidth: 2
+        pointRadius: 5,
+        pointHoverRadius: 7,
+        pointBorderColor: this.isDarkMode ? '#0f172a' : '#ffffff',
+        pointBorderWidth: 1.5,
+        borderWidth: 0
       }));
       
       return {
@@ -447,4 +449,3 @@ export default {
   width: 100%;
 }
 </style>
-

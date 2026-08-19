@@ -40,22 +40,6 @@ proj4.defs('EPSG:3826', '+proj=tmerc +lat_0=0 +lon_0=121 +k=0.9999 +x_0=250000 +
 // 確保 WGS84 定義存在
 proj4.defs('EPSG:4326', '+proj=longlat +datum=WGS84 +no_defs')
 
-// 測試坐標系統定義
-log.log('TWD97 坐標系統定義:', proj4.defs('EPSG:3826'))
-log.log('WGS84 坐標系統定義:', proj4.defs('EPSG:4326'))
-
-// 測試坐標轉換
-try {
-  const testCoords = [291170.151664275676012, 2729797.045946272090077] // 用戶資料中的坐標
-  log.log('測試坐標轉換:')
-  log.log('輸入坐標 (TWD97):', testCoords)
-  const result = proj4('EPSG:3826', 'EPSG:4326', testCoords)
-  log.log('轉換結果 (WGS84):', result)
-  log.log('Leaflet 格式:', [result[1], result[0]])
-} catch (error) {
-  log.error('坐標轉換測試失敗:', error)
-}
-
 // 創建 TWD97 坐標系統（簡化版本）
 let TWD97 = null
 try {
@@ -595,50 +579,6 @@ export default {
       }
     },
 
-    // 測試坐標轉換
-    testCoordinateConversion() {
-      log.log('=== 測試坐標轉換 ===')
-      
-      // 測試實際的 TWD97 坐標點（來自用戶提供的資料）
-      const testCoords1 = [291038.942551413550973, 2729773.20912585966289] // 用戶資料中的第一個點
-      const testCoords2 = [250000, 2750000] // 台灣中部
-      
-      log.log('測試坐標1 (TWD97 - 用戶資料):', testCoords1)
-      log.log('測試坐標2 (TWD97 - 台灣中部):', testCoords2)
-      
-      try {
-        const wgs84_1 = proj4('EPSG:3826', 'EPSG:4326', testCoords1)
-        const wgs84_2 = proj4('EPSG:3826', 'EPSG:4326', testCoords2)
-        
-        log.log('轉換結果1 (WGS84):', wgs84_1)
-        log.log('轉換結果2 (WGS84):', wgs84_2)
-        log.log('Leaflet 格式1:', [wgs84_1[1], wgs84_1[0]])
-        log.log('Leaflet 格式2:', [wgs84_2[1], wgs84_2[0]])
-        
-        // 驗證轉換是否合理（台灣的經緯度範圍）
-        const lat1 = wgs84_1[1]
-        const lng1 = wgs84_1[0]
-        const lat2 = wgs84_2[1]
-        const lng2 = wgs84_2[0]
-        
-        if (lat1 >= 21 && lat1 <= 26 && lng1 >= 119 && lng1 <= 122) {
-          log.log('✅ 坐標轉換結果1合理（在台灣範圍內）')
-        } else {
-          log.log('❌ 坐標轉換結果1不合理（超出台灣範圍）')
-        }
-        
-        if (lat2 >= 21 && lat2 <= 26 && lng2 >= 119 && lng2 <= 122) {
-          log.log('✅ 坐標轉換結果2合理（在台灣範圍內）')
-        } else {
-          log.log('❌ 坐標轉換結果2不合理（超出台灣範圍）')
-        }
-      } catch (error) {
-        log.error('坐標轉換測試失敗:', error)
-      }
-      
-      log.log('=== 測試結束 ===')
-    },
-
     // 計算 GeoJSON 邊界
     calculateGeoJSONBounds(geojson) {
       if (!geojson || !geojson.features || geojson.features.length === 0) {
@@ -739,9 +679,6 @@ export default {
         
         log.log('地圖創建成功:', this.map)
         
-        // 測試坐標轉換
-        this.testCoordinateConversion()
-        
         // 檢查地圖尺寸
         setTimeout(() => {
           if (this.map) {
@@ -795,9 +732,6 @@ export default {
         this.updateWarningLightMarkersVisibility()
         this._handleGeologyZoomSwitch()
       })
-      
-      // 初始化紅綠燈標記（不自動定位，由父組件控制）
-      // this.initWarningLightMarkers()
       
       // 初始化底圖服務
       this.baseMapService = new BaseMapService()
@@ -1755,56 +1689,6 @@ export default {
           </div>
         </div>
       `
-    },
-
-    // 初始化紅綠燈標記
-    initWarningLightMarkers() {
-      // 清除現有標記
-      this.clearWarningLightMarkers()
-      
-      // 測試數據：可以在這裡從API獲取紅綠燈位置
-      const testWarningLights = [
-        {
-          lat: 24.8186,
-          lng: 121.2681,
-          routeName: '台7線',
-          currentLevel: 'green',
-          currentLevelName: '預警綠燈',
-          currentLevelColor: 'text-green-400',
-          isRedLightOn: false,
-          showSpecialAlert: false,
-          specialAlertCountdown: 0
-        },
-        {
-          lat: 24.8200,
-          lng: 121.2700,
-          routeName: '台7線',
-          currentLevel: 'yellow',
-          currentLevelName: '預警黃燈',
-          currentLevelColor: 'text-yellow-400',
-          isRedLightOn: false,
-          showSpecialAlert: false,
-          specialAlertCountdown: 0
-        }
-      ]
-      
-      testWarningLights.forEach(lightData => {
-        this.createWarningLightMarker(lightData)
-      })
-      
-      // 初始顯示狀態
-      this.updateWarningLightMarkersVisibility()
-      
-      // 移除自動定位邏輯，避免與父組件（EarlyWarning.vue）的地圖定位衝突
-      // 地圖定位由父組件的 updateMapForRegion -> fitMapToRoadData 控制
-      // 定位到第一個紅綠燈位置（縮放層級17）
-      // if (testWarningLights.length > 0 && this.map) {
-      //   const firstLight = testWarningLights[0]
-      //   this.$nextTick(() => {
-      //     this.map.setView([firstLight.lat, firstLight.lng], 17)
-      //     log.log('已定位到紅綠燈位置:', firstLight.lat, firstLight.lng, '縮放層級: 17')
-      //   })
-      // }
     },
 
     // 創建單個紅綠燈標記
