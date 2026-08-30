@@ -614,9 +614,19 @@ export default {
 
 <style scoped>
 .rainfall-chart {
-  min-height: 220px;
+  min-height: 0;
   height: 100%;
   width: 100%;
+  overflow: hidden;
+}
+
+.rainfall-apex,
+.rainfall-apex :deep(.vue-apexcharts),
+.rainfall-apex :deep(.apexcharts-canvas),
+.rainfall-apex :deep(svg) {
+  height: 100% !important;
+  min-height: 0 !important;
+  max-height: 100% !important;
 }
 
 .chart-empty-state {

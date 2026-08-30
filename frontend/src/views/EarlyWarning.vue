@@ -3435,7 +3435,7 @@ export default {
 .early-warning-card {
   height: 100%;
   min-height: 0;
-  overflow: auto;
+  overflow: hidden;
   padding: 8px;
   border: 1px solid #d5e1ea;
   border-radius: 0 0 6px 6px;
@@ -3518,6 +3518,13 @@ export default {
 .ew-chart-rail :deep(.command-grid) {
   height: 100%;
   min-height: 0;
+}
+
+.ew-chart-rail :deep(.monitor-card),
+.ew-chart-rail :deep(.monitor-card-body),
+.ew-chart-rail :deep(.trend-board) {
+  min-height: 0;
+  overflow: hidden;
 }
 
 .ew-dashboard :deep(.monitor-card) {

@@ -490,9 +490,10 @@ export default {
 
 <style scoped>
 .strong-motion-chart {
-  min-height: 220px;
+  min-height: 0;
   height: 100%;
   width: 100%;
+  overflow: hidden;
 }
 
 .chart-empty-state {

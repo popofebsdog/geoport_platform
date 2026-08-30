@@ -725,7 +725,12 @@ export default {
 
 <style scoped>
 .chart-data-panel {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
   width: 100%;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .chart-data-panel.is-summary {
@@ -778,7 +783,7 @@ export default {
   align-items: center;
   gap: 8px;
   min-width: 0;
-  overflow-x: auto;
+  overflow: hidden;
   scrollbar-width: none;
 }
 
@@ -830,10 +835,11 @@ export default {
 .command-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  grid-template-rows: repeat(3, minmax(220px, 1fr));
+  grid-template-rows: repeat(3, minmax(0, 1fr));
   gap: 8px;
   height: 100%;
   min-height: 0;
+  overflow: hidden;
 }
 
 .chart-data-panel.is-summary .command-header {
@@ -1011,7 +1017,7 @@ export default {
 .monitor-card-body {
   min-height: 0;
   flex: 1;
-  overflow: auto;
+  overflow: hidden;
 }
 
 .integrated-card {
@@ -1019,6 +1025,8 @@ export default {
   grid-template-columns: minmax(0, 1fr);
   grid-template-rows: auto minmax(0, 1fr);
   gap: 0;
+  min-height: 0;
+  overflow: hidden;
   padding: 0;
 }
 
@@ -1133,7 +1141,10 @@ export default {
 .trend-board :deep(canvas),
 .trend-board :deep(.chart-container),
 .trend-board :deep(.relative) {
+  height: 100%;
   max-height: 100%;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .trend-board :deep(.microseismic-chart),
@@ -1200,6 +1211,7 @@ pre {
 .chart-content {
   scrollbar-width: none; /* Firefox */
   -ms-overflow-style: none; /* IE and Edge */
+  overflow: hidden;
 }
 
 @media (max-width: 1024px) {

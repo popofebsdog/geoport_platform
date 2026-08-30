@@ -444,8 +444,9 @@ export default {
 
 <style scoped>
 .microseismic-chart {
-  min-height: 220px;
+  min-height: 0;
   height: 100%;
   width: 100%;
+  overflow: hidden;
 }
 </style>
