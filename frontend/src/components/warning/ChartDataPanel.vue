@@ -1,261 +1,142 @@
 <template>
-  <div class="chart-data-panel">
-    <!-- 頂部列：收合按鈕 -->
-    <div class="flex justify-end mb-1.5">
-      <button
-        @click="panelCollapsed = !panelCollapsed"
-        class="flex items-center gap-1 px-2 py-0.5 text-[11px] font-medium border rounded transition-colors"
-        :class="panelCollapsed
-          ? 'bg-brand text-white border-brand'
-          : 'bg-white dark:bg-slate-900 text-gray-400 dark:text-slate-600 border-gray-200 dark:border-slate-800 hover:text-gray-700 dark:hover:text-slate-300'"
-        :title="panelCollapsed ? '展開' : '收合'"
-      >
-        <svg
-          class="w-3 h-3 transition-transform duration-200"
-          :class="{ 'rotate-180': panelCollapsed }"
-          fill="none" stroke="currentColor" viewBox="0 0 24 24"
+  <div class="chart-data-panel" :class="`is-${variant}`">
+    <div class="command-header" :class="isDarkMode ? 'is-dark' : ''">
+      <div class="command-title">
+        <span class="eyebrow">即時戰情</span>
+        <strong>{{ regionName || '預警監測' }}</strong>
+      </div>
+      <div class="command-status">
+        <span
+          v-for="item in statusSummary"
+          :key="item.key"
+          class="status-pill"
+          :class="[`is-${item.level}`, { 'is-dark': isDarkMode }]"
         >
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-        </svg>
-        {{ panelCollapsed ? '展開' : '收合' }}
-      </button>
-    </div>
-    
-    <!-- 收合狀態：簡化三欄摘要 -->
-    <div v-if="panelCollapsed" class="flex gap-3">
-      <div v-for="item in [
-        { label: '微地動', desc: '監測 TYPE I / II / III 事件' },
-        { label: '雨量',   desc: '累積雨量與時雨量趨勢' },
-        { label: '強地動', desc: 'PGA 與最大加速度評估' }
-      ]" :key="item.label"
-        class="flex-1 border rounded px-4 py-3 flex items-center gap-3 transition-colors"
-        :class="isDarkMode
-          ? 'border-slate-800 bg-slate-900/60'
-          : 'border-gray-200 bg-white'"
-      >
-        <span class="text-xs font-semibold tracking-tight"
-              :class="isDarkMode ? 'text-slate-300' : 'text-gray-700'">{{ item.label }}</span>
-        <span class="text-[11px]"
-              :class="isDarkMode ? 'text-slate-600' : 'text-gray-400'">{{ item.desc }}</span>
+          <span class="status-dot"></span>
+          {{ item.label }} {{ item.text }}
+        </span>
       </div>
     </div>
-    
-      <div v-if="!panelCollapsed" class="flex gap-4 h-[clamp(280px,32vh,380px)] min-h-[280px]">
-      <!-- 圖表區域 1 -->
-      <div
-        class="border rounded overflow-hidden flex flex-col flex-1 min-w-[100px] h-full transition-colors"
-        :class="isDarkMode ? 'border-slate-800 bg-slate-900/60' : 'border-gray-200 bg-white'"
-      >
-        <div class="flex items-center justify-between px-4 py-2.5 border-b transition-colors"
-             :class="isDarkMode ? 'border-slate-800' : 'border-gray-100'">
-          <div class="flex items-center gap-2">
-            <span class="text-xs font-semibold tracking-tight"
-                  :class="isDarkMode ? 'text-slate-300' : 'text-gray-700'">微地動</span>
-            <button
-              v-if="regionId"
-              @click.stop="openApiPanel = 'microseismic'"
-              class="px-2 py-0.5 text-[11px] font-medium border rounded transition-colors"
-              :class="isDarkMode
-                ? 'border-slate-700 text-slate-400 hover:border-slate-500 hover:text-slate-200'
-                : 'border-gray-200 text-gray-400 hover:border-gray-400 hover:text-gray-600'"
-              title="API 路由管理"
-            >路由</button>
-          </div>
-          <div class="flex rounded overflow-hidden border"
-               :class="isDarkMode ? 'border-slate-700' : 'border-gray-200'">
-            <button @click.stop="viewMode.chart1 = 'card'"
-              class="px-2 py-0.5 text-[11px] font-medium transition-colors"
-              :class="viewMode.chart1 === 'card'
-                ? 'bg-brand text-white'
-                : (isDarkMode ? 'text-slate-500 hover:text-slate-200' : 'text-gray-400 hover:text-gray-700')"
-            >圖卡</button>
-            <button @click.stop="viewMode.chart1 = 'chart'"
-              class="px-2 py-0.5 text-[11px] font-medium transition-colors border-l"
-              :class="[
-                isDarkMode ? 'border-slate-700' : 'border-gray-200',
-                viewMode.chart1 === 'chart'
-                  ? 'bg-brand text-white'
-                  : (isDarkMode ? 'text-slate-500 hover:text-slate-200' : 'text-gray-400 hover:text-gray-700')
-              ]"
-            >圖表</button>
-          </div>
+
+    <div class="command-grid">
+      <section class="monitor-card" :class="isDarkMode ? 'is-dark' : ''">
+        <div class="monitor-card-head">
+          <span>微地動</span>
+          <small>TYPE I / II / III</small>
         </div>
-        <Transition name="slide-horizontal">
-          <div v-show="expanded.chart1" class="flex-1 flex items-center justify-center p-3 md:p-4 overflow-auto chart-content">
-          <!-- 圖卡模式 -->
-          <div v-if="viewMode.chart1 === 'card'" class="w-full h-full">
-            <MicroseismicCard 
-              :data="chartData.chart1" 
-              :loading="loading"
-              :isDarkMode="isDarkMode"
-            />
-          </div>
-          <!-- 圖表模式 -->
-          <div v-else class="w-full h-full">
-            <MicroseismicChart 
-              :key="`chart1-${viewMode.chart1}-${regionId || regionCode}`"
-              :data="chartData.chart1" 
-              :loading="loading"
-              :regionCode="regionCode"
-              :regionId="regionId"
-              :isDarkMode="isDarkMode"
-            />
-          </div>
-          </div>
-        </Transition>
-      </div>
-      
-      <!-- 圖表區域 2 -->
-      <div
-        class="border rounded overflow-hidden flex flex-col flex-1 min-w-[100px] h-full transition-colors"
-        :class="isDarkMode ? 'border-slate-800 bg-slate-900/60' : 'border-gray-200 bg-white'"
-      >
-        <div class="flex items-center gap-2 px-4 py-2.5 border-b transition-colors"
-             :class="isDarkMode ? 'border-slate-800' : 'border-gray-100'">
-          <div class="flex items-center gap-2 flex-shrink-0">
-            <span class="text-xs font-semibold tracking-tight"
-                  :class="isDarkMode ? 'text-slate-300' : 'text-gray-700'">雨量</span>
-            <button
-              v-if="regionId"
-              @click.stop="openApiPanel = 'rainfall'"
-              class="px-2 py-0.5 text-[11px] font-medium border rounded transition-colors"
-              :class="isDarkMode
-                ? 'border-slate-700 text-slate-400 hover:border-slate-500 hover:text-slate-200'
-                : 'border-gray-200 text-gray-400 hover:border-gray-400 hover:text-gray-600'"
-              title="API 路由管理"
-            >路由</button>
-          </div>
-          <!-- 日期選擇器（僅圖表模式顯示） -->
-          <div v-if="viewMode.chart2 === 'chart'" class="flex items-center gap-1 flex-1 justify-center">
-            <button @click.stop="rainfallPrevDay"
-                    class="px-1.5 py-0.5 text-[11px] border rounded transition-colors"
-                    :class="isDarkMode ? 'border-slate-700 text-slate-400 hover:border-slate-500' : 'border-gray-200 text-gray-500 hover:border-gray-400'"
-                    title="前一天">←</button>
-            <input type="date" v-model="rainfallDate" @change.stop="onRainfallDateChange"
-                   :max="rainfallMaxDate"
-                   class="px-1.5 py-0.5 text-[11px] border rounded outline-none"
-                   :class="isDarkMode ? 'border-slate-700 bg-slate-800 text-slate-300 focus:border-brand' : 'border-gray-200 bg-white text-gray-700 focus:border-brand'" />
-            <button @click.stop="rainfallNextDay" :disabled="rainfallIsToday"
-                    class="px-1.5 py-0.5 text-[11px] border rounded transition-colors disabled:opacity-40"
-                    :class="isDarkMode ? 'border-slate-700 text-slate-400 hover:border-slate-500' : 'border-gray-200 text-gray-500 hover:border-gray-400'"
-                    title="後一天">→</button>
-            <button @click.stop="rainfallGoToday" :disabled="rainfallIsToday"
-                    class="px-1.5 py-0.5 text-[11px] border rounded transition-colors border-brand text-brand hover:bg-brand hover:text-white disabled:opacity-40"
-                    title="今天">今天</button>
-          </div>
-          <div v-else class="flex-1"></div>
-          <div class="flex rounded overflow-hidden border flex-shrink-0"
-               :class="isDarkMode ? 'border-slate-700' : 'border-gray-200'">
-            <button @click.stop="viewMode.chart2 = 'card'"
-              class="px-2 py-0.5 text-[11px] font-medium transition-colors"
-              :class="viewMode.chart2 === 'card'
-                ? 'bg-brand text-white'
-                : (isDarkMode ? 'text-slate-500 hover:text-slate-200' : 'text-gray-400 hover:text-gray-700')"
-            >圖卡</button>
-            <button @click.stop="viewMode.chart2 = 'chart'"
-              class="px-2 py-0.5 text-[11px] font-medium transition-colors border-l"
-              :class="[
-                isDarkMode ? 'border-slate-700' : 'border-gray-200',
-                viewMode.chart2 === 'chart'
-                  ? 'bg-brand text-white'
-                  : (isDarkMode ? 'text-slate-500 hover:text-slate-200' : 'text-gray-400 hover:text-gray-700')
-              ]"
-            >圖表</button>
-          </div>
-        </div>
-        <Transition name="slide-horizontal">
-          <div v-show="expanded.chart2" class="flex-1 flex items-center justify-center p-3 md:p-4 overflow-auto chart-content">
-          <!-- 圖卡模式 -->
-          <div v-if="viewMode.chart2 === 'card'" class="w-full h-full">
-            <RainfallCard
-              :data="chartData.chart2"
-              :loading="loading"
-              :isDarkMode="isDarkMode"
-              :thresholds="rainfallThresholds"
-            />
-          </div>
-          <!-- 圖表模式 -->
-          <div v-else class="w-full h-full">
-            <RainfallChart
-              :key="`chart2-${viewMode.chart2}-${regionId || regionCode}`"
-              :data="chartData.chart2"
-              :loading="loading"
-              :regionCode="regionCode"
-              :regionId="regionId"
-              :isDarkMode="isDarkMode"
-              :selectedDate="rainfallDate"
-              :thresholds="rainfallThresholds"
-              @threshold-change="onRainfallThresholdChange"
-            />
-          </div>
-          </div>
-        </Transition>
-      </div>
-      
-      <!-- 圖表區域 3 -->
-      <div
-        class="border rounded overflow-hidden flex flex-col flex-1 min-w-[100px] h-full transition-colors"
-        :class="isDarkMode ? 'border-slate-800 bg-slate-900/60' : 'border-gray-200 bg-white'"
-      >
-        <div class="flex items-center justify-between px-4 py-2.5 border-b transition-colors"
-             :class="isDarkMode ? 'border-slate-800' : 'border-gray-100'">
-          <div class="flex items-center gap-2">
-            <span class="text-xs font-semibold tracking-tight"
-                  :class="isDarkMode ? 'text-slate-300' : 'text-gray-700'">強地動</span>
-            <button
-              v-if="regionId"
-              @click.stop="openApiPanel = 'earthquake'"
-              class="px-2 py-0.5 text-[11px] font-medium border rounded transition-colors"
-              :class="isDarkMode
-                ? 'border-slate-700 text-slate-400 hover:border-slate-500 hover:text-slate-200'
-                : 'border-gray-200 text-gray-400 hover:border-gray-400 hover:text-gray-600'"
-              title="API 路由管理"
-            >路由</button>
-          </div>
-          <div class="flex rounded overflow-hidden border"
-               :class="isDarkMode ? 'border-slate-700' : 'border-gray-200'">
-            <button @click.stop="viewMode.chart3 = 'card'"
-              class="px-2 py-0.5 text-[11px] font-medium transition-colors"
-              :class="viewMode.chart3 === 'card'
-                ? 'bg-brand text-white'
-                : (isDarkMode ? 'text-slate-500 hover:text-slate-200' : 'text-gray-400 hover:text-gray-700')"
-            >圖卡</button>
-            <button @click.stop="viewMode.chart3 = 'chart'"
-              class="px-2 py-0.5 text-[11px] font-medium transition-colors border-l"
-              :class="[
-                isDarkMode ? 'border-slate-700' : 'border-gray-200',
-                viewMode.chart3 === 'chart'
-                  ? 'bg-brand text-white'
-                  : (isDarkMode ? 'text-slate-500 hover:text-slate-200' : 'text-gray-400 hover:text-gray-700')
-              ]"
-            >圖表</button>
-          </div>
-        </div>
-        <Transition name="slide-horizontal">
-          <div v-show="expanded.chart3" class="flex-1 flex items-center justify-center p-3 md:p-4 overflow-auto chart-content">
-          <!-- 非台7地區：顯示暫無數據 -->
-          <div v-if="!shouldShowStrongMotion" class="flex items-center justify-center h-full">
-            <div class="text-center text-gray-400 dark:text-gray-500">
-              <svg class="w-12 h-12 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
-              </svg>
-              <p class="text-sm">暫無數據</p>
+        <div class="monitor-card-body integrated-card chart-content">
+          <div class="metric-board">
+            <div
+              v-for="metric in microseismicMetrics"
+              :key="metric.label"
+              class="metric-cell"
+              :class="metric.tone ? `is-${metric.tone}` : ''"
+            >
+              <span>{{ metric.label }}</span>
+              <strong>{{ metric.value }}</strong>
+              <small v-if="metric.unit">{{ metric.unit }}</small>
             </div>
           </div>
-          <!-- 台7地區：顯示完整圖卡/圖表 -->
+          <div class="trend-board">
+          <MicroseismicChart 
+            :key="`chart1-integrated-${regionId || regionCode}`"
+            :data="chartData.chart1" 
+            :loading="loading"
+            :regionCode="regionCode"
+            :regionId="regionId"
+            :isDarkMode="isDarkMode"
+          />
+          </div>
+        </div>
+      </section>
+
+      <section class="monitor-card is-primary" :class="isDarkMode ? 'is-dark' : ''">
+        <div class="monitor-card-head">
+          <div class="monitor-card-title">
+            <span>雨量</span>
+            <small>累積 / 時雨量</small>
+          </div>
+          <div class="threshold-inputs" :class="isDarkMode ? 'is-dark' : ''">
+            <label>
+              黃
+              <input
+                type="number"
+                min="0"
+                step="1"
+                :value="rainfallThresholds.yellow"
+                @input="setRainfallThreshold('yellow', $event.target.value)"
+                aria-label="黃色警戒門檻"
+              >
+              <span>mm</span>
+            </label>
+            <label>
+              紅
+              <input
+                type="number"
+                min="0"
+                step="1"
+                :value="rainfallThresholds.red"
+                @input="setRainfallThreshold('red', $event.target.value)"
+                aria-label="紅色警戒門檻"
+              >
+              <span>mm</span>
+            </label>
+          </div>
+        </div>
+        <div class="monitor-card-body integrated-card chart-content">
+          <div class="metric-board">
+            <div
+              v-for="metric in rainfallMetrics"
+              :key="metric.label"
+              class="metric-cell"
+              :class="metric.tone ? `is-${metric.tone}` : ''"
+            >
+              <span>{{ metric.label }}</span>
+              <strong>{{ metric.value }}</strong>
+              <small v-if="metric.unit">{{ metric.unit }}</small>
+            </div>
+          </div>
+          <div class="trend-board">
+          <RainfallChart
+            :key="`chart2-integrated-${regionId || regionCode}`"
+            :data="chartData.chart2"
+            :loading="loading"
+            :regionCode="regionCode"
+            :regionId="regionId"
+            :isDarkMode="isDarkMode"
+            :selectedDate="rainfallDate"
+            :thresholds="rainfallThresholds"
+          />
+          </div>
+        </div>
+      </section>
+
+      <section class="monitor-card" :class="isDarkMode ? 'is-dark' : ''">
+        <div class="monitor-card-head">
+          <span>強地動</span>
+          <small>PGA / 震度</small>
+        </div>
+        <div class="monitor-card-body integrated-card chart-content">
+          <div v-if="!shouldShowStrongMotion" class="empty-monitor" :class="isDarkMode ? 'is-dark' : ''">
+            <span>暫無數據</span>
+            <small>此地區尚未啟用強地動監測</small>
+          </div>
           <template v-else>
-            <!-- 圖卡模式 -->
-            <div v-if="viewMode.chart3 === 'card'" class="w-full h-full">
-              <StrongMotionCard 
-                :data="chartData.chart3" 
-                :loading="loading"
-                :isDarkMode="isDarkMode"
-              />
+            <div class="metric-board">
+              <div
+                v-for="metric in strongMotionMetrics"
+                :key="metric.label"
+                class="metric-cell"
+                :class="metric.tone ? `is-${metric.tone}` : ''"
+              >
+                <span>{{ metric.label }}</span>
+                <strong>{{ metric.value }}</strong>
+                <small v-if="metric.unit">{{ metric.unit }}</small>
+              </div>
             </div>
-            <!-- 圖表模式 -->
-            <div v-else class="w-full h-full">
+            <div class="trend-board">
               <StrongMotionChart 
-                :key="`chart3-${viewMode.chart3}-${regionId || regionCode}`"
+                :key="`chart3-integrated-${regionId || regionCode}`"
                 :data="chartData.chart3" 
                 :loading="loading"
                 :regionCode="regionCode"
@@ -264,48 +145,32 @@
               />
             </div>
           </template>
-          </div>
-        </Transition>
-      </div>
+        </div>
+      </section>
       </div>
   </div>
 
-  <!-- API 端點設定面板 -->
-  <ApiUrlConfigPanel
-    v-if="openApiPanel"
-    :category="openApiPanel"
-    :regionId="regionId"
-    :regionCode="regionCode"
-    :regionName="regionName"
-    :isDarkMode="isDarkMode"
-    @close="openApiPanel = null"
-    @saved="onApiSaved"
-  />
 </template>
 
 <script>
 import api from '@/services/api';
-import ApiUrlConfigPanel from './ApiUrlConfigPanel.vue';
-import MicroseismicCard from './charts/MicroseismicCard.vue';
 import MicroseismicChart from './charts/MicroseismicChart.vue';
-import RainfallCard from './charts/RainfallCard.vue';
 import RainfallChart from './charts/RainfallChart.vue';
-import StrongMotionCard from './charts/StrongMotionCard.vue';
 import StrongMotionChart from './charts/StrongMotionChart.vue';
 
 export default {
   name: 'ChartDataPanel',
   components: {
-    ApiUrlConfigPanel,
-    MicroseismicCard,
     MicroseismicChart,
-    RainfallCard,
     RainfallChart,
-    StrongMotionCard,
     StrongMotionChart
   },
   inject: ['isDarkMode'],
   props: {
+    variant: {
+      type: String,
+      default: 'full'
+    },
     regionCode: {
       type: String,
       default: null
@@ -319,7 +184,7 @@ export default {
       default: ''
     }
   },
-  emits: ['panel-collapsed-changed'],
+  emits: ['status-summary-changed'],
   data() {
     const _d = new Date();
     const today = `${_d.getFullYear()}-${String(_d.getMonth()+1).padStart(2,'0')}-${String(_d.getDate()).padStart(2,'0')}`;
@@ -330,17 +195,6 @@ export default {
         chart3: null
       },
       loading: false,
-      expanded: {
-        chart1: true,
-        chart2: true,
-        chart3: true
-      },
-      panelCollapsed: false,
-      viewMode: {
-        chart1: 'card',
-        chart2: 'chart',
-        chart3: 'chart'
-      },
       refreshIntervals: {
         chart1: null,
         chart2: null,
@@ -350,8 +204,6 @@ export default {
       // 雨量日期選擇
       rainfallDate: today,
       rainfallMaxDate: today,
-      // API 端點設定面板
-      openApiPanel: null,   // null | 'microseismic' | 'rainfall' | 'earthquake'
       // 雨量警戒閾值（per region, persisted to localStorage）
       rainfallThresholds: { yellow: 20, red: 40 },
     };
@@ -366,6 +218,94 @@ export default {
       const d = new Date();
       const local = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
       return this.rainfallDate === local;
+    },
+    statusSummary() {
+      return [
+        {
+          key: 'microseismic',
+          label: '微地動',
+          ...this.resolveMicroseismicStatus(this.chartData.chart1)
+        },
+        {
+          key: 'rainfall',
+          label: '雨量',
+          ...this.resolveRainfallStatus(this.chartData.chart2)
+        },
+        {
+          key: 'strong-motion',
+          label: '強地動',
+          ...this.resolveStrongMotionStatus(this.chartData.chart3)
+        }
+      ];
+    },
+    microseismicMetrics() {
+      const data = this.chartData.chart1;
+      const rows = Array.isArray(data?.time_series) ? data.time_series : [];
+      const counts = rows.reduce((acc, item) => {
+        const type = item?.type || item?.Type || '';
+        if (type === 'TYPE I') acc.typeI += 1;
+        if (type === 'TYPE II') acc.typeII += 1;
+        if (type === 'TYPE III') acc.typeIII += 1;
+        return acc;
+      }, { typeI: 0, typeII: 0, typeIII: 0 });
+
+      return [
+        { label: '總事件', value: counts.typeI + counts.typeII + counts.typeIII, unit: '件' },
+        { label: 'TYPE II', value: counts.typeII, unit: '件', tone: counts.typeII > 0 ? 'medium' : '' },
+        { label: 'TYPE III', value: counts.typeIII, unit: '件', tone: counts.typeIII > 0 ? 'high' : '' },
+        { label: '最新', value: this.formatLatestTime(rows), unit: '' }
+      ];
+    },
+    rainfallMetrics() {
+      const data = this.chartData.chart2;
+      const series = Array.isArray(data?.time_series) ? data.time_series : [];
+      const last = series.length ? series[series.length - 1] : {};
+      const hourlyValues = series
+        .map(item => Number(item?.hourly ?? item?.rainfall ?? item?.value ?? 0))
+        .filter(value => Number.isFinite(value));
+      const accumulated = Number(
+        last?.accumulated ??
+        data?.accumulated ??
+        data?.total_rainfall ??
+        data?.accumulated_rainfall ??
+        data?.total ??
+        0
+      );
+      const hourly = Number(last?.hourly ?? last?.rainfall ?? last?.value ?? 0);
+      const maxHourly = hourlyValues.length ? Math.max(...hourlyValues) : 0;
+      const rainyHours = hourlyValues.filter(value => value > 0).length;
+      const tone = accumulated >= this.rainfallThresholds.red
+        ? 'high'
+        : accumulated >= this.rainfallThresholds.yellow
+          ? 'medium'
+          : '';
+
+      return [
+        { label: '累積', value: this.formatNumber(accumulated), unit: 'mm', tone },
+        { label: '時雨量', value: this.formatNumber(hourly), unit: 'mm' },
+        { label: '最高', value: this.formatNumber(maxHourly), unit: 'mm' },
+        { label: '有雨', value: rainyHours, unit: '時' }
+      ];
+    },
+    strongMotionMetrics() {
+      const data = this.chartData.chart3;
+      const series = this.getStrongMotionSeries(data);
+      const pgaValues = series
+        .map(item => Number(item?.pga ?? item?.PGA ?? item?.acceleration ?? item?.absAcceleration ?? 0))
+        .filter(value => Number.isFinite(value));
+      const pgvValues = series
+        .map(item => Number(item?.pgv ?? item?.PGV ?? 0))
+        .filter(value => Number.isFinite(value));
+      const maxPga = pgaValues.length ? Math.max(...pgaValues.map(Math.abs)) : 0;
+      const maxPgv = pgvValues.length ? Math.max(...pgvValues.map(Math.abs)) : 0;
+      const tone = maxPga >= 80 ? 'high' : maxPga >= 25 ? 'medium' : '';
+
+      return [
+        { label: 'PGA', value: this.formatNumber(maxPga), unit: 'gal', tone },
+        { label: 'PGV', value: this.formatNumber(maxPgv), unit: 'cm/s' },
+        { label: '震度', value: this.resolveIntensity(maxPga), unit: '' },
+        { label: '資料點', value: series.length, unit: '筆' }
+      ];
     }
   },
   watch: {
@@ -419,15 +359,108 @@ export default {
         }
       }
     },
-    panelCollapsed: {
+    statusSummary: {
       handler(newVal) {
-        // 通知父組件面板收起狀態變化
-        this.$emit('panel-collapsed-changed', newVal);
+        this.$emit('status-summary-changed', newVal);
       },
+      deep: true,
       immediate: true
     }
   },
   methods: {
+    resolveMicroseismicStatus(data) {
+      if (this.loading && !data) return { level: 'unknown', text: '載入中' };
+      if (!data) return { level: 'unknown', text: '無資料' };
+
+      const rows = Array.isArray(data.time_series) ? data.time_series : [];
+      const typeCounts = rows.reduce((counts, item) => {
+        const type = item?.type || item?.Type || '';
+        if (type === 'TYPE II') counts.typeII += 1;
+        if (type === 'TYPE III') counts.typeIII += 1;
+        return counts;
+      }, { typeII: 0, typeIII: 0 });
+
+      if (typeCounts.typeIII > 0) return { level: 'high', text: `${typeCounts.typeIII} 件 III` };
+      if (typeCounts.typeII > 0) return { level: 'medium', text: `${typeCounts.typeII} 件 II` };
+      return { level: 'normal', text: '正常' };
+    },
+    resolveRainfallStatus(data) {
+      if (this.loading && !data) return { level: 'unknown', text: '載入中' };
+      if (!data) return { level: 'unknown', text: '無資料' };
+
+      const series = Array.isArray(data.time_series) ? data.time_series : [];
+      const last = series.length ? series[series.length - 1] : null;
+      const accumulated = Number(
+        last?.accumulated ??
+        data.accumulated ??
+        data.total_rainfall ??
+        data.accumulated_rainfall ??
+        data.total ??
+        0
+      );
+
+      if (accumulated >= this.rainfallThresholds.red) return { level: 'high', text: '紅色警戒' };
+      if (accumulated >= this.rainfallThresholds.yellow) return { level: 'medium', text: '黃色警戒' };
+      return { level: 'normal', text: '正常' };
+    },
+    resolveStrongMotionStatus(data) {
+      if (!this.shouldShowStrongMotion) return { level: 'unknown', text: '未啟用' };
+      if (this.loading && !data) return { level: 'unknown', text: '載入中' };
+      if (!data) return { level: 'unknown', text: '無資料' };
+
+      const series = this.getStrongMotionSeries(data);
+      const values = series
+        .map(item => Number(item?.pga ?? item?.PGA ?? item?.acceleration ?? item?.absAcceleration ?? 0))
+        .filter(value => Number.isFinite(value));
+      const max = values.length ? Math.max(...values.map(Math.abs)) : 0;
+
+      if (max >= 80) return { level: 'high', text: '>80 gal' };
+      if (max >= 25) return { level: 'medium', text: '25-80 gal' };
+      return { level: 'normal', text: '正常' };
+    },
+    getStrongMotionSeries(data) {
+      if (!data) return [];
+      if (Array.isArray(data.time_series)) return data.time_series;
+      if (Array.isArray(data?.parsed?.timeSeries)) return data.parsed.timeSeries;
+      if (Array.isArray(data.values) && Array.isArray(data.labels)) {
+        return data.labels.map((label, index) => ({
+          time: label,
+          acceleration: data.values[index] || 0,
+          absAcceleration: data.values[index] || 0
+        }));
+      }
+      return [];
+    },
+    formatNumber(value) {
+      const number = Number(value);
+      if (!Number.isFinite(number)) return '-';
+      if (Math.abs(number) >= 100) return number.toFixed(0);
+      if (Math.abs(number) >= 10) return number.toFixed(1);
+      return number.toFixed(2).replace(/\.?0+$/, '');
+    },
+    formatLatestTime(rows) {
+      if (!Array.isArray(rows) || rows.length === 0) return '-';
+      const latest = rows[rows.length - 1];
+      const timeStr = latest?.time || latest?.timestamp || latest?.date || '';
+      if (!timeStr) return '-';
+      const compact = timeStr.match(/(\d{4})-(\d{2})-(\d{2})-(\d{2})-(\d{2})-(\d{2})/);
+      if (compact) return `${compact[4]}:${compact[5]}`;
+      const date = new Date(timeStr);
+      if (!Number.isNaN(date.getTime())) {
+        return date.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' });
+      }
+      return String(timeStr).slice(0, 5);
+    },
+    resolveIntensity(pga) {
+      const value = Number(pga);
+      if (!Number.isFinite(value) || value <= 0) return '-';
+      if (value >= 400) return '6+';
+      if (value >= 250) return '6-';
+      if (value >= 80) return '5+';
+      if (value >= 25) return '4';
+      if (value >= 8) return '3';
+      return '0-2';
+    },
     async loadChartData() {
       // 优先使用 regionId，如果没有则使用 regionCode（向后兼容）
       if (!this.regionId && !this.regionCode) return;
@@ -635,14 +668,6 @@ export default {
     refresh() {
       this.loadChartData();
     },
-    // 切換圖表展開狀態（獨立切換：每個圖表可獨立展開/收起）
-    // 同時切換顯示模式（圖卡/圖表）
-    toggleChart(chartKey) {
-      this.viewMode[chartKey] = this.viewMode[chartKey] === 'card' ? 'chart' : 'card';
-      if (!this.expanded[chartKey]) {
-        this.expanded[chartKey] = true;
-      }
-    },
     rainfallPrevDay() {
       const d = new Date(this.rainfallDate);
       d.setDate(d.getDate() - 1);
@@ -669,17 +694,21 @@ export default {
         else this.rainfallThresholds = { yellow: 20, red: 40 };
       } catch { this.rainfallThresholds = { yellow: 20, red: 40 }; }
     },
-    onRainfallThresholdChange(thresholds) {
-      this.rainfallThresholds = { ...thresholds };
-      if (this.regionId) {
-        localStorage.setItem(`rainfall_thresholds_${this.regionId}`, JSON.stringify(thresholds));
+    setRainfallThreshold(type, rawValue) {
+      const value = Math.max(0, Number.parseInt(rawValue, 10) || 0);
+      const thresholds = { ...this.rainfallThresholds, [type]: value };
+
+      if (type === 'yellow' && thresholds.yellow >= thresholds.red) {
+        thresholds.red = thresholds.yellow + 1;
       }
-    },
-    onApiSaved({ category }) {
-      // URL 更新後重新載入對應圖表
-      const keyMap = { microseismic: 'chart1', rainfall: 'chart2', earthquake: 'chart3' }
-      const key = keyMap[category]
-      if (key) this.loadSingleChartData(key)
+      if (type === 'red' && thresholds.red <= thresholds.yellow) {
+        thresholds.yellow = Math.max(0, thresholds.red - 1);
+      }
+
+      this.rainfallThresholds = thresholds;
+      if (this.regionId) {
+        localStorage.setItem(`rainfall_thresholds_${this.regionId}`, JSON.stringify(this.rainfallThresholds));
+      }
     },
   },
   beforeUnmount() {
@@ -699,16 +728,461 @@ export default {
   width: 100%;
 }
 
+.chart-data-panel.is-summary {
+  height: 100%;
+  min-height: 0;
+}
+
+.command-header {
+  display: grid;
+  grid-template-columns: minmax(150px, auto) 1fr;
+  align-items: center;
+  gap: 12px;
+  padding: 0 2px 10px;
+}
+
+.command-header.is-dark {
+  color: #e2e8f0;
+}
+
+.command-title {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.command-title .eyebrow {
+  color: #64748b;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.command-title strong {
+  color: #0f172a;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.command-header.is-dark .command-title strong {
+  color: #f8fafc;
+}
+
+.command-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.command-status::-webkit-scrollbar {
+  display: none;
+}
+
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 26px;
+  padding: 0 10px;
+  border: 1px solid #dbe3ea;
+  border-radius: 4px;
+  background: #f8fafc;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.status-pill.is-dark {
+  border-color: #1e293b;
+  background: #0f172a;
+  color: #cbd5e1;
+}
+
+.status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: #94a3b8;
+}
+
+.status-pill.is-normal .status-dot {
+  background: #22c55e;
+}
+
+.status-pill.is-medium .status-dot {
+  background: #f59e0b;
+}
+
+.status-pill.is-high .status-dot {
+  background: #ef4444;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.12);
+}
+
+.command-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: repeat(3, minmax(220px, 1fr));
+  gap: 8px;
+  height: 100%;
+  min-height: 0;
+}
+
+.chart-data-panel.is-summary .command-header {
+  display: none;
+}
+
+.chart-data-panel.is-summary .command-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-rows: minmax(0, 1fr);
+  height: 100%;
+  min-height: 0;
+  gap: 8px;
+}
+
+.chart-data-panel.is-summary .monitor-card {
+  min-height: 0;
+}
+
+.chart-data-panel.is-summary .monitor-card-head {
+  min-height: 26px;
+  padding: 0 10px;
+}
+
+.chart-data-panel.is-summary .monitor-card-head span {
+  font-size: 12px;
+}
+
+.chart-data-panel.is-summary .integrated-card {
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
+.chart-data-panel.is-summary .metric-board {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.chart-data-panel.is-summary .metric-cell {
+  min-height: 38px;
+  padding: 5px 8px;
+}
+
+.chart-data-panel.is-summary .metric-cell:nth-child(2) {
+  border-right: 0;
+}
+
+.chart-data-panel.is-summary .metric-cell:nth-child(n + 3) {
+  display: none;
+}
+
+.chart-data-panel.is-summary .metric-cell strong {
+  font-size: 16px;
+}
+
+.chart-data-panel.is-summary .trend-board {
+  padding: 4px 6px 6px;
+}
+
+.chart-data-panel.is-summary .trend-board :deep(.microseismic-chart),
+.chart-data-panel.is-summary .trend-board :deep(.rainfall-chart),
+.chart-data-panel.is-summary .trend-board :deep(.strong-motion-chart) {
+  padding: 4px;
+}
+
+.monitor-card {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid #cbd8e3;
+  border-radius: 6px;
+  background: #f8fafc;
+}
+
+.monitor-card.is-dark {
+  border-color: #2f4258;
+  background: #0b1220;
+}
+
+.monitor-card.is-primary {
+  border-color: #b9cad8;
+}
+
+.monitor-card.is-primary.is-dark {
+  border-color: #315a76;
+}
+
+.monitor-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 30px;
+  padding: 0 10px;
+  border-bottom: 1px solid #cbd8e3;
+  background: #eef4f8;
+}
+
+.monitor-card.is-dark .monitor-card-head {
+  border-bottom-color: #26384d;
+  background: #111827;
+}
+
+.monitor-card-title {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+}
+
+.monitor-card-head span {
+  color: #0f172a;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.monitor-card.is-dark .monitor-card-head span {
+  color: #f8fafc;
+}
+
+.monitor-card-head small {
+  color: #94a3b8;
+  font-size: 10px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.threshold-inputs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.threshold-inputs label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 26px;
+  padding: 0 6px;
+  border: 1px solid #cbd8e3;
+  border-radius: 4px;
+  background: #ffffff;
+  color: #475569;
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.threshold-inputs.is-dark label {
+  border-color: #334155;
+  background: #0f172a;
+  color: #cbd5e1;
+}
+
+.threshold-inputs input {
+  width: 48px;
+  height: 20px;
+  border: 0;
+  background: transparent;
+  color: #0f172a;
+  font-size: 12px;
+  font-weight: 800;
+  text-align: right;
+  outline: none;
+}
+
+.threshold-inputs.is-dark input {
+  color: #f8fafc;
+}
+
+.threshold-inputs span {
+  color: #94a3b8;
+  font-size: 10px;
+}
+
+.monitor-card-body {
+  min-height: 0;
+  flex: 1;
+  overflow: auto;
+}
+
+.integrated-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 0;
+  padding: 0;
+}
+
+.metric-board {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  align-content: stretch;
+  border-bottom: 2px solid #8fb5d1;
+  background: #ffffff;
+}
+
+.monitor-card.is-dark .metric-board {
+  border-bottom-color: #3378b5;
+  background: #0f172a;
+}
+
+.metric-cell {
+  display: grid;
+  min-width: 0;
+  min-height: 40px;
+  align-content: center;
+  gap: 2px;
+  padding: 4px 10px;
+  border-right: 1px solid #d7e2eb;
+  border-bottom: 0;
+}
+
+.metric-cell:last-child {
+  border-right: 0;
+}
+
+.monitor-card.is-dark .metric-cell {
+  border-right-color: #26384d;
+}
+
+.metric-cell span {
+  overflow: hidden;
+  color: #64748b;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.monitor-card.is-dark .metric-cell span {
+  color: #94a3b8;
+}
+
+.metric-cell strong {
+  overflow: hidden;
+  color: #0f172a;
+  font-size: clamp(15px, 1.2vw, 20px);
+  font-weight: 800;
+  line-height: 1.05;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.monitor-card.is-dark .metric-cell strong {
+  color: #f8fafc;
+}
+
+.metric-cell small {
+  color: #94a3b8;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.metric-cell.is-medium strong {
+  color: #d97706;
+}
+
+.metric-cell.is-high strong {
+  color: #dc2626;
+}
+
+.monitor-card.is-dark .metric-cell.is-medium strong {
+  color: #fbbf24;
+}
+
+.monitor-card.is-dark .metric-cell.is-high strong {
+  color: #f87171;
+}
+
+.trend-board {
+  grid-column: 1;
+  grid-row: 2;
+  min-height: 0;
+  overflow: hidden;
+  padding: 6px;
+  background:
+    linear-gradient(90deg, rgba(30, 92, 138, 0.05) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(30, 92, 138, 0.05) 1px, transparent 1px),
+    #f5f9fc;
+  background-size: 48px 48px, 48px 48px, auto;
+}
+
+.metric-board {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.monitor-card.is-dark .trend-board {
+  background:
+    linear-gradient(90deg, rgba(148, 163, 184, 0.07) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(148, 163, 184, 0.07) 1px, transparent 1px),
+    #08111f;
+  background-size: 48px 48px, 48px 48px, auto;
+}
+
+.trend-board :deep(canvas),
+.trend-board :deep(.chart-container),
+.trend-board :deep(.relative) {
+  max-height: 100%;
+}
+
+.trend-board :deep(.microseismic-chart),
+.trend-board :deep(.rainfall-chart),
+.trend-board :deep(.strong-motion-chart) {
+  height: 100%;
+  min-height: 0;
+  padding: 4px 6px;
+  border: 1px solid rgba(143, 181, 209, 0.7);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.82);
+}
+
+.monitor-card.is-dark .trend-board :deep(.microseismic-chart),
+.monitor-card.is-dark .trend-board :deep(.rainfall-chart),
+.monitor-card.is-dark .trend-board :deep(.strong-motion-chart) {
+  border-color: rgba(51, 120, 181, 0.65);
+  background: rgba(8, 17, 31, 0.88);
+}
+
+.empty-monitor {
+  display: flex;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 4px;
+  color: #94a3b8;
+}
+
+.empty-monitor span {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.empty-monitor small {
+  font-size: 11px;
+}
+
+.empty-monitor.is-dark {
+  color: #64748b;
+}
+
 .chart-data-panel :deep(.rounded) {
-  border-radius: 10px;
+  border-radius: 4px;
 }
 
 .chart-data-panel :deep(.border) {
-  box-shadow: 0 8px 18px rgba(15, 45, 71, 0.05);
-}
-
-:global(.dark) .chart-data-panel :deep(.border) {
-  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.2);
+  box-shadow: none;
 }
 
 pre {
@@ -726,5 +1200,79 @@ pre {
 .chart-content {
   scrollbar-width: none; /* Firefox */
   -ms-overflow-style: none; /* IE and Edge */
+}
+
+@media (max-width: 1024px) {
+  .command-header {
+    grid-template-columns: 1fr;
+  }
+
+  .command-status {
+    grid-column: 1 / -1;
+    order: 3;
+  }
+
+  .command-grid {
+    grid-template-columns: 1fr;
+    grid-template-rows: none;
+    height: auto;
+  }
+
+  .monitor-card {
+    min-height: 420px;
+  }
+
+  .integrated-card {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto minmax(260px, 1fr);
+  }
+
+  .metric-board {
+    grid-column: 1;
+    grid-row: 1;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    border-bottom: 1px solid #edf2f7;
+  }
+
+  .monitor-card.is-dark .metric-board {
+    border-bottom-color: #1e293b;
+  }
+
+  .trend-board {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  .metric-cell {
+    border-right: 1px solid #edf2f7;
+    border-bottom: 0;
+  }
+
+  .metric-cell:last-child {
+    border-right: 0;
+  }
+
+  .monitor-card.is-dark .metric-cell {
+    border-right-color: #1e293b;
+    border-bottom: 0;
+  }
+}
+
+@media (max-width: 720px) {
+  .metric-board {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .metric-cell:nth-child(2n) {
+    border-right: 0;
+  }
+
+  .metric-cell:nth-child(n + 3) {
+    border-top: 1px solid #edf2f7;
+  }
+
+  .monitor-card.is-dark .metric-cell:nth-child(n + 3) {
+    border-top-color: #1e293b;
+  }
 }
 </style>

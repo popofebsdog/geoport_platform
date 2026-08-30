@@ -32,65 +32,171 @@
       </div>
     </div>
 
-    <!-- ② ChartDataPanel（自然高度，收合時縮小）-->
-    <div class="ew-chart">
-      <div class="card early-warning-card pt-3 h-full">
-        <div v-if="!selectedRegionCode" class="flex items-center gap-4 py-5 px-1">
-          <span class="text-xs text-gray-400 dark:text-slate-600">—</span>
-          <p class="text-xs text-gray-400 dark:text-slate-600">請先從上方選擇監測地區，即可顯示預警情資數據</p>
+    <!-- ② 主工作區：異常優先、空間定位、快速下鑽 -->
+    <div class="ew-workspace">
+      <section class="ew-main">
+        <div class="ew-command-bar" :class="[`is-${overallRiskLevel}`, { 'is-dark': isDarkMode }]">
+          <div class="risk-led"></div>
+          <div class="risk-copy">
+            <span>{{ overallRiskLabel }}</span>
+            <strong>{{ currentRegionName }}</strong>
+          </div>
+          <div class="risk-facts">
+            <span>最高告警 {{ highestAlertLabel }}</span>
+            <span>{{ currentAlertLights.length }} 處燈號</span>
+            <span>最後更新 {{ lastKnownUpdate }}</span>
+          </div>
         </div>
-        <ChartDataPanel
-          v-else
-          :region-code="selectedRegionCode"
-          :region-id="selectedRegionId"
-          :region-name="currentRegionName"
-          ref="chartDataPanel"
-          @panel-collapsed-changed="handleChartPanelCollapsedChanged"
-        />
-      </div>
-    </div>
 
-    <!-- ③ 地圖（填滿剩餘空間，固定不動）-->
-    <div class="ew-map">
-      <!-- 告警燈號面板（定位於地圖區）-->
-      <AlertLightStatusPanel
-        v-if="selectedRegionCode"
-        :is-visible="showAlertLightStatusPanel"
-        :alert-lights="currentAlertLights"
-        :chart-panel-collapsed="chartPanelCollapsed"
-        @close="handleAlertLightPanelClose"
-        @expand="showAlertLightStatusPanel = true"
-        @light-click="handleAlertLightClick"
-      />
+        <div class="ew-priority-grid">
+          <div
+            v-for="item in priorityCards"
+            :key="item.label"
+            class="priority-card"
+            :class="[`is-${item.level}`, { 'is-dark': isDarkMode }]"
+          >
+            <span>{{ item.label }}</span>
+            <strong>{{ item.value }}</strong>
+            <small>{{ item.hint }}</small>
+          </div>
+        </div>
 
-      <div class="ew-map-pad w-full h-full p-2"
-           :class="isDarkMode ? 'bg-slate-900' : 'bg-slate-50'">
-        <div class="ew-map-frame w-full h-full overflow-hidden rounded"
-             :class="isDarkMode ? 'bg-slate-900' : 'bg-white'">
-          <ProjectMap 
-            ref="projectMap"
-            :project="mockParentProject"
-            :is-dark-mode="isDarkMode"
-            :loaded-geojson-layers="loadedGeojsonLayers"
-            :layer-visibility="layerVisibility"
-            :current-base-map="currentBaseMap"
-            :highway-mileage-visible="highwayMileageVisible"
-            :mileage-label-visible="showMileageLabels"
-            :mileage-geo-json="currentRoadGeoJSON"
-            @map-ready="onMapReady"
-            @toggle-highway-mileage="toggleHighwayMileage"
-            @toggle-mileage-label="toggleMileageLabels"
-          />
-          <InSARLayer
-            v-if="$refs.projectMap && $refs.projectMap.map && monitoringLayers.insar"
-            :map="$refs.projectMap.map"
-            :is-active="showRadar"
-            :data-path="monitoringLayers.insar?.fileUrl"
-            :show-legend="true"
-            :sidebar-expanded="showAlertLightStatusPanel"
+        <section class="ew-map ew-map-main">
+          <div class="ew-map-title" :class="isDarkMode ? 'is-dark' : ''">
+            <span>GIS 風險定位</span>
+            <small>{{ currentRegionName }}</small>
+          </div>
+
+          <div
+            v-if="selectedRegionCode"
+            class="ew-map-ops"
+            :class="isDarkMode ? 'is-dark' : ''"
+          >
+            <div class="map-tool-row">
+              <button
+                type="button"
+                class="map-tool is-light-status"
+                :class="{ 'is-active': showAlertLightStatusPanel }"
+                @click="toggleAlertLightPanel"
+                title="告警燈號狀態"
+              >
+                <span class="tool-label">燈號</span>
+                <span class="light-counts">
+                  <span class="light-count is-red">{{ alertLightSummary.red }}</span>
+                  <span class="light-count is-yellow">{{ alertLightSummary.yellow }}</span>
+                  <span class="light-count is-green">{{ alertLightSummary.green }}</span>
+                </span>
+              </button>
+
+              <button
+                type="button"
+                class="map-tool"
+                :class="{ 'is-active': showMileageLabels }"
+                @click="toggleMileageLabels"
+                title="里程標籤"
+              >
+                <span class="tool-label">里程</span>
+                <strong>{{ showMileageLabels ? 'ON' : 'OFF' }}</strong>
+              </button>
+
+              <button
+                v-if="heatmapToolAvailable"
+                type="button"
+                class="map-tool"
+                :class="{ 'is-active': showDisasterHeatmap, 'is-loading': isLoadingHeatmap }"
+                @click="toggleDisasterHeatmap"
+                title="熱點圖層"
+              >
+                <span class="tool-label">熱點</span>
+                <strong>{{ isLoadingHeatmap ? '載入' : (showDisasterHeatmap ? 'ON' : 'OFF') }}</strong>
+              </button>
+
+              <button
+                v-if="radarToolAvailable"
+                type="button"
+                class="map-tool"
+                :class="{ 'is-active': showRadar }"
+                @click="toggleRadar"
+                title="空中雷達"
+              >
+                <span class="tool-label">雷達</span>
+                <strong>{{ showRadar ? 'ON' : 'OFF' }}</strong>
+              </button>
+            </div>
+
+            <div v-if="showAlertLightStatusPanel" class="map-light-strip">
+              <button
+                v-for="light in visibleAlertLights"
+                :key="light.id || light.name || `${light.latitude}-${light.longitude}`"
+                type="button"
+                class="light-chip"
+                :class="`is-${normalizeAlertLevel(light.current_level)}`"
+                @click="handleAlertLightClick(light)"
+                :title="light.name || light.location_name || '告警燈號'"
+              >
+                <span class="light-dot"></span>
+                <span>{{ light.name || light.location_name || '未命名燈號' }}</span>
+              </button>
+              <span v-if="currentAlertLights.length > visibleAlertLights.length" class="light-more">
+                +{{ currentAlertLights.length - visibleAlertLights.length }}
+              </span>
+              <span v-if="currentAlertLights.length === 0" class="light-empty">尚無燈號</span>
+            </div>
+          </div>
+
+          <div class="ew-map-pad w-full h-full p-1.5"
+               :class="isDarkMode ? 'bg-slate-900' : 'bg-slate-50'">
+            <div class="ew-map-frame w-full h-full overflow-hidden rounded"
+                 :class="isDarkMode ? 'bg-slate-900' : 'bg-white'">
+              <ProjectMap 
+                ref="projectMap"
+                :project="mockParentProject"
+                :is-dark-mode="isDarkMode"
+                :loaded-geojson-layers="loadedGeojsonLayers"
+                :layer-visibility="layerVisibility"
+                :current-base-map="currentBaseMap"
+                :highway-mileage-visible="highwayMileageVisible"
+                :mileage-label-visible="showMileageLabels"
+                :mileage-geo-json="currentRoadGeoJSON"
+                @map-ready="onMapReady"
+                @toggle-highway-mileage="toggleHighwayMileage"
+                @toggle-mileage-label="toggleMileageLabels"
+              />
+              <InSARLayer
+                v-if="$refs.projectMap && $refs.projectMap.map && monitoringLayers.insar"
+                :map="$refs.projectMap.map"
+                :is-active="showRadar"
+                :data-path="monitoringLayers.insar?.fileUrl"
+                :show-legend="true"
+                :sidebar-expanded="false"
+              />
+            </div>
+          </div>
+        </section>
+
+      </section>
+
+      <aside class="ew-chart-rail" :class="isDarkMode ? 'is-dark' : ''">
+        <div class="ew-dashboard-title" :class="isDarkMode ? 'is-dark' : ''">
+          <span>即時監測圖表</span>
+          <small>{{ selectedRegionCode ? currentRegionName : '請先選擇監測地區' }}</small>
+        </div>
+        <div class="early-warning-card h-full">
+          <div v-if="!selectedRegionCode" class="chart-empty-state">
+            <span>-</span>
+            <p>請先從上方選擇監測地區，即可顯示微地動、雨量與強地動圖表</p>
+          </div>
+          <ChartDataPanel
+            v-else
+            variant="full"
+            :region-code="selectedRegionCode"
+            :region-id="selectedRegionId"
+            :region-name="currentRegionName"
+            ref="chartDataPanel"
+            @status-summary-changed="handleMonitorStatusChanged"
           />
         </div>
-      </div>
+      </aside>
     </div>
         
     <!-- 建立地區專案模態框 -->
@@ -306,7 +412,6 @@ import RoutineInspectionModal from '@/components/warning/RoutineInspectionModal.
 import SpecialInspectionModal from '@/components/warning/SpecialInspectionModal.vue'
 import InspectionRecordsView from '@/components/warning/InspectionRecordsView.vue'
 import AlertLightConfirmModal from '@/components/warning/AlertLightConfirmModal.vue'
-import AlertLightStatusPanel from '@/components/warning/AlertLightStatusPanel.vue'
 import InSARLayer from '@/components/warning/InSARLayer.vue'
 import { generateWarningLightHTML } from '@/utils/warningLightMarkerHelper.js'
 import { success, error, alert as showAlert } from '@/utils/simpleAlertService.js'
@@ -335,7 +440,6 @@ export default {
     SpecialInspectionModal,
     InspectionRecordsView,
     AlertLightConfirmModal,
-    AlertLightStatusPanel,
     InSARLayer,
     RegionManagePanel
   },
@@ -407,18 +511,138 @@ export default {
          isDeletingAlertLight: false, // 是否正在刪除告警燈號
          showAlertLightStatusPanel: true, // 是否顯示告警燈號狀態面板（預設展開）
          currentAlertLights: [], // 當前地區的告警燈號列表
-        chartPanelCollapsed: false, // 圖表面板是否收起
         disasterCountMap: {}, // 里程點災害數量映射表 { "里程數": 數量 }
         disasterHeatmapMarkers: [], // 災害熱力圖標記陣列
         showDisasterHeatmap: false, // 是否顯示 GeoTIFF 熱點圖層（可開關，控制 Hitmap.tif）
         heatmapControl: null, // 熱點圖層控制按鈕
         heatmapTiffLayer: null, // GeoTIFF 熱點圖層
         isLoadingHeatmap: false, // 是否正在載入熱點圖層
+        heatmapToolAvailable: false, // 此地區是否提供熱點工具
         radarControl: null, // 空中雷達控制按鈕
-        showRadar: false // 是否顯示空中雷達
+        radarToolAvailable: false, // 此地區是否提供雷達工具
+        showRadar: false, // 是否顯示空中雷達
+        monitorStatusSummary: []
       }
     },
   watch: {},
+  computed: {
+    visibleAlertLights() {
+      return this.currentAlertLights.slice(0, 6)
+    },
+    alertLightSummary() {
+      return this.currentAlertLights.reduce((summary, light) => {
+        const level = this.normalizeAlertLevel(light.current_level)
+        summary[level] = (summary[level] || 0) + 1
+        return summary
+      }, { red: 0, yellow: 0, green: 0 })
+    },
+    overallRiskLevel() {
+      if (this.alertLightSummary.red > 0 || this.monitorStatusSummary.some(item => item.level === 'high')) return 'high'
+      if (this.alertLightSummary.yellow > 0 || this.monitorStatusSummary.some(item => item.level === 'medium')) return 'medium'
+      if (!this.selectedRegionCode) return 'unknown'
+      return 'normal'
+    },
+    overallRiskLabel() {
+      const labelMap = {
+        high: '立即處置',
+        medium: '注意追蹤',
+        normal: '系統正常',
+        unknown: '等待地區'
+      }
+      return labelMap[this.overallRiskLevel] || labelMap.unknown
+    },
+    highestAlertLabel() {
+      const labelMap = {
+        high: '紅色',
+        medium: '黃色',
+        normal: '綠色',
+        unknown: '-'
+      }
+      return labelMap[this.overallRiskLevel] || '-'
+    },
+    lastKnownUpdate() {
+      const latest = this.monitorStatusSummary
+        .map(item => String(item.text || ''))
+        .find(text => /\d{1,2}:\d{2}/.test(text))
+      return latest || '即時'
+    },
+    pendingIncidentCount() {
+      return this.incidentItems.filter(item => item.actionable).length
+    },
+    priorityCards() {
+      return [
+        {
+          label: '整體風險',
+          value: this.highestAlertLabel,
+          hint: this.overallRiskLevel === 'normal' ? '無待處置異常' : '請優先確認事件',
+          level: this.overallRiskLevel
+        },
+        {
+          label: '告警燈號',
+          value: `${this.alertLightSummary.red}/${this.alertLightSummary.yellow}/${this.alertLightSummary.green}`,
+          hint: '紅 / 黃 / 綠',
+          level: this.alertLightSummary.red > 0 ? 'high' : this.alertLightSummary.yellow > 0 ? 'medium' : 'normal'
+        },
+        {
+          label: '影響區域',
+          value: this.currentAlertLights.length ? `${this.currentAlertLights.length} 處` : '0 處',
+          hint: this.currentAlertLights.length ? '可由右側清單下鑽' : '目前無異常位置',
+          level: this.currentAlertLights.length ? this.overallRiskLevel : 'normal'
+        },
+        {
+          label: '待處理',
+          value: `${this.pendingIncidentCount} 件`,
+          hint: '事件欄可建立紀錄',
+          level: this.pendingIncidentCount ? this.overallRiskLevel : 'normal'
+        }
+      ]
+    },
+    incidentItems() {
+      const abnormalLights = this.currentAlertLights
+        .filter(light => this.normalizeAlertLevel(light.current_level) !== 'green')
+        .map((light, index) => {
+          const level = this.normalizeAlertLevel(light.current_level)
+          return {
+            id: `light-${light.id || light.light_id || index}`,
+            level,
+            levelLabel: level === 'red' ? '紅色告警' : '黃色注意',
+            title: light.name || light.location_name || '未命名燈號',
+            detail: '燈號狀態已變更，建議查看 GIS 位置並建立處置紀錄。',
+            time: this.formatIncidentTime(light.updated_at || light.updatedAt || light.created_at),
+            light,
+            actionable: true
+          }
+        })
+
+      if (abnormalLights.length > 0) {
+        return abnormalLights.sort((a, b) => (a.level === 'red' ? -1 : 1) - (b.level === 'red' ? -1 : 1))
+      }
+
+      if (!this.selectedRegionCode) {
+        return [{
+          id: 'empty-region',
+          level: 'unknown',
+          levelLabel: '尚未選取',
+          title: '請先選擇監測地區',
+          detail: '選擇地區後會顯示 GIS、燈號與監測趨勢。',
+          time: '-',
+          light: null,
+          actionable: false
+        }]
+      }
+
+      return [{
+        id: 'normal',
+        level: 'normal',
+        levelLabel: '正常',
+        title: '目前無待確認事件',
+        detail: '系統保持安靜模式，持續監測微地動、雨量與強地動資料。',
+        time: this.lastKnownUpdate,
+        light: null,
+        actionable: false
+      }]
+    }
+  },
   methods: {
     async handleRegionChanged(regionInfo) {
       // regionInfo 可能是字符串（向后兼容）或对象 {region_id, region_code, region}
@@ -1962,6 +2186,7 @@ export default {
     
     // 切換空中雷達顯示（InSAR地表形變數據）
     toggleRadar() {
+      if (!this.radarToolAvailable) return
       this.showRadar = !this.showRadar
       
       if (this.radarControl && this.radarControl.updateButton) {
@@ -1982,13 +2207,13 @@ export default {
       }
       
       const map = this.$refs.projectMap.map
+      const name = regionName || ''
       
       // 判斷應該顯示哪些按鈕
-      const shouldShowHeatmap = regionName.includes('臺8線') || regionName.includes('台8線') || 
-                                regionName.includes('臨37') || regionName.includes('临37')
-      const shouldShowRadar = regionName.includes('臺7線') || regionName.includes('台7線') || 
-                              regionName.includes('台7') || regionName.includes('臺7')
-      
+      const shouldShowHeatmap = name.includes('臺8線') || name.includes('台8線') || 
+                                name.includes('臨37') || name.includes('临37')
+      const shouldShowRadar = name.includes('臺7線') || name.includes('台7線') || 
+                              name.includes('台7') || name.includes('臺7')
       
       // 移除現有的按鈕
       if (this.heatmapControl) {
@@ -2006,20 +2231,26 @@ export default {
         } catch (e) {
         }
       }
-      
-      // 根據條件添加按鈕
-      if (shouldShowHeatmap) {
-        this.addHeatmapControl(map)
+
+      this.heatmapToolAvailable = shouldShowHeatmap
+      this.radarToolAvailable = shouldShowRadar
+
+      if (!shouldShowHeatmap && this.showDisasterHeatmap) {
+        this.showDisasterHeatmap = false
+        this.removeHeatmapTiff()
       }
-      
-      if (shouldShowRadar) {
-        this.addRadarControl(map)
+
+      if (!shouldShowRadar) {
+        this.showRadar = false
       }
+
+      this.refreshMapSize()
     },
     
     // 切換 GeoTIFF 熱點圖層顯示（Hitmap.tif）
     // 注意：災害計數標記常駐顯示，不受此開關影響
     async toggleDisasterHeatmap() {
+      if (!this.heatmapToolAvailable) return
       this.showDisasterHeatmap = !this.showDisasterHeatmap
       
       if (!this.$refs.projectMap?.map) return
@@ -2668,44 +2899,41 @@ export default {
     // 處理告警燈號面板關閉
     handleAlertLightPanelClose() {
       this.showAlertLightStatusPanel = false;
+      this.refreshMapSize();
     },
-    // 處理圖表面板收起狀態變化
-    handleChartPanelCollapsedChanged(collapsed) {
-      this.chartPanelCollapsed = collapsed;
-
-      const chartEl = this.$el?.querySelector('.ew-chart');
-      if (!chartEl) return;
-
-      // 取消尚在執行的動畫
-      if (this._chartAnimTimeout) clearTimeout(this._chartAnimTimeout);
-
-      // 鎖定目前高度，防止地圖在 DOM 更新瞬間跳動
-      const fromH = chartEl.offsetHeight;
-      chartEl.style.height = fromH + 'px';
-      chartEl.style.overflow = 'hidden';
-
+    toggleAlertLightPanel() {
+      this.showAlertLightStatusPanel = !this.showAlertLightStatusPanel;
+      this.refreshMapSize();
+    },
+    normalizeAlertLevel(level) {
+      const normalized = String(level || 'green').toLowerCase();
+      if (normalized.includes('red') || normalized.includes('紅')) return 'red';
+      if (normalized.includes('yellow') || normalized.includes('黃')) return 'yellow';
+      return 'green';
+    },
+    refreshMapSize() {
       this.$nextTick(() => {
-        // DOM 已更新，量測新狀態的自然高度
-        chartEl.style.height = 'auto';
-        const toH = chartEl.offsetHeight;
-
-        // 從舊高度開始，下一幀滑到新高度
-        chartEl.style.height = fromH + 'px';
-        requestAnimationFrame(() => {
-          chartEl.style.transition = 'height 0.32s cubic-bezier(0.4, 0, 0.2, 1)';
-          chartEl.style.height = toH + 'px';
-        });
-
-        // 動畫結束後清理 inline style，並通知 Leaflet 重算尺寸
-        this._chartAnimTimeout = setTimeout(() => {
-          chartEl.style.transition = '';
-          chartEl.style.height = '';
-          chartEl.style.overflow = '';
-          if (this.$refs.projectMap?.map) {
-            this.$refs.projectMap.map.invalidateSize();
-          }
-        }, 350);
+        window.setTimeout(() => {
+          this.$refs.projectMap?.map?.invalidateSize();
+        }, 80);
       });
+    },
+    handleMonitorStatusChanged(summary) {
+      this.monitorStatusSummary = Array.isArray(summary) ? summary : [];
+    },
+    formatIncidentTime(value) {
+      if (!value) return this.lastKnownUpdate || '即時';
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return String(value).slice(0, 5) || '即時';
+      return date.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' });
+    },
+    openIncidentRecord(incident) {
+      if (incident?.light) {
+        this.handleAlertLightClick(incident.light);
+      }
+      this.showInspectionRecordsView = true;
+      this.currentInspectionViewType = 'special';
+      this.inspectionViewKey = Date.now();
     },
     // 處理告警燈號點擊（從狀態面板）
     handleAlertLightClick(light) {
@@ -2724,19 +2952,19 @@ export default {
 </script>
 
 <style scoped>
-/* ── EarlyWarning 主版面（CSS Grid，三列固定佈局）── */
+/* ── EarlyWarning 主版面：異常優先、空間定位、快速下鑽 ── */
 .ew-root {
   display: grid;
-  grid-template-rows: auto auto 1fr;
+  grid-template-rows: auto minmax(0, 1fr);
   height: 100%;
-  padding: 16px;
-  gap: 12px;
+  padding: 10px;
+  gap: 8px;
   overflow: hidden;
   box-sizing: border-box;
 }
 
 .ew-light {
-  background: #f6f9fb;
+  background: #eef4f8;
 }
 
 .ew-dark {
@@ -2745,9 +2973,9 @@ export default {
 
 .ew-region {
   min-height: 0;
-  padding: 12px 14px;
+  padding: 8px 10px;
   border: 1px solid;
-  border-radius: 10px;
+  border-radius: 6px;
 }
 
 .ew-light .ew-region {
@@ -2760,30 +2988,574 @@ export default {
   border-color: #1e293b;
 }
 
-.ew-chart {
+.ew-workspace {
+  display: grid;
+  grid-template-columns: minmax(360px, 4fr) minmax(520px, 6fr);
+  gap: 10px;
   min-height: 0;
-  border-radius: 4px; /* 動畫期間 overflow:hidden 時保留圓角 */
+  overflow: hidden;
 }
 
-/* 地圖區：填滿剩餘空間，相對定位供 AlertLightStatusPanel 用 */
-.ew-map {
+.ew-main {
+  position: relative;
+  display: grid;
+  grid-template-rows: auto 66px minmax(0, 1fr);
+  gap: 8px;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.ew-command-bar {
+  display: grid;
+  grid-template-columns: auto minmax(180px, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  min-height: 50px;
+  padding: 0 12px;
+  border: 1px solid #d5e1ea;
+  border-radius: 6px;
+  background: #ffffff;
+}
+
+.ew-command-bar.is-dark {
+  border-color: #1e293b;
+  background: #0f172a;
+}
+
+.risk-led {
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  background: #94a3b8;
+}
+
+.ew-command-bar.is-normal .risk-led {
+  background: #22c55e;
+  box-shadow: 0 0 0 5px rgba(34, 197, 94, 0.12);
+}
+
+.ew-command-bar.is-medium .risk-led {
+  background: #f59e0b;
+  box-shadow: 0 0 0 5px rgba(245, 158, 11, 0.14);
+}
+
+.ew-command-bar.is-high .risk-led {
+  background: #ef4444;
+  box-shadow: 0 0 0 5px rgba(239, 68, 68, 0.14);
+}
+
+.risk-copy {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.risk-copy span {
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.risk-copy strong {
+  overflow: hidden;
+  color: #0f172a;
+  font-size: 17px;
+  font-weight: 850;
+  line-height: 1.1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ew-command-bar.is-dark .risk-copy strong {
+  color: #f8fafc;
+}
+
+.risk-facts {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  min-width: 0;
+}
+
+.risk-facts span {
+  min-height: 28px;
+  padding: 6px 9px;
+  border: 1px solid #dbe3ea;
+  border-radius: 4px;
+  color: #475569;
+  font-size: 11px;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+.ew-command-bar.is-dark .risk-facts span {
+  border-color: #26384d;
+  color: #cbd5e1;
+}
+
+.ew-priority-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  min-height: 0;
+}
+
+.priority-card {
+  display: grid;
+  align-content: center;
+  gap: 4px;
+  min-width: 0;
+  padding: 7px 10px;
+  border: 1px solid #d5e1ea;
+  border-radius: 6px;
+  background: #ffffff;
+}
+
+.priority-card.is-dark {
+  border-color: #1e293b;
+  background: #0f172a;
+}
+
+.priority-card span,
+.priority-card small {
+  overflow: hidden;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 750;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.priority-card strong {
+  color: #0f172a;
+  font-size: 19px;
+  font-weight: 850;
+  line-height: 1.05;
+}
+
+.priority-card.is-dark strong {
+  color: #f8fafc;
+}
+
+.priority-card.is-normal strong {
+  color: #16a34a;
+}
+
+.priority-card.is-medium strong {
+  color: #d97706;
+}
+
+.priority-card.is-high strong {
+  color: #dc2626;
+}
+
+.priority-card.is-dark.is-normal strong {
+  color: #4ade80;
+}
+
+.priority-card.is-dark.is-medium strong {
+  color: #fbbf24;
+}
+
+.priority-card.is-dark.is-high strong {
+  color: #f87171;
+}
+
+.ew-map,
+.ew-trends,
+.ew-chart-rail {
   position: relative;
   min-height: 0;
   overflow: hidden;
-  border-radius: 10px;
+}
+
+.ew-trends {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
+.ew-dashboard-title,
+.ew-map-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 34px;
+  padding: 0 10px;
+  border: 1px solid #d5e1ea;
+  border-bottom: 0;
+  border-radius: 6px 6px 0 0;
+  background: #f8fafc;
+}
+
+.ew-dashboard-title.is-dark,
+.ew-map-title.is-dark {
+  border-color: #1e293b;
+  background: #0f172a;
+}
+
+.ew-dashboard-title span,
+.ew-map-title span {
+  color: #0f172a;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.ew-dashboard-title.is-dark span,
+.ew-map-title.is-dark span {
+  color: #f8fafc;
+}
+
+.ew-dashboard-title small,
+.ew-map-title small {
+  overflow: hidden;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ew-dashboard-title.is-dark small,
+.ew-map-title.is-dark small {
+  color: #94a3b8;
+}
+
+.ew-map {
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  border: 1px solid #cbd8e3;
+  border-radius: 6px;
+}
+
+.ew-dark .ew-map {
+  border-color: #1e293b;
+}
+
+.ew-map-ops {
+  display: grid;
+  gap: 4px;
+  padding: 5px 8px;
+  border-top: 1px solid #d5e1ea;
+  border-bottom: 1px solid #d5e1ea;
+  background: #f8fafc;
+}
+
+.ew-map-ops.is-dark {
+  border-color: #1e293b;
+  background: #0f172a;
+}
+
+.map-tool-row {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.map-tool {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-width: 0;
+  min-height: 30px;
+  padding: 0 8px;
+  border: 1px solid #cbd8e3;
+  border-radius: 4px;
+  background: #ffffff;
+  color: #334155;
+  font-size: 11px;
+  font-weight: 800;
+  transition: border-color 0.15s ease, background-color 0.15s ease, color 0.15s ease;
+}
+
+.map-tool:hover {
+  border-color: #3b82f6;
+  color: #0f172a;
+}
+
+.map-tool.is-active {
+  border-color: #2563eb;
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.map-tool.is-loading {
+  cursor: wait;
+}
+
+.ew-map-ops.is-dark .map-tool {
+  border-color: #334155;
+  background: #111827;
+  color: #cbd5e1;
+}
+
+.ew-map-ops.is-dark .map-tool:hover {
+  border-color: #60a5fa;
+  color: #f8fafc;
+}
+
+.ew-map-ops.is-dark .map-tool.is-active {
+  border-color: #60a5fa;
+  background: rgba(37, 99, 235, 0.22);
+  color: #bfdbfe;
+}
+
+.tool-label,
+.map-tool strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.light-counts {
+  display: inline-grid;
+  grid-template-columns: repeat(3, 20px);
+  gap: 4px;
+  flex: 0 0 auto;
+}
+
+.light-count {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.65);
+  border-radius: 999px;
+  color: #ffffff;
+  font-size: 10px;
+  line-height: 1;
+  box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.08);
+}
+
+.light-count.is-red {
+  background: #dc2626;
+}
+
+.light-count.is-yellow {
+  background: #d97706;
+}
+
+.light-count.is-green {
+  background: #16a34a;
+}
+
+.map-light-strip {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 28px;
+  overflow: hidden;
+}
+
+.ew-map-main .map-light-strip {
+  display: none;
+}
+
+.light-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  max-width: 120px;
+  height: 26px;
+  padding: 0 8px;
+  border: 1px solid #d8e1ea;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #475569;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.light-chip span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.light-chip:hover {
+  border-color: #94a3b8;
+  color: #0f172a;
+}
+
+.ew-map-ops.is-dark .light-chip {
+  border-color: #334155;
+  background: #111827;
+  color: #cbd5e1;
+}
+
+.light-dot {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 8px;
+  border-radius: 999px;
+}
+
+.light-chip.is-red .light-dot {
+  background: #dc2626;
+}
+
+.light-chip.is-yellow .light-dot {
+  background: #d97706;
+}
+
+.light-chip.is-green .light-dot {
+  background: #16a34a;
+}
+
+.light-more,
+.light-empty {
+  flex: 0 0 auto;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.ew-map-ops.is-dark .light-more,
+.ew-map-ops.is-dark .light-empty {
+  color: #94a3b8;
 }
 
 .ew-map-pad {
-  border-radius: 10px;
-  box-shadow: 0 14px 34px rgba(15, 45, 71, 0.1);
+  min-height: 0;
+  border-radius: 6px;
+  box-shadow: none;
 }
 
 .ew-dark .ew-map-pad {
-  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.32);
+  box-shadow: none;
 }
 
 .ew-map-frame {
-  border-radius: 8px;
+  border-radius: 4px;
+}
+
+.early-warning-card {
+  height: 100%;
+  min-height: 0;
+  overflow: auto;
+  padding: 8px;
+  border: 1px solid #d5e1ea;
+  border-radius: 0 0 6px 6px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: none;
+}
+
+.ew-dark .early-warning-card {
+  border-color: #1e293b;
+  background: rgba(15, 23, 42, 0.96);
+}
+
+.ew-dashboard :deep(.chart-data-panel) {
+  height: 100%;
+  min-height: 0;
+}
+
+.ew-dashboard :deep(.command-grid) {
+  height: clamp(720px, calc(100vh - 250px), 900px);
+  min-height: 720px;
+}
+
+.ew-trends :deep(.chart-data-panel) {
+  height: 100%;
+  min-height: 0;
+}
+
+.ew-trends :deep(.command-grid) {
+  height: 100%;
+  min-height: 0;
+}
+
+.ew-chart-rail {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  border: 1px solid #cbd8e3;
+  border-radius: 6px;
+  background: #ffffff;
+}
+
+.ew-chart-rail.is-dark {
+  border-color: #1e293b;
+  background: #0f172a;
+}
+
+.chart-empty-state {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 8px;
+  min-height: 100%;
+  padding: 24px;
+  color: #94a3b8;
+  text-align: center;
+}
+
+.chart-empty-state span {
+  color: #64748b;
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.chart-empty-state p {
+  max-width: 320px;
+  color: #64748b;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.ew-chart-rail.is-dark .chart-empty-state p,
+.ew-chart-rail.is-dark .chart-empty-state span {
+  color: #94a3b8;
+}
+
+.ew-chart-rail :deep(.chart-data-panel) {
+  height: 100%;
+  min-height: 0;
+}
+
+.ew-chart-rail :deep(.command-grid) {
+  height: 100%;
+  min-height: 0;
+}
+
+.ew-dashboard :deep(.monitor-card) {
+  min-height: 0;
+}
+
+.ew-dashboard :deep(.trend-board) {
+  min-height: 0;
+}
+
+@media (max-width: 1024px) {
+  .ew-workspace {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(520px, 48vh) minmax(720px, 1fr);
+  }
+
+  .ew-main {
+    grid-template-rows: auto auto minmax(360px, 1fr);
+  }
+
+  .ew-command-bar {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .risk-facts {
+    grid-column: 1 / -1;
+    justify-content: flex-start;
+    overflow-x: auto;
+  }
+
+  .ew-priority-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .ew-dashboard :deep(.command-grid) {
+    height: auto;
+    min-height: 0;
+  }
 }
 
 /* card：邊框取代陰影，更俐落 */

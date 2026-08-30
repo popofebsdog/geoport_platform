@@ -302,11 +302,11 @@ export default {
       };
       
       const colorMap = {
-        'TYPE I':         { border: '#1e88e5', bg: 'rgba(30,136,229,0.72)' },
-        'TYPE II':        { border: '#f59e0b', bg: 'rgba(245,158,11,0.78)' },
-        'TYPE III':       { border: '#ef4444', bg: 'rgba(239,68,68,0.8)' },
-        'TYPE NOISE':     { border: '#94a3b8', bg: 'rgba(148,163,184,0.44)' },
-        'TYPE EARTHQUAKE':{ border: '#7c3aed', bg: 'rgba(124,58,237,0.7)' }
+        'TYPE I':         { border: '#2dd4bf', bg: 'rgba(45,212,191,0.88)' },
+        'TYPE II':        { border: '#f59e0b', bg: 'rgba(245,158,11,0.9)' },
+        'TYPE III':       { border: '#ef4444', bg: 'rgba(239,68,68,0.92)' },
+        'TYPE NOISE':     { border: '#64748b', bg: 'rgba(100,116,139,0.52)' },
+        'TYPE EARTHQUAKE':{ border: '#38bdf8', bg: 'rgba(56,189,248,0.86)' }
       };
       
       // 過濾並處理數據：保留當日的所有類型
@@ -334,10 +334,10 @@ export default {
             data: [],
             borderColor: colorMap[type].border,
             backgroundColor: colorMap[type].bg,
-            pointRadius: 5,
-            pointHoverRadius: 7,
-            pointBorderColor: this.isDarkMode ? '#0f172a' : '#ffffff',
-            pointBorderWidth: 1.5,
+            pointRadius: 4,
+            pointHoverRadius: 6,
+            pointBorderColor: this.isDarkMode ? '#08111f' : '#f8fafc',
+            pointBorderWidth: 1,
             borderWidth: 0
           }))
         };
@@ -408,10 +408,10 @@ export default {
         data: typeDatasets[type],
         borderColor: colorMap[type].border,
         backgroundColor: colorMap[type].bg,
-        pointRadius: 5,
-        pointHoverRadius: 7,
-        pointBorderColor: this.isDarkMode ? '#0f172a' : '#ffffff',
-        pointBorderWidth: 1.5,
+        pointRadius: 4,
+        pointHoverRadius: 6,
+        pointBorderColor: this.isDarkMode ? '#08111f' : '#f8fafc',
+        pointBorderWidth: 1,
         borderWidth: 0
       }));
       

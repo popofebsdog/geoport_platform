@@ -925,7 +925,7 @@ async function updateRegionProject(req, res) {
 
     // 檢查地區是否存在（使用 region_id）
     const checkQuery = `
-      SELECT region_id, region_code FROM warning_regions 
+      SELECT region_id, region_code, api_config FROM warning_regions 
       WHERE region_id = $1 AND deleted_at IS NULL
     `;
     const checkResult = await pool.query(checkQuery, [regionId]);
@@ -937,38 +937,37 @@ async function updateRegionProject(req, res) {
       });
     }
 
+    const existingApiConfig = checkResult.rows[0].api_config || {};
+    const hasApiConfigUpdate = Object.prototype.hasOwnProperty.call(req.body, 'apiConfig');
+
     // 解析API配置（如果是字符串则解析JSON）
-    let parsedApiConfig = {};
-    if (typeof apiConfig === 'string') {
-      try {
-        parsedApiConfig = JSON.parse(apiConfig);
-      } catch (e) {
+    let parsedApiConfig = existingApiConfig;
+    if (hasApiConfigUpdate) {
+      if (typeof apiConfig === 'string') {
+        try {
+          parsedApiConfig = JSON.parse(apiConfig);
+        } catch (e) {
+          parsedApiConfig = {};
+        }
+      } else if (apiConfig) {
+        parsedApiConfig = apiConfig;
+      } else {
         parsedApiConfig = {};
       }
-    } else if (apiConfig) {
-      parsedApiConfig = apiConfig;
     }
-    
-    // 確保包含三個類別的配置
+
+    const defaultApiCategory = {
+      endpoint: '',
+      authType: 'none',
+      authValue: '',
+      updateInterval: 10
+    };
+
+    // 確保包含三個類別的配置；未由前端更新時保留既有設定
     const finalApiConfig = {
-      microseismic: parsedApiConfig.microseismic || {
-        endpoint: '',
-        authType: 'none',
-        authValue: '',
-        updateInterval: 10
-      },
-      earthquake: parsedApiConfig.earthquake || {
-        endpoint: '',
-        authType: 'none',
-        authValue: '',
-        updateInterval: 10
-      },
-      rainfall: parsedApiConfig.rainfall || {
-        endpoint: '',
-        authType: 'none',
-        authValue: '',
-        updateInterval: 10
-      }
+      microseismic: parsedApiConfig.microseismic || defaultApiCategory,
+      earthquake: parsedApiConfig.earthquake || defaultApiCategory,
+      rainfall: parsedApiConfig.rainfall || defaultApiCategory
     };
 
     // 更新地區記錄

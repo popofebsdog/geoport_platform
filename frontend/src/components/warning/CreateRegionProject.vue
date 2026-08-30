@@ -183,38 +183,6 @@
         </div>
       </div>
 
-      <!-- 步驟 3: 介接監測資料 -->
-      <div v-if="currentStep === 2" class="space-y-4">
-        <div>
-          <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">介接監測資料</h3>
-          <p class="text-sm text-gray-600 dark:text-gray-400">輸入 API Base URL 後點「探索」，從回應 JSON 中選擇要取用的資料欄位</p>
-        </div>
-
-        <!-- 類別 Tabs -->
-        <div class="flex gap-0 border-b border-gray-200 dark:border-gray-700">
-          <button
-            v-for="cat in apiCategories"
-            :key="cat.key"
-            @click="selectedApiCategory = cat.key"
-            class="px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors"
-            :class="selectedApiCategory === cat.key
-              ? 'border-blue-500 text-blue-600 dark:border-blue-400 dark:text-blue-400'
-              : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'"
-          >
-            {{ cat.icon }} {{ cat.label }}
-          </button>
-        </div>
-
-        <!-- ApiRouteConfigurator for current category -->
-        <div class="min-h-[320px]">
-          <ApiRouteConfigurator
-            :model-value="formData.apiConfig[selectedApiCategory]"
-            :is-dark-mode="isDarkMode"
-            @update:model-value="formData.apiConfig[selectedApiCategory] = $event"
-          />
-        </div>
-      </div>
-
       <!-- 按鈕區域 -->
       <div class="flex items-center justify-between pt-6 mt-6 border-t border-gray-200 dark:border-gray-700">
         <button
@@ -249,7 +217,6 @@
 <script>
 import api from '@/services/api';
 import { alert as showAlert, error as showError, success as showSuccess } from '@/utils/simpleAlertService';
-import ApiRouteConfigurator from '@/components/common/ApiRouteConfigurator.vue';
 
 export default {
   name: 'CreateRegionProject',
@@ -263,7 +230,6 @@ export default {
       default: null
     }
   },
-  components: { ApiRouteConfigurator },
   inject: ['isDarkMode'],
   emits: ['success', 'cancel', 'road-section-selected', 'work-section-selected'],
   data() {
@@ -288,12 +254,6 @@ export default {
         { key: 'insar', label: 'InSAR監測' },
         { key: 'disaster', label: '災點熱區' }
       ],
-      selectedApiCategory: 'microseismic',
-      apiCategories: [
-        { key: 'microseismic', label: '微地動', icon: '📡' },
-        { key: 'earthquake',   label: '地震',   icon: '🌍' },
-        { key: 'rainfall',     label: '雨量',   icon: '🌧️' }
-      ],
       formData: {
         regionName: '',
         roadSection: '',
@@ -301,12 +261,7 @@ export default {
         regionCode: '',
         description: '',
         latitude: null,
-        longitude: null,
-        apiConfig: {
-          microseismic: { baseUrl: '', authType: 'none', authValue: '', updateInterval: 10, routes: [] },
-          earthquake:   { baseUrl: '', authType: 'none', authValue: '', updateInterval: 10, routes: [] },
-          rainfall:     { baseUrl: '', authType: 'none', authValue: '', updateInterval: 10, routes: [] }
-        }
+        longitude: null
       },
       steps: [
         {
@@ -316,10 +271,6 @@ export default {
         {
           title: '成果資料',
           description: '上傳已分析好的成果予顯示'
-        },
-        {
-          title: '監測資料',
-          description: '設定儀器 API 與即時顯示'
         }
       ]
     };
@@ -330,9 +281,7 @@ export default {
         case 0:
           return this.formData.regionName && this.formData.roadSection && this.formData.workSection;
         case 1:
-          return true; // 不需要上傳文件也能進入下一階段
-        case 2:
-          return true; // API設定為可選
+          return true; // 不需要上傳文件也能提交
         default:
           return true;
       }
@@ -380,27 +329,6 @@ export default {
       const sizes = ['Bytes', 'KB', 'MB', 'GB'];
       const i = Math.floor(Math.log(bytes) / Math.log(k));
       return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-    },
-    getAuthPlaceholder(authType) {
-      switch (authType) {
-        case 'api_key':
-          return '輸入 API Key';
-        case 'bearer':
-          return '輸入 Bearer Token';
-        case 'basic':
-          return '輸入 username:password';
-        default:
-          return '';
-      }
-    },
-    getAuthTypeName(authType) {
-      const names = {
-        none: '無認證',
-        api_key: 'API Key',
-        bearer: 'Bearer Token',
-        basic: 'Basic Auth'
-      };
-      return names[authType] || '-';
     },
     async loadRoadSections() {
       try {
@@ -507,26 +435,6 @@ export default {
       if (this.formData.roadSection) {
         await this.loadWorkSections(this.formData.roadSection);
       }
-      
-      // 載入 API 配置
-      if (this.editData.api_config) {
-        const apiConfig = typeof this.editData.api_config === 'string' 
-          ? JSON.parse(this.editData.api_config) 
-          : this.editData.api_config;
-        
-        const normalizeCategory = (cat) => ({
-          baseUrl:       cat?.baseUrl || cat?.endpoint || '',
-          authType:      cat?.authType || 'none',
-          authValue:     cat?.authValue || '',
-          updateInterval: cat?.updateInterval ?? 10,
-          routes:        Array.isArray(cat?.routes) ? cat.routes : [],
-        });
-        this.formData.apiConfig = {
-          microseismic: normalizeCategory(apiConfig.microseismic),
-          earthquake:   normalizeCategory(apiConfig.earthquake),
-          rainfall:     normalizeCategory(apiConfig.rainfall),
-        };
-      }
     },
     async submitForm() {
       try {
@@ -562,13 +470,6 @@ export default {
           return;
         }
 
-        // API配置（JSON格式）
-        const apiConfig = {
-          microseismic: this.formData.apiConfig.microseismic,
-          earthquake: this.formData.apiConfig.earthquake,
-          rainfall: this.formData.apiConfig.rainfall
-        };
-
         let response;
         
         // 構建描述（包含工務段信息）
@@ -584,7 +485,6 @@ export default {
             description: description,
             latitude: this.formData.latitude || null,
             longitude: this.formData.longitude || null,
-            apiConfig: JSON.stringify(apiConfig),
             workSection: this.formData.workSection || ''
           };
 
@@ -604,7 +504,6 @@ export default {
           formData.append('workSection', this.formData.workSection || '');
           formData.append('latitude', this.formData.latitude || '');
           formData.append('longitude', this.formData.longitude || '');
-          formData.append('apiConfig', JSON.stringify(apiConfig));
 
           // 添加檔案（按類別分組）
           this.uploadedFiles.numerical.forEach((file) => {
@@ -664,4 +563,3 @@ export default {
   box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.3), 0 1px 2px 0 rgba(0, 0, 0, 0.15);
 }
 </style>
-

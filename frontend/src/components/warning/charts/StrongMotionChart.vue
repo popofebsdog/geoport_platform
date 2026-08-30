@@ -283,13 +283,13 @@ export default {
           datasets: [{
             label: '加速度 (gal)',
             data: values,
-            borderColor: this.isDarkMode ? '#38bdf8' : '#0f766e',
-            backgroundColor: this.isDarkMode ? 'rgba(56,189,248,0.08)' : 'rgba(15,118,110,0.08)',
-            tension: 0.4,
+            borderColor: this.isDarkMode ? '#22d3ee' : '#0f766e',
+            backgroundColor: this.isDarkMode ? 'rgba(34,211,238,0.1)' : 'rgba(15,118,110,0.08)',
+            tension: 0.34,
             fill: false,
             pointRadius: 0,
-            pointHoverRadius: 3,
-            borderWidth: 1.8
+            pointHoverRadius: 4,
+            borderWidth: 2.2
           }]
         };
       }
@@ -314,13 +314,13 @@ export default {
             datasets: [{
               label: '加速度 (gal)',
               data: values,
-              borderColor: this.isDarkMode ? '#38bdf8' : '#0f766e',
-              backgroundColor: this.isDarkMode ? 'rgba(56,189,248,0.08)' : 'rgba(15,118,110,0.08)',
-              tension: 0.4,
+              borderColor: this.isDarkMode ? '#22d3ee' : '#0f766e',
+              backgroundColor: this.isDarkMode ? 'rgba(34,211,238,0.1)' : 'rgba(15,118,110,0.08)',
+              tension: 0.34,
               fill: false,
               pointRadius: 0,
-              pointHoverRadius: 3,
-              borderWidth: 1.8
+              pointHoverRadius: 4,
+              borderWidth: 2.2
             }]
           };
         }
@@ -415,13 +415,13 @@ export default {
         datasets: [{
           label: '加速度 (gal)',
           data: values,
-          borderColor: this.isDarkMode ? '#38bdf8' : '#0f766e',
-          backgroundColor: this.isDarkMode ? 'rgba(56,189,248,0.08)' : 'rgba(15,118,110,0.08)',
-          tension: 0.4,
+          borderColor: this.isDarkMode ? '#22d3ee' : '#0f766e',
+          backgroundColor: this.isDarkMode ? 'rgba(34,211,238,0.1)' : 'rgba(15,118,110,0.08)',
+          tension: 0.34,
           fill: false,
           pointRadius: 0,
-          pointHoverRadius: 3,
-          borderWidth: 1.8
+          pointHoverRadius: 4,
+          borderWidth: 2.2
         }]
       };
     },
@@ -456,13 +456,13 @@ export default {
         datasets: [{
           label: `PGA (gal) - ${metadata.stationCode}`,
           data: values,
-          borderColor: '#ef4444',
-          backgroundColor: 'rgba(239,68,68,0.1)',
+          borderColor: this.isDarkMode ? '#fb7185' : '#dc2626',
+          backgroundColor: this.isDarkMode ? 'rgba(251,113,133,0.14)' : 'rgba(220,38,38,0.1)',
           tension: 0.1,
           fill: true,
           pointRadius: 0,
-          pointHoverRadius: 3,
-          borderWidth: 1.4
+          pointHoverRadius: 4,
+          borderWidth: 2
         }]
       };
     },

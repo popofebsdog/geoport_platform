@@ -7,8 +7,8 @@ const FONT_FAMILY = "'Inter', system-ui, -apple-system, sans-serif"
 
 const COLORS = {
   grid: {
-    light: 'rgba(30,92,138,0.08)',
-    dark:  'rgba(148,163,184,0.12)'
+    light: 'rgba(30,92,138,0.12)',
+    dark:  'rgba(148,163,184,0.16)'
   },
   tick: {
     light: '#6b7d8f',
@@ -36,18 +36,28 @@ export function baseChartOptions(isDark = false) {
   return {
     responsive: true,
     maintainAspectRatio: false,
-    animation: { duration: 300 },
+    animation: { duration: 220 },
+    interaction: { intersect: false, mode: 'nearest' },
+    elements: {
+      line: {
+        borderCapStyle: 'round',
+        borderJoinStyle: 'round'
+      },
+      point: {
+        hitRadius: 8
+      }
+    },
     plugins: {
     legend: {
       display: true,
       position: 'top',
       align: 'end',
       labels: {
-        font: { family: FONT_FAMILY, size: 11 },
+        font: { family: FONT_FAMILY, size: 10, weight: '700' },
         color: tickColor,
-        boxWidth: 8,
-        boxHeight: 8,
-        padding: 10,
+        boxWidth: 7,
+        boxHeight: 7,
+        padding: 8,
         usePointStyle: true,
         pointStyle: 'circle'
       }
@@ -62,7 +72,7 @@ export function baseChartOptions(isDark = false) {
         bodyFont:  { family: FONT_FAMILY, size: 11 },
         titleColor: '#f1f5f9',
         bodyColor:  '#cbd5e1',
-        cornerRadius: 8,
+        cornerRadius: 6,
         displayColors: true,
         boxWidth: 8,
         boxHeight: 8
@@ -94,12 +104,13 @@ export function axisScale(axis, titleText, isDark = false, extra = {}) {
     },
     ticks: {
       color: tickColor,
-      font: { family: FONT_FAMILY, size: 10 }
+      font: { family: FONT_FAMILY, size: 10, weight: '600' }
     },
     grid: {
       color: gridColor,
       tickColor: 'transparent',
-      drawTicks: false
+      drawTicks: false,
+      lineWidth: 1
     },
     border: { color: 'transparent' },
     ...extra

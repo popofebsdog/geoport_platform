@@ -15,47 +15,32 @@
       </div>
     </div>
 
-    <!-- 圖表 + 可拖曳 handle -->
-    <div v-else ref="chartWrapper" class="relative w-full h-full">
-      <canvas ref="chartCanvas" class="w-full h-full"></canvas>
+    <!-- 圖表 -->
+    <div v-else class="relative w-full h-full">
+      <apexchart
+        class="rainfall-apex"
+        type="line"
+        height="100%"
+        :options="apexChartOptions"
+        :series="apexChartSeries"
+      />
       <div v-if="chartReady && !hasRainSignal" class="chart-empty-state"
            :class="isDarkMode ? 'chart-empty-state--dark' : 'chart-empty-state--light'">
         <span>目前無雨量</span>
         <small>警戒線持續監測中</small>
-      </div>
-
-      <!-- 右側拖曳 handle（閾值線由 Chart.js dataset 畫） -->
-      <template v-if="chart && chartReady">
-        <!-- 黃色 handle -->
-        <div class="th-handle th-handle--yellow"
-             :style="handlePositions.yellow"
-             @mousedown.prevent="startDrag('yellow', $event)"
-             title="拖曳調整黃色警戒值">
-          <span class="th-handle__label">{{ localThresholds.yellow }}<small>mm</small></span>
-        </div>
-        <!-- 紅色 handle -->
-        <div class="th-handle th-handle--red"
-             :style="handlePositions.red"
-             @mousedown.prevent="startDrag('red', $event)"
-             title="拖曳調整紅色警戒值">
-          <span class="th-handle__label">{{ localThresholds.red }}<small>mm</small></span>
-        </div>
-      </template>
-
-      <!-- 拖曳預覽線（純 CSS，拖曳中不觸發 chart.update） -->
-      <div v-if="dragging" class="th-drag-line"
-           :class="dragging === 'red' ? 'th-drag-line--red' : 'th-drag-line--yellow'"
-           :style="{ top: dragLineY + 'px', left: chartAreaLeft + 'px', right: '4px' }">
-        <span class="th-drag-line__label">{{ dragValue }} mm</span>
       </div>
     </div>
   </div>
 </template>
 
 <script>
+import VueApexCharts from 'vue3-apexcharts';
+
 export default {
   name: 'RainfallChart',
-  emits: ['threshold-change'],
+  components: {
+    apexchart: VueApexCharts,
+  },
   props: {
     data:         { type: Object,  default: null },
     loading:      { type: Boolean, default: false },
@@ -69,24 +54,48 @@ export default {
     const d = new Date();
     const today = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
     return {
-      chart: null,
       currentDate: today,
       maxDate: today,
       loadingData: false,
       chartData: null,
-      // threshold drag state
       localThresholds: { yellow: 20, red: 40 },
       chartReady: false,
-      dragging: null,       // 'yellow' | 'red' | null
-      dragValue: 0,
-      dragLineY: 0,
-      chartAreaLeft: 0,
-      handlePositions: {
-        yellow: { display: 'none' },
-        red:    { display: 'none' },
-      },
       hasRainSignal: true,
     };
+  },
+  watch: {
+    thresholds: {
+      immediate: true,
+      deep: true,
+      handler(v) {
+        this.localThresholds = { ...v };
+        this.markChartReady();
+      },
+    },
+    selectedDate(newVal) {
+      if (newVal && newVal !== this.currentDate) {
+        this.currentDate = newVal;
+        if (this.regionCode) {
+          this.loadDataForDate(this.currentDate);
+        } else {
+          this.markChartReady();
+        }
+      }
+    },
+    isDarkMode() {
+      this.markChartReady();
+    },
+    data: {
+      deep: true,
+      handler() {
+        this.markChartReady();
+      }
+    },
+    loading(newVal) {
+      if (!newVal) {
+        this.markChartReady();
+      }
+    }
   },
   computed: {
     isToday() {
@@ -97,54 +106,34 @@ export default {
     currentTime() {
       return new Date();
     },
-  },
-  watch: {
-    thresholds: {
-      immediate: true,
-      deep: true,
-      handler(v) { this.localThresholds = { ...v }; },
+    rainfallModel() {
+      return this.prepareChartData();
     },
-    selectedDate(newVal) {
-      if (newVal && newVal !== this.currentDate) {
-        this.currentDate = newVal;
-        if (this.regionCode) {
-          this.loadDataForDate(this.currentDate);
-        } else {
-          this.$nextTick(() => this.updateChart());
-        }
-      }
+    apexChartSeries() {
+      return [
+        {
+          name: '時雨量 (mm)',
+          type: 'column',
+          data: this.rainfallModel.hourlyValuesForDisplay,
+        },
+        {
+          name: '累積雨量 (mm)',
+          type: 'area',
+          data: this.rainfallModel.accumulatedValues,
+        },
+      ];
     },
-    isDarkMode() {
-      this.updateChart();
+    apexChartOptions() {
+      return this.buildApexOptions(this.rainfallModel);
     },
-    data: {
-      deep: true,
-      handler() {
-        this.$nextTick(() => {
-          this.updateChart();
-        });
-      }
-    },
-    loading(newVal) {
-      if (!newVal) {
-        this.$nextTick(() => {
-          this.updateChart();
-        });
-      }
-    }
   },
   mounted() {
     if (this.selectedDate) this.currentDate = this.selectedDate;
     if (this.regionCode) {
       this.loadDataForDate(this.currentDate);
     } else if (this.data && !this.loading) {
-      this.createChart();
+      this.markChartReady();
     }
-  },
-  beforeUnmount() {
-    if (this.chart) this.chart.destroy();
-    document.removeEventListener('mousemove', this.onDrag);
-    document.removeEventListener('mouseup',   this.stopDrag);
   },
   methods: {
     formatTimeLabel(timeStr) {
@@ -210,7 +199,7 @@ export default {
       } finally {
         this.loadingData = false;
         await this.$nextTick();
-        await this.updateChart();
+        this.markChartReady();
       }
     },
     // 將時間字符串轉換為小時索引（0-23）
@@ -286,152 +275,6 @@ export default {
       
       return isMatch;
     },
-    async createChart() {
-      // 檢查是否有數據（優先使用chartData，其次使用data）
-      const hasData = this.chartData || this.data;
-      if (!this.$refs.chartCanvas || !hasData) {
-        return;
-      }
-      
-      // 確保先銷毀現有的圖表實例
-      if (this.chart) {
-        try {
-          this.chart.destroy();
-        } catch (e) {
-          console.warn('銷毀圖表時出錯:', e);
-        }
-        this.chart = null;
-      }
-      
-      try {
-        const { Chart, registerables } = await import('chart.js');
-        const { applyChartDefaults, baseChartOptions, axisScale } = await import('@/utils/chartDefaults.js');
-        Chart.register(...registerables);
-        applyChartDefaults(Chart);
-
-        const chartData = this.prepareChartData();
-        const suggestedMaxValue = chartData.suggestedMax || 1;
-        const dark = this.isDarkMode;
-        const base = baseChartOptions(dark);
-
-        this.chartReady = false;
-        this.chart = new Chart(this.$refs.chartCanvas, {
-          type: 'bar',
-          data: chartData,
-          options: {
-            ...base,
-            clip: false,
-            interaction: { intersect: false, mode: 'index' },
-            elements: {
-              line: { tension: 0.38, borderWidth: 2 },
-              bar:  { borderRadius: 5, borderSkipped: false, borderWidth: 0, minBarLength: 2 }
-            },
-            plugins: {
-              ...base.plugins,
-              tooltip: {
-                ...base.plugins.tooltip,
-                mode: 'index',
-                intersect: false,
-                callbacks: {
-                  label(context) {
-                    let label = context.dataset.label || '';
-                    if (label) label += ': ';
-                    const value = context.parsed.y || 0;
-                    return value === 0 && context.dataset.label === '時雨量 (mm)'
-                      ? label + '無雨量'
-                      : label + value.toFixed(2) + ' mm';
-                  }
-                }
-              }
-            },
-            scales: {
-              x: {
-                ...axisScale('x', '', dark),
-                ticks: {
-                  ...axisScale('x', '', dark).ticks,
-                  maxRotation: 45,
-                  minRotation: 0,
-                  maxTicksLimit: 8
-                }
-              },
-              y: {
-                ...axisScale('y', 'mm', dark),
-                beginAtZero: true,
-                suggestedMin: 0,
-                suggestedMax: suggestedMaxValue,
-                grace: '5%',
-                ticks: {
-                  ...axisScale('y', 'mm', dark).ticks,
-                  stepSize: suggestedMaxValue <= 1 ? 0.1 : (suggestedMaxValue <= 10 ? 1 : 5)
-                }
-              }
-            }
-          }
-        });
-        // 等圖表渲染完成，再計算 handle 位置
-        this.$nextTick(() => {
-          this.chartAreaLeft = this.chart?.chartArea?.left ?? 0;
-          this.updateHandlePositions();
-          this.chartReady = true;
-        });
-      } catch (error) {
-        console.error('創建圖表失敗:', error);
-      }
-    },
-
-    // ── handle 位置計算（明確呼叫，不依賴 computed）──
-    updateHandlePositions() {
-      if (!this.chart?.scales?.y || !this.chart.chartArea) return;
-      const scale = this.chart.scales.y;
-      const right = this.chart.chartArea.right;
-      ['yellow', 'red'].forEach(type => {
-        if (this.localThresholds[type] > scale.max) {
-          this.handlePositions[type] = { display: 'none' };
-          return;
-        }
-        const raw = scale.getPixelForValue(this.localThresholds[type]);
-        const yPx = Math.max(this.chart.chartArea.top, Math.min(this.chart.chartArea.bottom, raw));
-        this.handlePositions[type] = { top: `${yPx}px`, left: `${right}px` };
-      });
-    },
-
-    // ── 閾值線拖曳 ──
-    startDrag(type, e) {
-      this.dragging  = type;
-      this.dragValue = this.localThresholds[type];
-      document.addEventListener('mousemove', this.onDrag);
-      document.addEventListener('mouseup',   this.stopDrag);
-    },
-    onDrag(e) {
-      if (!this.dragging || !this.chart?.scales?.y || !this.chart.chartArea || !this.$refs.chartCanvas) return;
-      const rect    = this.$refs.chartCanvas.getBoundingClientRect();
-      const cssY    = e.clientY - rect.top;
-      const scale   = this.chart.scales.y;
-      const area    = this.chart.chartArea;
-      const clamped = Math.max(area.top, Math.min(area.bottom, cssY));
-      const val     = Math.max(0, Math.round(scale.getValueForPixel(clamped)));
-
-      const updated = { ...this.localThresholds };
-      if (this.dragging === 'yellow') {
-        updated.yellow = Math.min(val, updated.red - 1);
-      } else {
-        updated.red = Math.max(val, updated.yellow + 1);
-      }
-      this.localThresholds = updated;
-      this.dragValue = updated[this.dragging];
-
-      const dragYPx = Math.max(area.top, Math.min(area.bottom, scale.getPixelForValue(this.dragValue)));
-      this.handlePositions[this.dragging] = { top: `${dragYPx}px`, left: `${area.right}px` };
-      this.dragLineY = dragYPx;
-    },
-    async stopDrag() {
-      if (!this.dragging) return;
-      this.dragging = null;
-      document.removeEventListener('mousemove', this.onDrag);
-      document.removeEventListener('mouseup',   this.stopDrag);
-      await this.updateChart();
-      this.$emit('threshold-change', { ...this.localThresholds });
-    },
     prepareChartData() {
       // 優先使用本地載入的數據（chartData），其次使用props傳入的數據（data）
       const dataSource = this.chartData || this.data;
@@ -457,31 +300,11 @@ export default {
       if (!dataSource) {
         console.warn('雨量數據為空');
         return {
-          labels: labels,
-          datasets: [
-            {
-              label: '時雨量 (mm)',
-              data: hourlyValues,
-              backgroundColor: 'rgba(59, 130, 246, 0.6)',
-              borderColor: '#3b82f6',
-              borderWidth: 2,
-              borderRadius: 4,
-              order: 2
-            },
-            {
-              label: '累積雨量 (mm)',
-              data: accumulatedValues,
-              type: 'line',
-              borderColor: '#3b82f6',
-              backgroundColor: 'rgba(59, 130, 246, 0.1)',
-              borderWidth: 2,
-              fill: false,
-              tension: 0.4,
-              pointRadius: 3,
-              pointHoverRadius: 5,
-              order: 1
-            }
-          ]
+          labels,
+          hourlyValuesForDisplay: hourlyValues,
+          accumulatedValues,
+          suggestedMax: Math.max(this.localThresholds.red, 1) * 1.2,
+          showThresholdLines: true,
         };
       }
       
@@ -641,106 +464,150 @@ export default {
 
       // 時雨量 0 值不顯示柱子
       const hourlyValuesForDisplay = hourlyValues.map(v => v > 0 ? v : null);
-      // 閾值線資料（填滿所有 label 位置）
-      const yellowData = labels.map(() => this.localThresholds.yellow);
-      const redData    = labels.map(() => this.localThresholds.red);
-
-      const datasets = [
-        {
-          label: '時雨量 (mm)',
-          data: hourlyValuesForDisplay,
-          backgroundColor: this.isDarkMode ? 'rgba(56,189,248,0.64)' : 'rgba(14,165,233,0.56)',
-          borderColor: 'transparent',
-          borderWidth: 0,
-          borderRadius: 5,
-          borderSkipped: false,
-          barThickness: 'flex',
-          maxBarThickness: 22,
-          order: 2,
-          yAxisID: 'y',
-          skipNull: true,
-        },
-        {
-          label: '累積雨量 (mm)',
-          data: accumulatedValues,
-          type: 'line',
-          borderColor: this.isDarkMode ? '#67e8f9' : '#0f766e',
-          backgroundColor: this.isDarkMode ? 'rgba(103,232,249,0.08)' : 'rgba(15,118,110,0.08)',
-          borderWidth: 2,
-          fill: true,
-          tension: 0.38,
-          pointRadius: 0,
-          pointHoverRadius: 5,
-          pointBackgroundColor: this.isDarkMode ? '#67e8f9' : '#0f766e',
-          pointBorderColor: this.isDarkMode ? '#0f172a' : '#fff',
-          pointBorderWidth: 2,
-          order: 1,
-          yAxisID: 'y',
-          spanGaps: false,
-        },
-      ];
-
-      if (showThresholdLines) {
-        datasets.push(
-          // 黃色警戒線
-          {
-            label: '黃色警戒',
-            data: yellowData,
-            type: 'line',
-            borderColor: 'rgba(245,158,11,0.9)',
-            borderWidth: 1.5,
-            borderDash: [8, 5],
-            pointRadius: 0,
-            pointHoverRadius: 0,
-            fill: false,
-            tension: 0,
-            order: 0,
-            yAxisID: 'y',
-          },
-          // 紅色警戒線
-          {
-            label: '紅色警戒',
-            data: redData,
-            type: 'line',
-            borderColor: 'rgba(239,68,68,0.92)',
-            borderWidth: 1.5,
-            borderDash: [8, 5],
-            pointRadius: 0,
-            pointHoverRadius: 0,
-            fill: false,
-            tension: 0,
-            order: 0,
-            yAxisID: 'y',
-          },
-        );
-      }
 
       return {
         labels,
-        datasets,
+        hourlyValuesForDisplay,
+        accumulatedValues,
         suggestedMax,
+        showThresholdLines,
       };
     },
-    async updateChart() {
-      // 確保先銷毀現有的圖表實例
-      if (this.chart) {
-        try {
-          this.chart.destroy();
-        } catch (e) {
-          console.warn('銷毀圖表時出錯:', e);
-        }
-        this.chart = null;
-      }
-      
-      // 等待下一個tick，確保DOM已更新
-      await this.$nextTick();
-      
-      // 檢查是否有數據（優先使用chartData，其次使用data）
-      const hasData = this.chartData || this.data;
-      if (hasData && !this.loading && !this.loadingData && this.$refs.chartCanvas) {
-        await this.createChart();
-      }
-    }
+    buildApexOptions(model) {
+      const dark = this.isDarkMode;
+      const labelColor = dark ? '#94a3b8' : '#64748b';
+      const gridColor = dark ? 'rgba(148,163,184,0.14)' : 'rgba(30,92,138,0.12)';
+      const thresholdAnnotations = model.showThresholdLines
+        ? [
+            {
+              y: this.localThresholds.yellow,
+              borderColor: '#f59e0b',
+              strokeDashArray: 5,
+              label: {
+                text: `黃 ${this.localThresholds.yellow} mm`,
+                borderColor: '#f59e0b',
+                style: {
+                  background: '#f59e0b',
+                  color: '#78350f',
+                  fontSize: '10px',
+                  fontWeight: 800,
+                },
+              },
+            },
+            {
+              y: this.localThresholds.red,
+              borderColor: '#ef4444',
+              strokeDashArray: 5,
+              label: {
+                text: `紅 ${this.localThresholds.red} mm`,
+                borderColor: '#ef4444',
+                style: {
+                  background: '#ef4444',
+                  color: '#ffffff',
+                  fontSize: '10px',
+                  fontWeight: 800,
+                },
+              },
+            },
+          ]
+        : [];
+
+      return {
+        chart: {
+          id: 'rainfall-trend',
+          type: 'line',
+          stacked: false,
+          toolbar: { show: false },
+          zoom: { enabled: false },
+          animations: { enabled: true, easing: 'easeinout', speed: 320 },
+          foreColor: labelColor,
+          background: 'transparent',
+        },
+        annotations: {
+          yaxis: thresholdAnnotations,
+        },
+        colors: [dark ? '#22d3ee' : '#0ea5e9', dark ? '#a3e635' : '#0f766e'],
+        dataLabels: { enabled: false },
+        fill: {
+          type: ['solid', 'gradient'],
+          opacity: [0.72, 0.18],
+          gradient: {
+            shadeIntensity: 0.2,
+            opacityFrom: 0.28,
+            opacityTo: 0.02,
+          },
+        },
+        grid: {
+          borderColor: gridColor,
+          strokeDashArray: 3,
+          padding: { top: 4, right: 8, bottom: 0, left: 4 },
+        },
+        legend: {
+          show: true,
+          position: 'top',
+          horizontalAlign: 'left',
+          fontSize: '11px',
+          labels: { colors: labelColor },
+          markers: { size: 6 },
+        },
+        plotOptions: {
+          bar: {
+            borderRadius: 4,
+            columnWidth: '58%',
+          },
+        },
+        stroke: {
+          width: [0, 2.4],
+          curve: 'smooth',
+        },
+        markers: {
+          size: 0,
+          hover: { size: 4 },
+        },
+        tooltip: {
+          shared: true,
+          intersect: false,
+          theme: dark ? 'dark' : 'light',
+          y: {
+            formatter(value) {
+              if (value === null || value === undefined) return '無雨量';
+              return `${Number(value).toFixed(2)} mm`;
+            },
+          },
+        },
+        xaxis: {
+          categories: model.labels,
+          tickAmount: Math.min(model.labels.length, 8),
+          labels: {
+            rotate: -35,
+            style: { colors: labelColor, fontSize: '10px', fontWeight: 700 },
+          },
+          axisBorder: { color: gridColor },
+          axisTicks: { color: gridColor },
+        },
+        yaxis: {
+          min: 0,
+          max: Math.max(model.suggestedMax || 1, 1),
+          tickAmount: 4,
+          title: {
+            text: 'mm',
+            style: { color: labelColor, fontSize: '10px', fontWeight: 700 },
+          },
+          labels: {
+            style: { colors: labelColor, fontSize: '10px', fontWeight: 700 },
+            formatter(value) {
+              return Number(value).toFixed(value <= 1 ? 1 : 0);
+            },
+          },
+        },
+      };
+    },
+    markChartReady() {
+      this.chartReady = false;
+      this.$nextTick(() => {
+        this.chartReady = true;
+      });
+    },
   }
 };
 </script>
@@ -751,68 +618,6 @@ export default {
   height: 100%;
   width: 100%;
 }
-
-/* 拖曳 handle（右側小方塊） */
-.th-handle {
-  position: absolute;
-  transform: translate(2px, -50%);
-  width: 44px;
-  height: 20px;
-  border-radius: 3px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: ns-resize;
-  user-select: none;
-  z-index: 15;
-  font-size: 10px;
-  font-weight: 700;
-  transition: opacity 0.15s, box-shadow 0.15s;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.2);
-}
-.th-handle:hover, .th-handle:active {
-  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-  opacity: 1 !important;
-}
-.th-handle--yellow {
-  background: rgba(245,158,11,0.92);
-  color: #78350f;
-  opacity: 0.85;
-}
-.th-handle--red {
-  background: rgba(239,68,68,0.92);
-  color: #fff;
-  opacity: 0.85;
-}
-.th-handle__label small {
-  font-size: 8px;
-  font-weight: 400;
-  margin-left: 1px;
-}
-
-/* 拖曳預覽線 */
-.th-drag-line {
-  position: absolute;
-  height: 2px;
-  pointer-events: none;
-  z-index: 20;
-  display: flex;
-  align-items: flex-start;
-}
-.th-drag-line--red    { background: rgba(239,68,68,0.9); }
-.th-drag-line--yellow { background: rgba(245,158,11,0.9); }
-.th-drag-line__label {
-  position: absolute;
-  right: 0;
-  top: -18px;
-  font-size: 10px;
-  font-weight: 700;
-  padding: 1px 6px;
-  border-radius: 3px;
-  white-space: nowrap;
-}
-.th-drag-line--red .th-drag-line__label    { background: rgba(239,68,68,0.9);  color: #fff; }
-.th-drag-line--yellow .th-drag-line__label { background: rgba(245,158,11,0.9); color: #78350f; }
 
 .chart-empty-state {
   position: absolute;

@@ -158,38 +158,6 @@
           </template>
         </div>
 
-        <!-- ── Tab 2: API 設定 ── -->
-        <div v-if="activeTab === 'api'" class="space-y-4">
-          <!-- 類別 Tabs -->
-          <div class="flex gap-0 border-b" :class="isDarkMode ? 'border-slate-700' : 'border-gray-200'">
-            <button
-              v-for="cat in apiCategories" :key="cat.key"
-              @click="selectedApiCategory = cat.key"
-              class="px-3 py-2 text-xs font-medium border-b-2 -mb-px transition-colors"
-              :class="selectedApiCategory === cat.key
-                ? (isDarkMode ? 'border-blue-400 text-blue-400' : 'border-blue-500 text-blue-600')
-                : (isDarkMode ? 'border-transparent text-slate-400 hover:text-slate-200' : 'border-transparent text-gray-500 hover:text-gray-700')"
-            >
-              {{ cat.icon }} {{ cat.label }}
-            </button>
-          </div>
-
-          <!-- 當前類別的 ApiRouteConfigurator -->
-          <ApiRouteConfigurator
-            :model-value="apiConfig[selectedApiCategory]"
-            :is-dark-mode="isDarkMode"
-            @update:model-value="apiConfig[selectedApiCategory] = $event"
-          />
-
-          <button
-            @click="saveApiConfig"
-            :disabled="savingApi"
-            class="w-full py-2 text-sm font-medium rounded-lg bg-blue-500 text-white hover:bg-blue-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-          >
-            {{ savingApi ? '儲存中…' : '儲存 API 設定' }}
-          </button>
-        </div>
-
       </div>
     </div>
   </div>
@@ -198,11 +166,9 @@
 <script>
 import api from '@/services/api'
 import { success as showSuccess, error as showError, alert as showAlert } from '@/utils/simpleAlertService'
-import ApiRouteConfigurator from '@/components/common/ApiRouteConfigurator.vue'
 
 export default {
   name: 'RegionManagePanel',
-  components: { ApiRouteConfigurator },
   inject: ['isDarkMode'],
   props: {
     regionId:   { type: String, required: true },
@@ -214,8 +180,7 @@ export default {
     return {
       activeTab: 'layers',
       tabs: [
-        { key: 'layers', label: '監測圖資' },
-        { key: 'api',    label: 'API 設定' }
+        { key: 'layers', label: '監測圖資' }
       ],
       layerCategories: [
         { key: 'numerical', label: '數值模擬', icon: '📊', namePlaceholder: '數值模擬資料' },
@@ -231,25 +196,11 @@ export default {
         insar:     { layer_name: '', file: null },
         disaster:  { layer_name: '', file: null }
       },
-      uploading: null, // key of the category being uploaded
-      // api config
-      selectedApiCategory: 'microseismic',
-      apiConfig: {
-        microseismic: { baseUrl: '', authType: 'none', authValue: '', updateInterval: 10, routes: [] },
-        rainfall:     { baseUrl: '', authType: 'none', authValue: '', updateInterval: 10, routes: [] },
-        earthquake:   { baseUrl: '', authType: 'none', authValue: '', updateInterval: 10, routes: [] }
-      },
-      savingApi: false,
-      apiCategories: [
-        { key: 'microseismic', label: '微地動', icon: '📡' },
-        { key: 'rainfall',     label: '雨量',   icon: '🌧️' },
-        { key: 'earthquake',   label: '地震',   icon: '🌍' }
-      ]
+      uploading: null // key of the category being uploaded
     }
   },
   mounted() {
     this.fetchLayers()
-    this.fetchApiConfig()
   },
   methods: {
     layersByType(type) {
@@ -321,53 +272,6 @@ export default {
         }
       } catch (e) {
         await showError(e.message || '刪除失敗', '錯誤', this.isDarkMode)
-      }
-    },
-
-    async fetchApiConfig() {
-      try {
-        const res = await api.get(`/warning-regions/${encodeURIComponent(this.regionCode)}`)
-        const region = res?.data
-        if (!region) return
-        const cfg = typeof region.api_config === 'string'
-          ? JSON.parse(region.api_config)
-          : region.api_config
-        if (cfg && typeof cfg === 'object') {
-          for (const key of ['microseismic', 'rainfall', 'earthquake']) {
-            if (cfg[key]) {
-              const src = cfg[key]
-              this.apiConfig[key] = {
-                baseUrl:       src.baseUrl || src.endpoint || '',
-                authType:      src.authType || 'none',
-                authValue:     src.authValue || '',
-                updateInterval: src.updateInterval ?? 10,
-                routes:        Array.isArray(src.routes) ? src.routes : [],
-              }
-            }
-          }
-        }
-      } catch {
-        // 保持預設值
-      }
-    },
-
-    async saveApiConfig() {
-      this.savingApi = true
-      try {
-        const res = await api.put(`/warning-regions/id/${this.regionId}`, {
-          regionName: this.regionName,
-          apiConfig: this.apiConfig
-        })
-        // api 攔截器已 unwrap，res = { success, data/message }
-        if (res?.success) {
-          await showSuccess('API 設定已儲存', '完成', this.isDarkMode)
-        } else {
-          throw new Error(res.data?.message || '儲存失敗')
-        }
-      } catch (e) {
-        await showError(e.message || '儲存失敗', '錯誤', this.isDarkMode)
-      } finally {
-        this.savingApi = false
       }
     }
   }
