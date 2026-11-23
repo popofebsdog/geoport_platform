@@ -1,10 +1,10 @@
 <template>
-  <div class="h-16 flex items-center justify-between px-4 transition-colors duration-300"
+  <div class="min-h-16 flex flex-wrap items-center justify-between gap-2 px-4 py-2 transition-colors duration-300"
        :class="isDarkMode ? 'bg-slate-800 border-b border-slate-700' : 'bg-white border-b border-gray-200'">
     
     <!-- 專案名稱 -->
-    <div class="flex-1 flex items-center justify-start pl-6">
-      <h2 class="text-base font-semibold transition-colors duration-300 leading-relaxed"
+    <div class="flex-1 min-w-0 flex items-center justify-start">
+      <h2 class="text-sm font-semibold transition-colors duration-300 leading-relaxed break-words"
           :class="isDarkMode ? 'text-gray-200' : 'text-gray-800'">
         <span v-if="showBackToParent" class="font-bold text-gray-500 mr-2">事件紀錄：</span>
         <span v-else class="font-bold text-gray-500 mr-2">專案名稱：</span>
@@ -14,6 +14,7 @@
     
     <!-- 右側按鈕組 -->
     <div class="flex items-center space-x-2">
+      <ProjectPublicationActions :key="project?.project_id || project?.projectId" kind="disaster" :project-id="project?.project_id || project?.projectId" :project-name="project?.name" :allow-share="canEdit" :is-dark-mode="isDarkMode" />
       <!-- 母專案專用按鈕 -->
       <template v-if="!showBackToParent">
         <!-- 瀏覽照片按鈕 -->
@@ -81,8 +82,10 @@
 </template>
 
 <script>
+import ProjectPublicationActions from './ProjectPublicationActions.vue'
 export default {
   name: 'ProjectTitleBar',
+  components: { ProjectPublicationActions },
   inject: { canEdit: { default: true } },
   props: {
     project: {

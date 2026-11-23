@@ -33,6 +33,7 @@
 
       <!-- 右側：操作按鈕 -->
       <div class="flex items-center space-x-1 flex-shrink-0 ml-3" @click.stop>
+        <ProjectPublicationActions kind="disaster" :project-id="parentProject.project_id || parentProject.projectId" :project-name="parentProject.name" :allow-share="canEdit" :is-dark-mode="isDarkMode" />
         <!-- 新增紀錄 -->
         <button
           v-if="canEdit"
@@ -134,8 +135,10 @@
 </template>
 
 <script>
+import ProjectPublicationActions from './ProjectPublicationActions.vue'
 export default {
   name: 'ParentProjectCard',
+  components: { ProjectPublicationActions },
   inject: { canEdit: { default: true } },
   props: {
     parentProject: {
@@ -187,7 +190,7 @@ export default {
 }
 
 .parent-header {
-  @apply flex items-center px-4 py-3 transition-colors duration-150;
+  @apply flex flex-wrap items-center gap-y-2 px-4 py-3 transition-colors duration-150;
 }
 
 .folder-icon {

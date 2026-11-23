@@ -3,6 +3,7 @@ import { authenticate } from '../middleware/auth.js';
 import { login, getUsers, updateUser, getProfile, createUserByAdmin } from '../controllers/authController.js';
 import { requireAdmin } from '../middleware/requireAdmin.js';
 import { loginRateLimit } from '../middleware/loginRateLimit.js';
+import { ASSET_COOKIE, assetCookieOptions } from '../middleware/privateDataAccess.js';
 
 const router = express.Router();
 
@@ -19,7 +20,10 @@ router.get('/', (req, res) => {
 });
 
 router.post('/login', loginRateLimit, login);
-router.post('/logout', (req, res) => res.json({ success: true, message: '已登出' }));
+router.post('/logout', (req, res) => {
+  res.clearCookie(ASSET_COOKIE, assetCookieOptions());
+  res.json({ success: true, message: '已登出' });
+});
 router.get('/users', authenticate, requireAdmin, getUsers);
 router.post('/users', authenticate, requireAdmin, createUserByAdmin);
 router.put('/users/:id', authenticate, requireAdmin, updateUser);

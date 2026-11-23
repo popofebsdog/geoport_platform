@@ -15,9 +15,11 @@
         @delete="handleRegionDeleted"
       />
       <!-- 管理後台按鈕：與 RegionSelector 同高同底線 -->
-      <div v-if="selectedRegionId && canEdit" class="flex flex-col flex-shrink-0 ml-2 mb-3">
+      <div v-if="selectedRegionId" class="flex flex-col flex-shrink-0 ml-2 mb-3">
         <div class="h-10 flex items-center">
+          <ProjectPublicationActions :key="selectedRegionId" kind="warning" :project-id="selectedRegionId" :project-name="currentRegionName" :allow-share="canEdit" :is-dark-mode="isDarkMode" />
           <button
+            v-if="canEdit"
             @click="showManagePanel = true"
             class="px-3 py-1.5 text-xs font-semibold border rounded transition-colors whitespace-nowrap"
             :class="isDarkMode
@@ -401,7 +403,8 @@
 </template>
 
 <script>
-import { apiUrl } from '@/utils/urls.js'
+import ProjectPublicationActions from '@/components/project/ProjectPublicationActions.vue'
+import { apiUrl, fetchWithAccount as fetch } from '@/utils/urls.js'
 import L from 'leaflet'
 import proj4 from 'proj4'
 import ProjectMap from '@/components/project/ProjectMap.vue'
@@ -433,6 +436,7 @@ proj4.defs('EPSG:4326', '+proj=longlat +datum=WGS84 +no_defs') // WGS84
 export default {
   name: 'EarlyWarning',
   components: {
+    ProjectPublicationActions,
     ProjectMap,
     RegionSelector,
     ChartDataPanel,

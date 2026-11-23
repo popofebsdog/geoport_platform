@@ -164,7 +164,7 @@
 </template>
 
 <script>
-import { apiUrl } from '@/utils/urls.js'
+import { apiUrl, fetchWithAccount as fetch } from '@/utils/urls.js'
 import api from '@/services/api'
 import { success as showSuccess, error as showError, confirm as showConfirm } from '@/utils/simpleAlertService'
 

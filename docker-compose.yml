@@ -110,6 +110,7 @@ services:
     environment:
       - PORT=8000
       - HOST=0.0.0.0
+      - GUNICORN_CMD_ARGS=--access-logfile /dev/null
     restart: unless-stopped
     networks:
       - geoport-network
@@ -164,6 +165,7 @@ services:
     environment:
       - PORT=8000
       - HOST=0.0.0.0
+      - GUNICORN_CMD_ARGS=--access-logfile /dev/null
     restart: unless-stopped
     networks:
       - geoport-network

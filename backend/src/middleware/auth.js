@@ -10,6 +10,7 @@ const JWT_SECRET = process.env.JWT_SECRET;
  * Skip enforcement when JWT_SECRET is not configured (dev mode without auth).
  */
 export async function authenticate(req, res, next) {
+  if (req.authenticated === true) return next();
   if (!JWT_SECRET) {
     if (process.env.NODE_ENV === 'production') {
       return res.status(500).json({ success: false, message: '伺服器設定錯誤' });
@@ -41,6 +42,10 @@ export async function authenticate(req, res, next) {
       return res.status(403).json({ success: false, message: '瀏覽者僅能檢視資料，無法修改' });
     }
     req.user = { userId: user.user_id, username: user.username, role: user.role };
+    req.authenticated = true;
+    req.authToken = token;
+    req.authExpiresAt = Number(payload.exp) * 1000;
+    req.authCredentialVersion = payload.credentialVersion;
   } catch (error) {
     console.error('Account authentication failed:', error);
     return res.status(503).json({ success: false, message: '暫時無法驗證帳號，請稍後重試' });

@@ -13,6 +13,7 @@
     "node": ">=20.19 <21 || >=22.12 <25"
   },
   "dependencies": {
+    "@lucide/vue": "^1.77.0",
     "@mapbox/vector-tile": "^3.0.0",
     "@tmcw/togeojson": "^7.1.4",
     "apexcharts": "^5.3.5",

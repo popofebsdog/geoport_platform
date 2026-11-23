@@ -142,5 +142,6 @@ integration('only admins create accounts and current account state revokes old p
   expect(refreshed.status).toBe(200);
   await User.destroy({ where: { user_id: id } });
   expect((await request('GET', '/auth/profile', undefined, refreshed.body.token)).status).toBe(401);
-  expect((await request('GET', '/data-files/not-a-uuid', undefined, null)).status).toBe(400);
+  expect((await request('GET', '/data-files/not-a-uuid', undefined, null)).status).toBe(401);
+  expect((await request('GET', '/data-files/not-a-uuid')).status).toBe(400);
 }, 30000);

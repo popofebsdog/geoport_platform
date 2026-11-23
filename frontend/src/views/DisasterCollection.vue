@@ -1558,7 +1558,7 @@
 </template>
 
 <script>
-import { staticUrl } from '@/utils/urls.js'
+import { staticUrl, fetchWithAccount as fetch } from '@/utils/urls.js'
 import dayjs from 'dayjs'
 import L from 'leaflet'
 import { alert, confirm, success } from '@/utils/simpleAlertService'

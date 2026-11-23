@@ -1095,7 +1095,7 @@
 <script>
 import { markRaw } from 'vue'
 import { getFeatureId } from '@/utils/mapGeoUtils.js'
-import { staticUrl } from '@/utils/urls.js'
+import { staticUrl, fetchWithAccount as fetch } from '@/utils/urls.js'
 import L from 'leaflet'
 import VueApexCharts from 'vue3-apexcharts'
 import ProjectTitleBar from '@/components/project/ProjectTitleBar.vue'

@@ -56,7 +56,7 @@
 </template>
 
 <script>
-import { staticUrl } from '@/utils/urls.js'
+import { staticUrl, fetchWithAccount as fetch } from '@/utils/urls.js'
 export default {
   name: 'InSARLayer',
   props: {

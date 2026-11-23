@@ -10,6 +10,12 @@ import AdminDashboard from '@/views/AdminDashboard.vue'
 
 const routes = [
   {
+    path: '/shared-project',
+    name: 'SharedProject',
+    component: () => import('@/views/SharedProject.vue'),
+    meta: { public: true, standalone: true, title: '專案唯讀分享' }
+  },
+  {
     path: '/login',
     name: 'Login',
     component: Login,

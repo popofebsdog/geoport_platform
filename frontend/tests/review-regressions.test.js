@@ -143,7 +143,10 @@ test('failed admin health refresh replaces an earlier healthy status', async () 
 
 test('mileage layers stay outside Vue reactivity before being added to Leaflet', async t => {
   const previous = globalThis.fetch
-  t.after(() => { globalThis.fetch = previous; delete globalThis.__reviewMileageLayer })
+  const browser = { window: globalThis.window, localStorage: globalThis.localStorage }
+  globalThis.window = { location: { origin: 'http://localhost' } }
+  globalThis.localStorage = { getItem: () => 'fixture-token' }
+  t.after(() => { globalThis.fetch = previous; Object.assign(globalThis, browser); delete globalThis.__reviewMileageLayer })
   globalThis.fetch = async () => ({ ok: true, json: async () => ({ type: 'FeatureCollection', features: [] }) })
   let addedAsProxy
   globalThis.__reviewMileageLayer = { addTo() { addedAsProxy = isProxy(this); return this } }

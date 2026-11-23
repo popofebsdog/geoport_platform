@@ -37,6 +37,8 @@ import { getDeepHealth } from './services/healthService.js';
 import { ensureLocalStorageRoots, storageConfig } from './services/storageService.js';
 import { installConsoleBridge, logger } from './utils/logger.js';
 import { parseTrustProxy } from './config/trustProxy.js';
+import { requireDataAccount, requireStoredAsset } from './middleware/privateDataAccess.js';
+import { projectPublications, sharedProject, projectAssets } from './routes/projectPublications.js';
 
 // 載入環境變數
 dotenv.config();
@@ -93,7 +95,7 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // 靜態文件服務（local storage adapter）
-app.use(storageConfig.uploadsPublicPath, (req, res, next) => {
+app.use(storageConfig.uploadsPublicPath, requireStoredAsset, (req, res, next) => {
   // 為 TIF 檔案設置正確的 MIME 類型
   if (req.path.toLowerCase().endsWith('.tif') || req.path.toLowerCase().endsWith('.tiff')) {
     res.header('Content-Type', 'image/tiff');
@@ -101,7 +103,17 @@ app.use(storageConfig.uploadsPublicPath, (req, res, next) => {
   next();
 }, express.static(storageConfig.uploadsRoot));
 
-app.use(storageConfig.dataPublicPath, express.static(storageConfig.dataRoot));
+app.use(storageConfig.dataPublicPath, requireStoredAsset, express.static(storageConfig.dataRoot));
+
+app.use('/api/shared-project', sharedProject);
+app.use([
+  '/api/projects', '/api/parent-projects', '/api/child-projects', '/api/data', '/api/data-files',
+  '/api/reports', '/api/temporal-data', '/api/temporal-data-enhanced', '/api/disaster-points',
+  '/api/warning-regions', '/api/spatial', '/api/admin', '/api/health/deep',
+  '/api/project-publications', '/api/project-assets'
+], requireDataAccount);
+app.use('/api/project-publications', projectPublications);
+app.use('/api/project-assets', projectAssets);
 
 // API 路由
 app.use('/api/auth', authRoutes);

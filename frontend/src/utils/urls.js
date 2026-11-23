@@ -8,6 +8,19 @@ export function apiUrl(path) {
   return join(API_BASE_URL, path)
 }
 
+export function fetchWithAccount(url, options = {}) {
+  const target = new URL(url, window.location.origin)
+  const api = new URL(API_BASE_URL, window.location.origin)
+  const assets = new URL(import.meta.env.VITE_STATIC_URL || '/', window.location.origin)
+  const under = base => target.origin === base.origin && target.pathname.startsWith(`${trimEnd(base.pathname)}/`)
+  const assetPath = target.pathname.slice(trimEnd(assets.pathname).length)
+  if (!under(api) && !(under(assets) && /^\/(uploads|data)(\/|$)/.test(assetPath))) return fetch(url, options)
+  const headers = new Headers(options.headers)
+  const token = localStorage.getItem('authToken')
+  if (token && !headers.has('Authorization')) headers.set('Authorization', `Bearer ${token}`)
+  return fetch(url, { ...options, headers, credentials: 'include' })
+}
+
 export function staticUrl(path) {
   if (!path) return ''
   const normalized = path.replace(/\\/g, '/')

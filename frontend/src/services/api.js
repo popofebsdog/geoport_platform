@@ -7,7 +7,8 @@ const log = logger.scoped('api');
 // 創建 axios 實例
 const api = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 30000
+  timeout: 30000,
+  withCredentials: true
   // 移除默認的 Content-Type，讓 axios 根據數據類型自動設置
 });
 

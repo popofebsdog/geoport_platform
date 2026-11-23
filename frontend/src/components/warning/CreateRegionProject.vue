@@ -215,7 +215,7 @@
 </template>
 
 <script>
-import { staticUrl } from '@/utils/urls.js'
+import { staticUrl, fetchWithAccount as fetch } from '@/utils/urls.js'
 import api from '@/services/api';
 import { alert as showAlert, error as showError, success as showSuccess } from '@/utils/simpleAlertService';
 

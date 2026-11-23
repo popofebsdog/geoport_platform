@@ -1,5 +1,5 @@
 import proj4 from 'proj4'
-import { staticUrl, tiTilerAssetUrl } from '@/utils/urls.js'
+import { apiUrl, staticUrl, tiTilerAssetUrl, fetchWithAccount as fetch } from '@/utils/urls.js'
 import { logger } from '@/utils/logger.js'
 
 const log = logger.scoped('BaseMapService')
@@ -22,6 +22,7 @@ export class BaseMapService {
     
     // COG 圖層快取
     this.cogLayers = new Map()
+    this.assetGrants = new Map()
   }
 
   /**
@@ -83,6 +84,17 @@ export class BaseMapService {
       bounds: layerBounds,
       noWrap: true
     })
+    let refreshTimer
+    layer.on('add', () => {
+      clearInterval(refreshTimer)
+      refreshTimer = setInterval(async () => {
+        try {
+          const asset = await this.authorizeTiTilerAsset(imageUrl, true)
+          if (this.map?.hasLayer(layer)) layer.setUrl(`${titilerBase}/cog/tiles/WebMercatorQuad/{z}/{x}/{y}?url=${encodeURIComponent(asset)}`)
+        } catch { /* Expired account access must not fall back to a public asset. */ }
+      }, 240000)
+    })
+    layer.on('remove', () => clearInterval(refreshTimer))
     
     // 重寫瓦片載入邏輯，避免對 COG 範圍外的 tile 發出請求
     const originalCreateTile = layer.createTile
@@ -257,7 +269,28 @@ export class BaseMapService {
   }
 
   getTiTilerAssetUrl(imageUrl) {
-    return tiTilerAssetUrl(imageUrl)
+    return this.assetGrants.get(tiTilerAssetUrl(imageUrl))?.url || tiTilerAssetUrl(imageUrl)
+  }
+
+  async authorizeTiTilerAsset(imageUrl, force = false) {
+    const cacheKey = tiTilerAssetUrl(imageUrl)
+    const cached = this.assetGrants.get(cacheKey)
+    if (!force && cached?.expires > Date.now() + 30000) return cached.url
+    const browserUrl = new URL(staticUrl(imageUrl), window.location.origin)
+    const staticBase = new URL(import.meta.env.VITE_STATIC_URL || '/', window.location.origin)
+    const prefix = staticBase.pathname.replace(/\/+$/, '')
+    const path = browserUrl.pathname.slice(prefix.length).replace(/^\/+/, '')
+    if (browserUrl.origin !== staticBase.origin || !browserUrl.pathname.startsWith(`${prefix}/`) || !/^(uploads|data)\//.test(path)) return tiTilerAssetUrl(imageUrl)
+    const response = await fetch(apiUrl(`/project-assets/sign?path=${encodeURIComponent(decodeURIComponent(path))}`), {
+      headers: { Authorization: `Bearer ${localStorage.getItem('authToken') || ''}` }, credentials: 'include', cache: 'no-store', signal: AbortSignal.timeout(5000)
+    })
+    const result = await response.json()
+    if (!response.ok || !result.success || !result.data?.assetToken) throw new Error('影像授權失敗，請重新登入')
+    const target = new URL(tiTilerAssetUrl(imageUrl))
+    target.searchParams.set('assetToken', result.data.assetToken)
+    const grant = { url: target.toString(), expires: new Date(result.data.expiresAt).getTime() }
+    this.assetGrants.set(cacheKey, grant)
+    return grant.url
   }
 
   getStaticOrigin() {
@@ -270,7 +303,7 @@ export class BaseMapService {
       return null
     }
 
-    const titilerAssetUrl = this.getTiTilerAssetUrl(imageUrl)
+    const titilerAssetUrl = await this.authorizeTiTilerAsset(imageUrl)
     const response = await fetch(`${titilerBase}/cog/info.geojson?url=${encodeURIComponent(titilerAssetUrl)}`, {
       signal: AbortSignal.timeout(timeoutMs)
     })
@@ -291,6 +324,7 @@ export class BaseMapService {
    */
   clearCache() {
     this.cogLayers.clear()
+    this.assetGrants.clear()
   }
 
 

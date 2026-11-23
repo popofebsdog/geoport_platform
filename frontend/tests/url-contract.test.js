@@ -143,19 +143,23 @@ test('road GeoJSON caller uses static base and still parses available roads', as
 
 test('COG info and ProjectDetail locate use the same internal asset URL', async t => {
   browser(t)
-  globalThis.fetch = t.mock.fn(async () => ({ ok: true, json: async () => ({ bbox: [121, 24, 122, 25] }) }))
+  globalThis.fetch = t.mock.fn(async url => ({ ok: true, json: async () => url.includes('/project-assets/sign')
+    ? { success: true, data: { assetToken: 'scoped-grant', expiresAt: new Date(Date.now() + 300000).toISOString() } }
+    : { bbox: [121, 24, 122, 25] } }))
   const { BaseMapService } = await loadSource('src/services/BaseMapService.js', env)
   const service = new BaseMapService()
   const info = await service.fetchTiTilerBounds('/uploads/map_cog.tif?version=2')
   assert.deepEqual(info.bounds, [[24, 121], [25, 122]])
-  assert.equal(new URL(globalThis.fetch.mock.calls[0].arguments[0], window.location.origin).searchParams.get('url'), 'http://backend:3001/uploads/map_cog.tif?version=2')
+  assert.match(globalThis.fetch.mock.calls[0].arguments[0], /project-assets\/sign\?path=uploads%2Fmap_cog.tif/)
+  assert.equal(new Headers(globalThis.fetch.mock.calls[0].arguments[1].headers).get('authorization'), 'Bearer test-token')
+  assert.equal(new URL(globalThis.fetch.mock.calls[1].arguments[0], window.location.origin).searchParams.get('url'), 'http://backend:3001/uploads/map_cog.tif?version=2&assetToken=scoped-grant')
   const { default: detail } = await loadSource('src/views/ProjectDetail.vue', env)
   const fits = []
   await detail.methods.locateCOGBaseMap.call({
     $refs: { projectMap: { baseMapService: service, map: { fitBounds: bounds => fits.push(bounds) } } },
     showAlert() {}
   }, { storagePath: '/uploads/map_cog.tif?version=2', name: 'map' })
-  assert.equal(globalThis.fetch.mock.calls[1].arguments[0], globalThis.fetch.mock.calls[0].arguments[0])
+  assert.equal(globalThis.fetch.mock.calls[2].arguments[0], globalThis.fetch.mock.calls[1].arguments[0])
   assert.deepEqual(fits, [[[24, 121], [25, 122]]])
   assert.equal(service.getTiTilerAssetUrl('https://external.test/map.tif'), 'https://external.test/map.tif')
 })
@@ -185,7 +189,9 @@ test('COG strips only browser static prefix and preserves explicit internal base
 
 test('COG locate preserves a useful 404 error when TiTiler returns a non-JSON body', async t => {
   browser(t)
-  globalThis.fetch = t.mock.fn(async () => ({ ok: false, status: 404, json: async () => { throw new SyntaxError('Not JSON') } }))
+  globalThis.fetch = t.mock.fn(async url => url.includes('/project-assets/sign')
+    ? { ok: true, json: async () => ({ success: true, data: { assetToken: 'grant', expiresAt: new Date(Date.now() + 300000).toISOString() } }) }
+    : { ok: false, status: 404, json: async () => { throw new SyntaxError('Not JSON') } })
   const { BaseMapService } = await loadSource('src/services/BaseMapService.js', env)
   const { default: detail } = await loadSource('src/views/ProjectDetail.vue', env)
   let alert

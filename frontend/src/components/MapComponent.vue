@@ -50,7 +50,7 @@
 </template>
 
 <script>
-import { apiUrl, staticUrl } from '@/utils/urls.js'
+import { apiUrl, staticUrl, fetchWithAccount as fetch } from '@/utils/urls.js'
 import L from 'leaflet'
 import dayjs from 'dayjs'
 

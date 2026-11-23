@@ -1,7 +1,7 @@
 <template>
   <div class="h-screen flex flex-col transition-colors duration-300" :class="isDarkMode ? 'bg-slate-900' : 'bg-gray-50'" style="border-right: none !important; outline: none !important;">
     <!-- 頂部導航欄 -->
-    <nav class="border-b flex-shrink-0 transition-colors duration-300"
+    <nav v-if="!$route.meta.standalone" class="border-b flex-shrink-0 transition-colors duration-300"
          :class="isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-gray-200'">
       <div class="w-full px-4 sm:px-6 lg:px-8">
         <div class="flex justify-between items-stretch h-14 sm:h-16">
@@ -172,6 +172,7 @@
 import { toRef, computed } from 'vue'
 import BookmarkTab from './components/BookmarkTab.vue'
 import GlobalAlert from './components/GlobalAlert.vue'
+import { authAPI } from './services/api.js'
 
 export default {
   name: 'App',
@@ -273,7 +274,8 @@ export default {
       this.isLoggedIn = !!localStorage.getItem('authToken')
       this.currentUser = JSON.parse(localStorage.getItem('authUser') || 'null')
     },
-    handleLogout() {
+    async handleLogout() {
+      try { await authAPI.logout() } catch { /* Local logout still works when the server is unavailable. */ }
       localStorage.removeItem('authToken')
       localStorage.removeItem('authUser')
       this.isLoggedIn = false

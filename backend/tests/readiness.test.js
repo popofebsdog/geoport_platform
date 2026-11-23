@@ -10,6 +10,11 @@ let directory;
 let server;
 let originalEnv;
 let missingCore;
+jest.unstable_mockModule('../src/middleware/privateDataAccess.js', () => ({
+  requireDataAccount: (_req, _res, next) => next(),
+  requireStoredAsset: (_req, _res, next) => next(),
+  ASSET_COOKIE: 'geoport_asset_session', assetCookieOptions: () => ({ path: '/' })
+}));
 jest.unstable_mockModule('../src/config/database.js', () => ({
   sequelize: database,
   pool: { query: async (_sql, params) => params
