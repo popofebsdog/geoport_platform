@@ -3,7 +3,7 @@
 # GeoPort PostgreSQL 資料庫管理腳本
 # 創建時間: 2025-09-24
 
-set -e
+set -euo pipefail
 
 # 顏色定義
 RED='\033[0;31m'
@@ -21,6 +21,16 @@ DB_PASSWORD=${DB_PASSWORD:-password}
 
 # 腳本目錄
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+if [ "${NODE_ENV:-}" = "production" ]; then
+    BACKUP_ROOT="${BACKUP_ROOT:-/app/backups}"
+else
+    BACKUP_ROOT="${BACKUP_ROOT:-$(cd "$SCRIPT_DIR/../.." && pwd)/backups}"
+fi
+
+psql() {
+    command psql -X -v ON_ERROR_STOP=1 "$@"
+}
 
 # 顯示使用說明
 show_help() {
@@ -47,6 +57,7 @@ show_help() {
     echo "  DB_NAME     - 資料庫名稱 (預設: geoport_db)"
     echo "  DB_USER     - 資料庫用戶 (預設: postgres)"
     echo "  DB_PASSWORD - 資料庫密碼 (預設: password)"
+    echo "  BACKUP_ROOT - 備份目錄 (production: /app/backups；本機: 專案根目錄/backups)"
 }
 
 # 設置資料庫連線
@@ -74,48 +85,64 @@ deploy_database() {
 }
 
 # 備份資料庫
-backup_database() {
+backup_database() (
     echo -e "${BLUE}💾 備份資料庫...${NC}"
     setup_connection
     test_connection
     
-    backup_file="geoport_backup_$(date +%Y%m%d_%H%M%S).sql"
-    backup_path="$SCRIPT_DIR/backups/$backup_file"
+    umask 077
+    mkdir -p -- "$BACKUP_ROOT"
+    backup_temp=$(mktemp -d "$BACKUP_ROOT/.geoport_backup_$(date +%Y%m%d_%H%M%S).XXXXXX")
+    trap 'rm -rf -- "$backup_temp"' EXIT
+    trap 'exit 129' HUP
+    trap 'exit 130' INT
+    trap 'exit 143' TERM
+    backup_file="${backup_temp##*/}"
+    backup_path="$BACKUP_ROOT/${backup_file#.}.sql.gz"
     
-    # 創建備份目錄
-    mkdir -p "$SCRIPT_DIR/backups"
-    
-    echo -e "${BLUE}📦 創建備份檔案: $backup_file${NC}"
+    echo -e "${BLUE}📦 創建備份檔案: $(basename "$backup_path")${NC}"
     pg_dump -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" \
-        --verbose --clean --no-owner --no-privileges \
-        --file="$backup_path"
-    
-    echo -e "${GREEN}✅ 備份完成: $backup_path${NC}"
+        --verbose --clean --if-exists --no-owner --no-privileges \
+        --file="$backup_temp/backup.sql"
     
     # 壓縮備份檔案
     echo -e "${BLUE}🗜️  壓縮備份檔案...${NC}"
-    gzip "$backup_path"
-    echo -e "${GREEN}✅ 備份已壓縮: ${backup_path}.gz${NC}"
-}
+    gzip "$backup_temp/backup.sql"
+    # Publish only a complete archive, without replacing an existing backup.
+    ln -- "$backup_temp/backup.sql.gz" "$backup_path"
+    echo -e "${GREEN}✅ 備份完成: $backup_path${NC}"
+)
 
 # 還原資料庫
-restore_database() {
+restore_database() (
     echo -e "${BLUE}🔄 還原資料庫...${NC}"
     setup_connection
     
     # 列出可用的備份檔案
-    backup_dir="$SCRIPT_DIR/backups"
-    if [ ! -d "$backup_dir" ] || [ -z "$(ls -A "$backup_dir" 2>/dev/null)" ]; then
+    local backup_choice backup_file='' candidate index=0
+    local -a backups=()
+    for candidate in "$BACKUP_ROOT"/*.sql.gz; do
+        if [ -f "$candidate" ]; then
+            backups+=("$candidate")
+        fi
+    done
+    if [ "${#backups[@]}" -eq 0 ]; then
         echo -e "${RED}❌ 找不到備份檔案${NC}"
         exit 1
     fi
     
     echo -e "${BLUE}📋 可用的備份檔案:${NC}"
-    ls -la "$backup_dir"/*.sql.gz 2>/dev/null | nl
+    printf '%s\n' "${backups[@]}" | nl
     
-    read -p "請選擇要還原的備份檔案編號: " backup_choice
+    read -r -p "請選擇要還原的備份檔案編號: " backup_choice
     
-    backup_file=$(ls "$backup_dir"/*.sql.gz | sed -n "${backup_choice}p")
+    for candidate in "${backups[@]}"; do
+        index=$((index + 1))
+        if [ "$backup_choice" = "$index" ]; then
+            backup_file="$candidate"
+            break
+        fi
+    done
     if [ -z "$backup_file" ]; then
         echo -e "${RED}❌ 無效的選擇${NC}"
         exit 1
@@ -131,11 +158,18 @@ restore_database() {
     
     echo -e "${BLUE}🔄 還原備份檔案: $(basename "$backup_file")${NC}"
     
-    # 解壓縮並還原
-    gunzip -c "$backup_file" | psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME"
+    # Validate the complete archive before opening a single restore transaction.
+    umask 077
+    restore_temp=$(mktemp -d "${TMPDIR:-/tmp}/geoport_restore.XXXXXX")
+    trap 'rm -rf -- "$restore_temp"' EXIT
+    trap 'exit 130' INT
+    trap 'exit 143' TERM
+    gunzip -c "$backup_file" > "$restore_temp/backup.sql"
+    psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" \
+        --single-transaction -f "$restore_temp/backup.sql"
     
     echo -e "${GREEN}✅ 還原完成${NC}"
-}
+)
 
 # 重置資料庫
 reset_database() {

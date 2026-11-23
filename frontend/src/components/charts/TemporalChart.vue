@@ -245,7 +245,7 @@ export default {
       // 確保 chartData 是數組
       let data = props.chartData.chartData
       if (!Array.isArray(data)) {
-        console.error('chartData 不是數組:', data)
+
         return []
       }
       
@@ -366,7 +366,7 @@ export default {
       }
       
       if (!Array.isArray(filteredData.value)) {
-        console.error('filteredData 不是數組:', filteredData.value)
+
         return
       }
       
@@ -475,7 +475,7 @@ export default {
         })
         
       } catch (error) {
-        console.error('圖表渲染失敗:', error)
+
       } finally {
         isLoading.value = false
       }

@@ -1,5 +1,7 @@
 # GeoPort 災情資料搜集系統
 
+正式部署後的操作、紀錄、完整備份與還原驗收，請依 [維運交接](docs/operations-runbook.md)。
+
 一個現代化的前後端分離災情資料搜集與管理系統，專為地理資訊系統（GIS）和災害監測設計。
 
 ## 🏗️ 專案架構
@@ -18,7 +20,9 @@ geoport/
 
 ### 環境要求
 
-- Node.js 18+
+- Node.js 20.19.x 或 22.12–24.x（建議使用 `.nvmrc` 的 Node 22；Docker 建置與執行皆為 Node 22）
+- Python 3.11（TiTiler）
+- PostgreSQL + PostGIS
 - npm 或 yarn
 - Docker (可選)
 
@@ -35,6 +39,13 @@ geoport/
    npm run install:all
    ```
 
+   本機 TiTiler 使用獨立 Python 環境及鎖定的依賴，不安裝到系統 Python：
+   ```bash
+   python3.11 -m venv backend/.venv
+   backend/.venv/bin/pip install -r backend/requirements-titiler.txt
+   ```
+   開發指令優先使用 `backend/.venv/bin/python3`；可用 `TITILER_PYTHON` 指定其他已配置的解譯器。
+
 3. **設置環境變數**
    ```bash
    # 後端環境變數
@@ -44,7 +55,21 @@ geoport/
    cp frontend/env.example frontend/.env
    ```
 
-4. **啟動開發服務器**
+4. **首次建立管理員**
+   初始化 PostgreSQL 資料表後，手動執行一次。密碼不再自動產生，也不放在命令列參數或日誌中。
+   ```bash
+   printf 'Admin password: '
+   IFS= read -rs ADMIN_PASSWORD
+   printf '\n'
+   export ADMIN_PASSWORD
+   npm run seed
+   unset ADMIN_PASSWORD
+   ```
+   已有管理員不需要重建；重設密碼請明確執行 `npm run seed:reset`，同樣先提供 `ADMIN_PASSWORD`。
+
+   系統不提供公開註冊。最高權限 `admin`（超級管理者）登入後可至「使用者管理」新增帳號、設定角色、停用帳號及重設密碼。更新登入驗證後，既有登入階段須重新登入一次；停用與降權會在下一次請求生效，重設密碼會使舊憑證失效。
+
+5. **啟動開發服務器**
    ```bash
    npm run dev
    ```
@@ -127,7 +152,7 @@ geoport/
 - **Node.js** - JavaScript 運行環境
 - **Express.js** - Web 應用框架
 - **Sequelize** - ORM 數據庫工具
-- **SQLite** - 輕量級數據庫
+- **PostgreSQL + PostGIS** - 關聯式與空間資料庫
 - **Multer** - 文件上傳中間件
 - **JWT** - 身份驗證
 
@@ -167,6 +192,7 @@ npm run build:backend       # 構建後端
 npm test                    # 運行所有測試
 npm run test:frontend       # 前端測試
 npm run test:backend        # 後端測試
+npm run test:titiler        # TiTiler 版本、COG bounds 與非空白 PNG 瓦片測試
 
 # Docker
 npm run docker:build        # 構建 Docker 鏡像
@@ -183,7 +209,11 @@ npm run docker:logs         # 查看日誌
 PORT=3001
 NODE_ENV=development
 FRONTEND_URL=http://localhost:5173
-DB_PATH=./database.sqlite
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=geoport_db
+DB_USER=postgres
+DB_PASSWORD=replace-with-strong-password
 JWT_SECRET=your-secret-key
 ```
 

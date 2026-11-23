@@ -132,7 +132,7 @@ export default {
           return eventDate === todayStr;
         }
       } catch (e) {
-        console.warn('解析地震事件日期失敗:', e);
+
       }
       return false;
     },
@@ -166,7 +166,7 @@ export default {
           }));
         }
       } catch (e) {
-        console.warn('解析強地動時間序列數據時出錯:', e);
+
       }
       
       return [];
@@ -215,7 +215,7 @@ export default {
           }
           return startTime;
         } catch (e) {
-          console.warn('解析地震事件时间失败:', e);
+
         }
       }
       

@@ -370,7 +370,7 @@ export default {
           throw new Error(response.message || '生成圖表配置失敗')
         }
       } catch (err) {
-        console.error('載入圖表失敗:', err)
+
         error.value = err.response?.data?.message || err.message || '載入圖表失敗'
       } finally {
         isLoading.value = false

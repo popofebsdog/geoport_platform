@@ -6,7 +6,7 @@
       <RegionSelector
         ref="regionSelector"
         v-model="selectedRegionId"
-        :show-create-button="true"
+        :show-create-button="canEdit"
         class="flex-1 min-w-0"
         @region-changed="handleRegionChanged"
         @regions-loaded="handleRegionsLoaded"
@@ -15,7 +15,7 @@
         @delete="handleRegionDeleted"
       />
       <!-- 管理後台按鈕：與 RegionSelector 同高同底線 -->
-      <div v-if="selectedRegionId" class="flex flex-col flex-shrink-0 ml-2 mb-3">
+      <div v-if="selectedRegionId && canEdit" class="flex flex-col flex-shrink-0 ml-2 mb-3">
         <div class="h-10 flex items-center">
           <button
             @click="showManagePanel = true"
@@ -401,6 +401,7 @@
 </template>
 
 <script>
+import { apiUrl } from '@/utils/urls.js'
 import L from 'leaflet'
 import proj4 from 'proj4'
 import ProjectMap from '@/components/project/ProjectMap.vue'
@@ -443,7 +444,7 @@ export default {
     InSARLayer,
     RegionManagePanel
   },
-  inject: ['isDarkMode'],
+  inject: { isDarkMode: { default: false }, canEdit: { default: true } },
   data() {
     return {
       selectedRegionCode: null, // 用于 API 调用（region_code）
@@ -472,6 +473,12 @@ export default {
       },
       // 監測圖資（從 API 取得，key = layer_type）
       monitoringLayers: {},
+      monitoringLayersRequestId: 0,
+      mapRequestId: 0,
+      pointColorsRequestId: 0,
+      alertLightsRequestId: 0,
+      disasterCountsRequestId: 0,
+      heatmapRequestId: 0,
       // 當前選中路線的完整 GeoJSON（供里程樁號直接使用，不需 child 重新 fetch）
       currentRoadGeoJSON: null,
       // 當前選中的路線 GeoJSON 圖層
@@ -540,6 +547,8 @@ export default {
       if (this.alertLightSummary.red > 0 || this.monitorStatusSummary.some(item => item.level === 'high')) return 'high'
       if (this.alertLightSummary.yellow > 0 || this.monitorStatusSummary.some(item => item.level === 'medium')) return 'medium'
       if (!this.selectedRegionCode) return 'unknown'
+      const active = this.monitorStatusSummary.filter(item => item.enabled !== false)
+      if (active.length < 2 || active.some(item => item.level === 'unknown')) return 'unknown'
       return 'normal'
     },
     overallRiskLabel() {
@@ -547,7 +556,7 @@ export default {
         high: '立即處置',
         medium: '注意追蹤',
         normal: '系統正常',
-        unknown: '等待地區'
+        unknown: this.selectedRegionCode ? '監測資料待確認' : '等待地區'
       }
       return labelMap[this.overallRiskLevel] || labelMap.unknown
     },
@@ -561,10 +570,11 @@ export default {
       return labelMap[this.overallRiskLevel] || '-'
     },
     lastKnownUpdate() {
+      if (this.overallRiskLevel === 'unknown') return '-'
       const latest = this.monitorStatusSummary
         .map(item => String(item.text || ''))
         .find(text => /\d{1,2}:\d{2}/.test(text))
-      return latest || '即時'
+      return latest || '-'
     },
     pendingIncidentCount() {
       return this.incidentItems.filter(item => item.actionable).length
@@ -574,7 +584,7 @@ export default {
         {
           label: '整體風險',
           value: this.highestAlertLabel,
-          hint: this.overallRiskLevel === 'normal' ? '無待處置異常' : '請優先確認事件',
+          hint: this.overallRiskLevel === 'normal' ? '無待處置異常' : this.overallRiskLevel === 'unknown' ? '監測資料待確認' : '請優先確認事件',
           level: this.overallRiskLevel
         },
         {
@@ -631,6 +641,12 @@ export default {
         }]
       }
 
+      if (this.overallRiskLevel === 'unknown') {
+        return [{ id: 'monitoring-unavailable', level: 'unknown', levelLabel: '資料待確認',
+          title: '監測資料尚未齊全', detail: '部分來源無資料、連線失敗或僅有歷史紀錄，無法判定即時風險。',
+          time: '-', light: null, actionable: false }]
+      }
+
       return [{
         id: 'normal',
         level: 'normal',
@@ -643,7 +659,31 @@ export default {
       }]
     }
   },
+  beforeUnmount() {
+    this.resetRegionMap();
+    this.cleanupMapResources();
+  },
   methods: {
+    resetRegionMap() {
+      this.monitoringLayersRequestId += 1;
+      this.mapRequestId += 1;
+      this.pointColorsRequestId += 1;
+      this.alertLightsRequestId += 1;
+      this.disasterCountsRequestId += 1;
+      this.monitoringLayers = {};
+      this.pointColorMap = {};
+      this.disasterCountMap = {};
+      this.monitorStatusSummary = [];
+      this.showDisasterHeatmap = false;
+      this.removeHeatmapTiff();
+      this.clearAlertLightMarkers();
+      this.clearDisasterHeatmapMarkers();
+      if (this.currentRoadLayer && this.$refs.projectMap?.map) {
+        this.$refs.projectMap.map.removeLayer(this.currentRoadLayer);
+      }
+      this.currentRoadLayer = null;
+      this.currentRoadGeoJSON = null;
+    },
     async handleRegionChanged(regionInfo) {
       // regionInfo 可能是字符串（向后兼容）或对象 {region_id, region_code, region}
       let regionCode = null;
@@ -661,6 +701,7 @@ export default {
         regionId = regionInfo.region_id;
       }
       
+      this.resetRegionMap();
       this.selectedRegionCode = regionCode;
       this.selectedRegionId = regionId;
       // 更新地區名稱
@@ -668,14 +709,11 @@ export default {
       if (region) {
         this.currentRegionName = region.region_name;
       }
-      // 當地區改變時，可以更新地圖位置等
-      if (this.$refs.chartDataPanel) {
-        this.$refs.chartDataPanel.refresh();
-      }
       // 先取得監測圖資，再更新地圖（避免 race condition）
       if (regionCode) {
         await this.fetchMonitoringLayers(regionCode);
-        this.updateMapForRegion(regionCode);
+        if (this.selectedRegionId !== regionId || this.selectedRegionCode !== regionCode) return;
+        await this.updateMapForRegion(regionCode);
       }
       
       // 根據地區動態添加/移除控制按鈕
@@ -714,6 +752,9 @@ export default {
       }
     },
     async updateMapForRegion(regionCode, preserveZoom = false) {
+      const requestId = ++this.mapRequestId;
+      const regionId = this.selectedRegionId;
+      const isCurrent = () => requestId === this.mapRequestId && regionId === this.selectedRegionId && regionCode === this.selectedRegionCode;
       // 根據地區代碼更新地圖位置並顯示對應的 GeoJSON 數據
       // 注意：地图数据仍使用 region_code，因为 GeoJSON 数据是按地区代码组织的
       if (!regionCode) {
@@ -735,6 +776,7 @@ export default {
         let retries = 0;
         const maxRetries = 30;
         while (retries < maxRetries && (!this.$refs.projectMap || !this.$refs.projectMap.map)) {
+          if (!isCurrent()) return;
           await new Promise(resolve => setTimeout(resolve, 100));
           retries++;
         }
@@ -742,9 +784,12 @@ export default {
           return;
         }
       }
+      if (!isCurrent()) return;
 
       // 獲取地區資訊
-      const region = this.regions.find(r => r.region_code === regionCode);
+      const region = this.selectedRegionId
+        ? this.regions.find(r => r.region_id === this.selectedRegionId)
+        : this.regions.find(r => r.region_code === regionCode);
       if (!region) {
         return;
       }
@@ -801,19 +846,21 @@ export default {
           ]);
         }
       } catch (e) {
-        console.warn('載入點位/燈號/災害統計時發生錯誤:', e);
+
       }
+      if (!isCurrent()) return;
 
       // 載入道路線形 GeoJSON 並渲染（若無圖資則略過）
       try {
         const roadLayer = this.monitoringLayers?.road
         if (!roadLayer) {
-          console.warn('此區域尚未設定道路線形圖資，略過路線繪製')
+
           return
         }
         const response = await fetch(roadLayer.fileUrl);
         if (!response.ok) throw new Error(`載入 GeoJSON 失敗: ${response.statusText}`);
         const geojsonData = await response.json();
+        if (!isCurrent()) return;
 
         // 過濾出選中路線和工務段的數據
         const filteredFeatures = geojsonData.features.filter(feature => {
@@ -852,7 +899,7 @@ export default {
         }
 
       } catch (error) {
-        console.error('載入路線數據失敗:', error);
+
       }
     },
     // 地圖準備完成事件處理
@@ -945,25 +992,31 @@ export default {
         }
       });
     },
-    // 從 API 取得該區域的監測圖資清單（以 region_code 查詢）
+    // Prefer region_id so projects sharing a road code do not share layer configuration.
     async fetchMonitoringLayers(regionCode) {
-      if (!regionCode) return
+      const requestId = ++this.monitoringLayersRequestId
+      this.monitoringLayers = {}
+      if (!regionCode && !this.selectedRegionId) return
       try {
-        const res = await fetch(`/api/warning-regions/${encodeURIComponent(regionCode)}/layers`)
+        const path = this.selectedRegionId
+          ? `/warning-regions/id/${encodeURIComponent(this.selectedRegionId)}/layers`
+          : `/warning-regions/${encodeURIComponent(regionCode)}/layers`
+        const res = await fetch(apiUrl(path))
         const json = await res.json()
-        if (json.success) {
+        if (requestId !== this.monitoringLayersRequestId) return
+        if (res.ok !== false && json.success && Array.isArray(json.data)) {
           const map = {}
           json.data.forEach(layer => {
             map[layer.layer_type] = {
               ...layer,
-              fileUrl: `/api/warning-regions/monitoring-file?path=${encodeURIComponent(layer.storage_path)}`
+              fileUrl: apiUrl(`/warning-regions/monitoring-file?path=${encodeURIComponent(layer.storage_path)}`)
             }
           })
           this.monitoringLayers = map
         }
       } catch (e) {
-        console.warn('fetchMonitoringLayers 失敗:', e)
-        this.monitoringLayers = {}
+
+        if (requestId === this.monitoringLayersRequestId) this.monitoringLayers = {}
       }
     },
     toggleHighwayMileage() {
@@ -1010,7 +1063,7 @@ export default {
         }
         
       } catch (error) {
-        console.error('處理路線選擇失敗:', error);
+
       }
     },
     // 處理工務段選擇（建立專案時使用）
@@ -1023,7 +1076,7 @@ export default {
         
         // 從監測圖資 API 取得道路線形
         const roadLayer = this.monitoringLayers?.road
-        if (!roadLayer) { console.warn('此區域尚未設定道路線形圖資'); return }
+        if (!roadLayer) {  return }
         const response = await fetch(roadLayer.fileUrl);
         if (!response.ok) throw new Error(`載入 GeoJSON 失敗: ${response.statusText}`);
         const geojsonData = await response.json();
@@ -1074,11 +1127,13 @@ export default {
         }
         
       } catch (error) {
-        console.error('載入工務段數據失敗:', error);
+
       }
     },
     // 載入點位顏色配置
     async loadPointColors(regionIdOrCode) {
+      const requestId = ++this.pointColorsRequestId;
+      this.pointColorMap = {};
       try {
         // 判断是否是 UUID 格式（包含连字符）或纯数字（旧的 integer ID）
         // UUID 格式: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
@@ -1093,6 +1148,7 @@ export default {
         
         
         const result = await this.$api.get(apiPath.replace(/^\/api/, ''));
+        if (requestId !== this.pointColorsRequestId) return;
         if (result.success) {
           // 建立顏色映射表（以座標為 key）
           this.pointColorMap = {};
@@ -1107,7 +1163,8 @@ export default {
           });
         }
             } catch (error) {
-        console.error('載入點位顏色配置失敗:', error);
+        if (requestId !== this.pointColorsRequestId) return;
+
         this.pointColorMap = {};
       }
     },
@@ -1378,7 +1435,7 @@ export default {
       this.updateMileageTooltips();
     },
     // 組件銷毀時清理
-    beforeUnmount() {
+    cleanupMapResources() {
       // 清理全局方法
       if (window.setPointColor) {
         delete window.setPointColor;
@@ -1570,7 +1627,7 @@ export default {
           }
         }
       } catch (err) {
-        console.error(this.isDeletingAlertLight ? '取消告警燈號設置失敗:' : '設置告警燈號失敗:', err);
+
         const errorMessage = err.response?.data?.message || err.message || (this.isDeletingAlertLight ? '取消告警燈號設置失敗' : '設置告警燈號失敗');
         error(errorMessage);
       }
@@ -1578,7 +1635,20 @@ export default {
     // 管理面板：圖資更新後重新抓取 monitoring layers
     async onLayersUpdated() {
       if (this.selectedRegionCode) {
+        const regionId = this.selectedRegionId
+        const regionCode = this.selectedRegionCode
+        const restoreHeatmap = this.showDisasterHeatmap
         await this.fetchMonitoringLayers(this.selectedRegionCode)
+        if (regionId !== this.selectedRegionId || regionCode !== this.selectedRegionCode) return
+        this.removeHeatmapTiff()
+        this.showDisasterHeatmap = restoreHeatmap && Boolean(this.monitoringLayers.hotspot)
+        if (this.showDisasterHeatmap) await this.loadHeatmapTiff()
+        if (this.currentRoadLayer && this.$refs.projectMap?.map) {
+          this.$refs.projectMap.map.removeLayer(this.currentRoadLayer)
+          this.currentRoadLayer = null
+          this.currentRoadGeoJSON = null
+        }
+        await this.updateMapForRegion(regionCode, true)
       }
     },
     // 處理告警燈號位置取消
@@ -1591,6 +1661,7 @@ export default {
     },
     // 載入告警燈號位置
     async loadAlertLights(regionIdOrCode) {
+      const requestId = ++this.alertLightsRequestId;
       if (!regionIdOrCode) {
         return;
       }
@@ -1611,6 +1682,7 @@ export default {
         
         
         const result = await this.$api.get(apiPath.replace(/^\/api/, ''));
+        if (requestId !== this.alertLightsRequestId) return;
         
         if (result.success && result.data) {
           const lights = result.data;
@@ -1623,7 +1695,9 @@ export default {
           
           // 為每個告警燈號創建標記並更新映射表
           for (const lightData of lights) {
+            if (requestId !== this.alertLightsRequestId) return;
             await this.createAlertLightMarker(lightData);
+            if (requestId !== this.alertLightsRequestId) return;
             // 更新映射表
             const locationKey = `${parseFloat(lightData.longitude).toFixed(7)},${parseFloat(lightData.latitude).toFixed(7)}`;
             this.alertLightMap[locationKey] = lightData;
@@ -1632,7 +1706,9 @@ export default {
           this.currentAlertLights = [];
         }
       } catch (error) {
-        console.error('載入告警燈號位置失敗:', error);
+        if (requestId !== this.alertLightsRequestId) return;
+
+        this.clearAlertLightMarkers();
       }
     },
     // 創建告警燈號標記
@@ -1717,6 +1793,8 @@ export default {
     },
     // 載入災害數量統計
     async loadDisasterCounts(regionIdOrCode) {
+      const requestId = ++this.disasterCountsRequestId;
+      this.disasterCountMap = {};
       if (!regionIdOrCode) {
         return;
       }
@@ -1734,6 +1812,7 @@ export default {
         
         
         const result = await this.$api.get(apiPath.replace(/^\/api/, ''));
+        if (requestId !== this.disasterCountsRequestId) return;
         
         if (result.success && result.data) {
           this.disasterCountMap = result.data;
@@ -1741,8 +1820,9 @@ export default {
           this.disasterCountMap = {};
         }
       } catch (error) {
-        console.error('載入災害數量統計失敗:', error);
-        console.error('錯誤詳情:', error.response?.data || error.message);
+        if (requestId !== this.disasterCountsRequestId) return;
+
+
         this.disasterCountMap = {};
       }
     },
@@ -2251,11 +2331,8 @@ export default {
     // 注意：災害計數標記常駐顯示，不受此開關影響
     async toggleDisasterHeatmap() {
       if (!this.heatmapToolAvailable) return
-      this.showDisasterHeatmap = !this.showDisasterHeatmap
-      
       if (!this.$refs.projectMap?.map) return
-      
-      const map = this.$refs.projectMap.map
+      this.showDisasterHeatmap = !this.showDisasterHeatmap
       
       if (this.showDisasterHeatmap) {
         // 顯示：加載 GeoTIFF 圖層（Hitmap.tif）
@@ -2272,15 +2349,21 @@ export default {
       if (this.isLoadingHeatmap || this.heatmapTiffLayer) {
         return
       }
-      
+      const requestId = ++this.heatmapRequestId
+      const map = this.$refs.projectMap?.map
+      const hotspotLayer = this.monitoringLayers?.hotspot
+      const isCurrent = () => requestId === this.heatmapRequestId && this.showDisasterHeatmap && map === this.$refs.projectMap?.map
       try {
         this.isLoadingHeatmap = true
-        
-        const map = this.$refs.projectMap.map
+        if (!hotspotLayer || !map) {
+          this.showDisasterHeatmap = false
+          await showAlert('此區域尚未上傳熱點圖資，請至管理面板設定熱點圖層。', '熱點圖層', this.isDarkMode)
+          return
+        }
         
         // 確保 proj4 在全局可用
         if (!window.proj4) {
-          console.error('[EarlyWarning] window.proj4 不存在')
+
           window.proj4 = proj4
         }
         
@@ -2288,16 +2371,9 @@ export default {
         const georasterModule = await import('georaster')
         const parseGeoraster = georasterModule.default || georasterModule.parseGeoraster
         const GeoRasterLayer = (await import('georaster-layer-for-leaflet')).default
-        
-        // 從監測圖資 API 取得熱點 TIF，若尚未設定則提示
-        const hotspotLayer = this.monitoringLayers?.hotspot
-        if (!hotspotLayer) {
-          this.showDisasterHeatmap = false
-          this.isLoadingHeatmap = false
-          await showAlert('此區域尚未上傳熱點圖資，功能保留待檔案格式確認後啟用。', '熱點圖層', this.isDarkMode)
-          return
-        }
+        if (!isCurrent()) return
         const response = await fetch(hotspotLayer.fileUrl)
+        if (!isCurrent()) return
         if (!response.ok) {
           this.showDisasterHeatmap = false
           this.isLoadingHeatmap = false
@@ -2305,14 +2381,13 @@ export default {
           return
         }
         const arrayBuffer = await response.arrayBuffer()
+        if (!isCurrent()) return
         
         // 解析 GeoTIFF
         const georaster = await parseGeoraster(arrayBuffer)
+        if (!isCurrent()) return
         
         // 自定義顏色映射函數：根據實際數據範圍設置最大值
-        let sampleCount = 0
-        const valueSamples = []
-        
         // 根據之前觀察，實際最大值約 1116，設置合理上限為 1500
         // 這樣可以讓顏色分布更合理，並能看到紅色
         const maxValue = 1500
@@ -2323,12 +2398,6 @@ export default {
           
           if (value === null || value === undefined || value <= 0) {
             return 'rgba(0, 0, 0, 0)' // 無資料或0：透明
-          }
-          
-          // 收集樣本數據用於調試（只收集前10000個以獲得更準確的統計）
-          if (sampleCount < 10000) {
-            valueSamples.push(value)
-            sampleCount++
           }
           
           // 將數據值映射到 0-100% 百分比
@@ -2369,24 +2438,6 @@ export default {
           }
         }
         
-        // 添加一個回調來輸出樣本數據
-        setTimeout(() => {
-          if (valueSamples.length > 0) {
-            const actualMax = Math.max(...valueSamples)
-            const actualMin = Math.min(...valueSamples)
-            const actualAvg = valueSamples.reduce((a, b) => a + b, 0) / valueSamples.length
-            
-            
-            // 計算百分比分布
-            const percentages = valueSamples.map(v => (v / maxValue) * 100)
-            const redCount = percentages.filter(p => p > 50).length
-            const yellowCount = percentages.filter(p => p > 1 && p <= 50).length
-            const greenCount = percentages.filter(p => p > 0 && p <= 1).length
-            const transparentCount = percentages.filter(p => p === 0).length
-            
-          }
-        }, 2000)
-        
         // 創建 GeoRasterLayer（顯式傳遞 proj4）
         
         // 準備 GeoRasterLayer 選項
@@ -2423,19 +2474,22 @@ export default {
         this.heatmapTiffLayer.addTo(map)
         
       } catch (error) {
-        console.error('[EarlyWarning] 載入熱點圖失敗:', error)
+        if (!isCurrent()) return
+
         this.showDisasterHeatmap = false
         if (this.heatmapControl && this.heatmapControl.updateButton) {
           this.heatmapControl.updateButton()
         }
         await showAlert('熱點圖層載入發生錯誤，請稍後再試。', '熱點圖層', this.isDarkMode)
       } finally {
-        this.isLoadingHeatmap = false
+        if (requestId === this.heatmapRequestId) this.isLoadingHeatmap = false
       }
     },
     
     // 移除熱點圖 GeoTIFF
     removeHeatmapTiff() {
+      this.heatmapRequestId += 1
+      this.isLoadingHeatmap = false
       if (this.heatmapTiffLayer && this.$refs.projectMap?.map) {
         const map = this.$refs.projectMap.map
         if (map.hasLayer(this.heatmapTiffLayer)) {
@@ -2661,7 +2715,7 @@ export default {
           this.reopenMileagePopup();
         }
       } catch (error) {
-        console.error('設置點位顏色失敗:', error);
+
         await showAlert('設置顏色失敗：' + (error.response?.data?.message || error.message), '錯誤', this.isDarkMode);
       }
     },
@@ -3536,13 +3590,32 @@ export default {
 }
 
 @media (max-width: 1024px) {
+  .ew-root {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto;
+    overflow-y: auto;
+  }
+
   .ew-workspace {
     grid-template-columns: 1fr;
     grid-template-rows: minmax(520px, 48vh) minmax(720px, 1fr);
+    min-width: 0;
+    overflow: visible;
   }
 
   .ew-main {
+    min-width: 0;
+    grid-template-columns: minmax(0, 1fr);
     grid-template-rows: auto auto minmax(360px, 1fr);
+  }
+
+  .ew-chart-rail {
+    min-width: 0;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ew-chart-rail :deep(.monitor-card) {
+    min-height: 420px;
   }
 
   .ew-command-bar {

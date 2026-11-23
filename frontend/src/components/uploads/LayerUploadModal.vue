@@ -119,7 +119,7 @@
               ref="fileInput"
               type="file"
               @change="handleFileSelect"
-              accept=".geojson,.csv,.json,.shp,.kml,.gpx"
+              accept=".geojson,.json,.kml"
               class="w-full px-3 py-2 border rounded-lg transition-colors duration-300"
               :class="isDarkMode ? 'bg-slate-600 border-slate-500 text-white' : 'bg-white border-gray-300 text-gray-900'"
             />
@@ -291,7 +291,7 @@ export default {
             this.selectedNumericField = this.analysisData.numericFields[0] || null
             this.intervals = this.analysisData.intervals
           } catch (error) {
-            console.error('分析 GeoJSON 失敗:', error)
+
           }
         } else if (newType !== 'potential_analysis') {
           // 切換到其他類型時清除分析數據
@@ -375,19 +375,22 @@ export default {
     },
 
     async handleFileSelect(event) {
-      
+      this.form.file = null
+      this.analysisData = null
+      this.selectedNumericField = null
+      this.intervals = {}
       const file = event.target.files[0]
       
       if (file) {
         // 檢查檔案類型
-        const allowedTypes = ['.geojson', '.csv', '.json', '.shp', '.kml', '.gpx']
+        const allowedTypes = ['.geojson', '.json', '.kml']
         const fileExtension = '.' + file.name.split('.').pop().toLowerCase()
         
         if (!allowedTypes.includes(fileExtension)) {
           this.showAlert({
             type: 'error',
             title: '檔案類型錯誤',
-            message: '請選擇支援的檔案格式：GeoJSON, CSV, JSON, Shapefile, KML, GPX'
+            message: '請選擇 GeoJSON（.geojson 或 .json）或 KML；CSV 請使用時序資料上傳'
           })
           event.target.value = ''
           return
@@ -396,13 +399,13 @@ export default {
         this.form.file = file
         
         // 如果是潛勢評估類型且是 GeoJSON 檔案，自動分析
-        if (this.form.dataType === 'potential_analysis' && file.type === 'application/geo+json') {
+        if (this.form.dataType === 'potential_analysis' && ['.geojson', '.json'].includes(fileExtension)) {
           try {
             this.analysisData = await this.analyzeGeoJSONForPotential(file)
             this.selectedNumericField = this.analysisData.numericFields[0] || null
             this.intervals = this.analysisData.intervals
           } catch (error) {
-            console.error('分析 GeoJSON 失敗:', error)
+
             this.showAlert({
               type: 'error',
               title: '分析失敗',
@@ -487,7 +490,7 @@ export default {
           formData.append('layer_color', this.form.color)
           // 檢查文件是否存在
           if (!this.form.file) {
-            console.error('錯誤：form.file 為空:', this.form.file)
+
             this.showAlert({
               type: 'error',
               title: '上傳失敗',
@@ -501,7 +504,7 @@ export default {
           
           // 檢查文件是否存在
           if (!this.form.file) {
-            console.error('錯誤：沒有選擇文件')
+
             this.showAlert({
               type: 'error',
               title: '上傳失敗',
@@ -531,7 +534,7 @@ export default {
           }
         }
       } catch (error) {
-        console.error(this.isEditMode ? '更新圖層錯誤:' : '上傳圖層錯誤:', error)
+
         
         // 處理不同類型的錯誤響應
         let errorMessage = '上傳過程中發生錯誤'
@@ -544,12 +547,7 @@ export default {
         }
         
         // 顯示更詳細的錯誤信息
-        console.error('詳細錯誤信息:', {
-          status: error.response?.status,
-          statusText: error.response?.statusText,
-          data: error.response?.data,
-          message: error.message
-        })
+
         
         this.showAlert({
           type: 'error',

@@ -307,13 +307,14 @@ export default {
         const response = await api.post(`/parent-projects/${props.parentProject.project_id}/children`, submitData)
         
         if (response.success) {
+          isSubmitting.value = false
           emit('created', response.data)
           closeModal()
         } else {
           throw new Error(response.message || '創建失敗')
         }
       } catch (error) {
-        console.error('創建子專案失敗:', error)
+
         await showError(`創建失敗: ${error.response?.data?.message || error.message || '未知錯誤'}`, '創建失敗', isDarkMode?.value ?? false)
       } finally {
         isSubmitting.value = false

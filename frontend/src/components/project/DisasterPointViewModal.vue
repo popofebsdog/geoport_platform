@@ -252,6 +252,7 @@
 </template>
 
 <script>
+import { staticUrl } from '@/utils/urls.js'
 import { confirm as showConfirm, error as showError } from '@/utils/simpleAlertService'
 
 export default {
@@ -295,21 +296,7 @@ export default {
     },
     
     getMediaUrl(media) {
-      // 構建媒體文件的 URL
-      if (media.storage_path) {
-        // 如果是相對路徑（以 /uploads/ 開頭），直接使用（後端會通過 /uploads 路由提供）
-        if (media.storage_path.startsWith('/uploads/')) {
-          // 確保路徑正確：如果是 Windows 路徑風格，轉換為 Unix 風格
-          return media.storage_path.replace(/\\/g, '/')
-        }
-        // 如果是完整路徑，直接使用
-        return media.storage_path
-      }
-      // 如果有 thumbnail_path，使用縮圖
-      if (media.thumbnail_path) {
-        return media.thumbnail_path
-      }
-      return ''
+      return staticUrl(media.storage_path || media.thumbnail_path)
     },
     
     openMediaPreview(media) {
@@ -339,7 +326,7 @@ export default {
           throw new Error(response.message || '刪除失敗')
         }
       } catch (error) {
-        console.error('刪除照片失敗:', error)
+
         await showError(`刪除失敗：${error.response?.data?.message || error.message || '未知錯誤'}`, '刪除失敗', this.isDarkMode)
       }
     },

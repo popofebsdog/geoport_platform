@@ -1,5 +1,6 @@
 import { DataTypes } from 'sequelize';
 import { sequelize } from '../config/database.js';
+import { toStoragePath } from '../services/storageService.js';
 
 export const DataFile = sequelize.define('DataFile', {
   fileId: {
@@ -27,7 +28,7 @@ export const DataFile = sequelize.define('DataFile', {
     field: 'file_extension'
   },
   fileType: {
-    type: DataTypes.ENUM('raster', 'vector', 'csv', 'lidar', 'report', 'image', 'document', 'other'),
+    type: DataTypes.ENUM('raster', 'vector', 'csv', 'lidar', 'report', 'image', 'document', 'other', 'potential_analysis', 'profile_observation'),
     allowNull: false,
     field: 'file_type'
   },
@@ -167,6 +168,13 @@ export const DataFile = sequelize.define('DataFile', {
   timestamps: true,
   paranoid: true, // 啟用軟刪除
   underscored: true, // 使用 snake_case 命名約定
+  hooks: {
+    beforeValidate(file) {
+      if ((file.storageType || 'local') === 'local' && file.storagePath) {
+        file.storagePath = toStoragePath(file.storagePath);
+      }
+    }
+  },
   indexes: [
     {
       fields: ['project_id']

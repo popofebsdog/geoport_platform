@@ -1,11 +1,12 @@
 import axios from 'axios';
+import { API_BASE_URL } from '@/utils/urls.js';
 import { logger } from '@/utils/logger.js';
 
 const log = logger.scoped('api');
 
 // 創建 axios 實例
 const api = axios.create({
-  baseURL: '/api', // 使用相對路徑，讓 Vite 代理處理
+  baseURL: API_BASE_URL,
   timeout: 30000
   // 移除默認的 Content-Type，讓 axios 根據數據類型自動設置
 });
@@ -171,7 +172,6 @@ export const disasterPointAPI = {
 
 export const authAPI = {
   login: (credentials) => api.post('/auth/login', credentials),
-  register: (userData) => api.post('/auth/register', userData),
   logout: () => api.post('/auth/logout'),
   getProfile: () => api.get('/auth/profile'),
   updateProfile: (data) => api.put('/auth/profile', data),

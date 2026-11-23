@@ -117,6 +117,12 @@ export function validateUploadFile(policyName, file) {
 
 export function createMulterFileFilter(policyName) {
   return (req, file, cb) => {
+    // Multipart filenames arrive as latin1 in Multer; repair valid UTF-8 only.
+    if ([...file.originalname].every(char => char.charCodeAt(0) <= 255)) {
+      try {
+        file.originalname = new TextDecoder('utf-8', { fatal: true }).decode(Buffer.from(file.originalname, 'latin1'));
+      } catch { /* Keep genuine legacy latin1 filenames unchanged. */ }
+    }
     const result = validateUploadFile(policyName, file);
     if (!result.ok) return cb(new Error(result.message), false);
     file.safeOriginalName = sanitizeOriginalName(file.originalname);

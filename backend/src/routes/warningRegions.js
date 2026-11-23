@@ -1,5 +1,8 @@
 import express from 'express';
 import multer from 'multer';
+import fs from 'node:fs';
+import path from 'node:path';
+import { storageConfig, resolveStoragePath } from '../services/storageService.js';
 import { authenticate } from '../middleware/auth.js';
 import { createMulterFileFilter, createStoredFilename, maxUploadSize, sanitizeOriginalName } from '../config/uploadPolicy.js';
 import {
@@ -56,7 +59,12 @@ router.post('/:regionCode/data', authenticate, upsertWarningRegionData);
 
 // 建立地區專案（包含上傳檔案）
 const upload = multer({
-  dest: 'uploads/warning-regions/',
+  storage: multer.diskStorage({
+    destination: (_req, _file, cb) => {
+      const dir = path.join(storageConfig.uploadsRoot, 'warning-regions');
+      fs.mkdir(dir, { recursive: true }, error => cb(error, dir));
+    }
+  }),
   limits: { fileSize: maxUploadSize('dataFile') },
   fileFilter: createMulterFileFilter('dataFile')
 });
@@ -119,19 +127,13 @@ router.get('/:regionCode/disaster-counts', getDisasterCountsByMileage);
 // ─── 監測圖資 ────────────────────────────────────────────────────────────────
 
 // multer：上傳監測圖資到 uploads/monitoring/{regionCode}/
-import path from 'path';
-import { fileURLToPath } from 'url';
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const BACKEND_ROOT = path.join(__dirname, '../..');
-
 const monitoringStorage = multer.diskStorage({
   destination: (req, file, cb) => {
-    const dir = path.join(BACKEND_ROOT, 'uploads/monitoring', req.params.regionCode);
-    import('fs').then(fs => {
-      fs.default.mkdirSync(dir, { recursive: true });
-      cb(null, dir);
-    });
+    const dir = resolveStoragePath(`uploads/monitoring/${req.params.regionCode}`);
+    if (!dir || path.dirname(dir) !== path.join(storageConfig.uploadsRoot, 'monitoring')) {
+      return cb(new Error('Invalid monitoring region code'));
+    }
+    fs.mkdir(dir, { recursive: true }, error => cb(error, dir));
   },
   filename: (req, file, cb) => {
     const safeName = sanitizeOriginalName(file.originalname);

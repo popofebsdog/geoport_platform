@@ -32,7 +32,7 @@ export async function checkTitilerHealth() {
     const response = await fetch(`${url.replace(/\/$/, '')}/healthz`, { signal: controller.signal });
     const body = await response.json().catch(() => ({}));
     return {
-      status: response.ok ? 'ok' : 'error',
+      status: response.ok && body?.versions?.titiler ? 'ok' : 'error',
       url,
       latencyMs: Date.now() - started,
       version: body?.versions?.titiler || null
@@ -61,7 +61,7 @@ async function checkDatabase() {
   const existing = result.rows.map(row => row.table_name);
   const missing = coreTables.filter(table => !existing.includes(table));
   return {
-    status: missing.length ? 'warning' : 'ok',
+    status: missing.length ? 'error' : 'ok',
     latencyMs: Date.now() - started,
     coreTables: { expected: coreTables.length, existing: existing.length, missing }
   };
@@ -71,13 +71,16 @@ async function checkStorage() {
   const report = getStorageReport();
   if (!isLocalStorage()) {
     return {
-      status: report.adapterReady ? 'ok' : 'warning',
+      status: report.adapterReady ? 'ok' : 'error',
       provider: report.provider,
       message: 'Object storage provider configured; runtime adapter is not implemented yet.',
       adapterReady: report.adapterReady
     };
   }
 
+  await Promise.all([storageConfig.uploadsRoot, storageConfig.dataRoot].map(root =>
+    fs.access(root, fs.constants.R_OK | fs.constants.W_OK | fs.constants.X_OK)
+  ));
   const [uploads, data] = await Promise.all([
     directoryStats(storageConfig.uploadsRoot),
     directoryStats(storageConfig.dataRoot)

@@ -1,6 +1,13 @@
+x-logging: &service-logging
+  driver: local
+  options:
+    max-size: "10m"
+    max-file: "5"
+
 services:
   # PostgreSQL 資料庫
   postgres:
+    logging: *service-logging
     image: postgis/postgis:15-3.5-alpine
     profiles: ["prod"]
     environment:
@@ -23,6 +30,7 @@ services:
 
   # 後端服務
   backend:
+    logging: *service-logging
     profiles: ["prod"]
     build:
       context: ./backend
@@ -31,6 +39,11 @@ services:
       - "3001"
     environment:
       - NODE_ENV=production
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - LOG_FORMAT=json
+      - LOG_REQUESTS=true
+      - LOGIN_RATE_LIMIT_MAX=${LOGIN_RATE_LIMIT_MAX:-10}
+      - LOGIN_RATE_LIMIT_WINDOW_MS=${LOGIN_RATE_LIMIT_WINDOW_MS:-900000}
       - PORT=3001
       - TRUST_PROXY=${TRUST_PROXY:-1}
       - DB_HOST=postgres
@@ -40,19 +53,20 @@ services:
       - DB_PASSWORD=${DB_PASSWORD:-replace-with-strong-password}
       - JWT_SECRET=${JWT_SECRET:-replace-with-strong-random-secret}
       - JWT_EXPIRES_IN=${JWT_EXPIRES_IN:-24h}
-      - ALLOW_PUBLIC_REGISTRATION=${ALLOW_PUBLIC_REGISTRATION:-false}
       - FRONTEND_URL=${FRONTEND_URL:-http://localhost}
       - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://localhost}
       - DB_SSL=${DB_SSL:-false}
       - STORAGE_PROVIDER=${STORAGE_PROVIDER:-local}
       - UPLOADS_ROOT=/app/uploads
       - DATA_ROOT=/app/data
+      - BACKUP_ROOT=/app/backups
       - UPLOADS_PUBLIC_PATH=/uploads
       - DATA_PUBLIC_PATH=/data
       - TITILER_INTERNAL_URL=http://titiler:8000
     volumes:
       - ./backend/uploads:/app/uploads
       - ./data:/app/data
+      - backups:/app/backups
     depends_on:
       postgres:
         condition: service_healthy
@@ -62,6 +76,7 @@ services:
 
   # 前端服務
   frontend:
+    logging: *service-logging
     profiles: ["prod"]
     build:
       context: ./frontend
@@ -70,15 +85,14 @@ services:
         VITE_API_URL: ${VITE_API_URL:-/api}
         VITE_STATIC_URL: ${VITE_STATIC_URL:-}
         VITE_TITILER_URL: ${VITE_TITILER_URL:-/titiler}
-        VITE_TITILER_ASSET_ORIGIN: ${VITE_TITILER_ASSET_ORIGIN:-}
-        VITE_LOG_LEVEL: ${VITE_LOG_LEVEL:-warn}
+        VITE_TITILER_ASSET_ORIGIN: ${VITE_TITILER_ASSET_ORIGIN:-http://backend:3001}
     expose:
       - "5173"
     environment:
       - VITE_API_URL=/api
       - VITE_STATIC_URL=${VITE_STATIC_URL:-}
       - VITE_TITILER_URL=${VITE_TITILER_URL:-/titiler}
-      - VITE_TITILER_ASSET_ORIGIN=${VITE_TITILER_ASSET_ORIGIN:-}
+      - VITE_TITILER_ASSET_ORIGIN=${VITE_TITILER_ASSET_ORIGIN:-http://backend:3001}
     depends_on:
       - backend
     restart: unless-stopped
@@ -87,7 +101,9 @@ services:
 
   # TiTiler COG 瓦片服務
   titiler:
-    image: ghcr.io/developmentseed/titiler:latest
+    logging: *service-logging
+    image: ghcr.io/developmentseed/titiler:0.24.2
+    platform: linux/amd64
     profiles: ["prod"]
     expose:
       - "8000"
@@ -100,6 +116,7 @@ services:
 
   # Nginx 反向代理（可選）
   nginx:
+    logging: *service-logging
     image: nginx:alpine
     profiles: ["prod"]
     ports:
@@ -116,7 +133,8 @@ services:
 
   # Dev profile: 本機開發時只啟動基礎服務，前後端仍可用 npm run dev 跑在主機上
   postgres-dev:
-    image: postgres:15-alpine
+    logging: *service-logging
+    image: postgis/postgis:15-3.5-alpine
     profiles: ["dev"]
     environment:
       POSTGRES_DB: ${DB_NAME:-geoport_db}
@@ -137,7 +155,9 @@ services:
       retries: 5
 
   titiler-dev:
-    image: ghcr.io/developmentseed/titiler:latest
+    logging: *service-logging
+    image: ghcr.io/developmentseed/titiler:0.24.2
+    platform: linux/amd64
     profiles: ["dev"]
     ports:
       - "${TITILER_PORT:-8080}:8000"
@@ -155,4 +175,5 @@ networks:
 volumes:
   postgres_data:
   postgres_dev_data:
+  backups:
   uploads:

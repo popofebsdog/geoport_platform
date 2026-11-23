@@ -58,7 +58,7 @@
             </svg>
           </button>
 
-          <button @click="editBaseMap(baseMap)"
+          <button v-if="canEdit" @click="editBaseMap(baseMap)"
                   class="p-1 rounded transition-colors duration-150"
                   :class="isDarkMode ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-600' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'"
                   title="編輯正射影像">
@@ -67,7 +67,7 @@
             </svg>
           </button>
 
-          <button @click="deleteBaseMap(baseMap)"
+          <button v-if="canEdit" @click="deleteBaseMap(baseMap)"
                   class="p-1 rounded transition-colors duration-150"
                   :class="isDarkMode ? 'text-gray-400 hover:text-red-400 hover:bg-red-400/10' : 'text-gray-400 hover:text-red-600 hover:bg-red-50'"
                   title="刪除正射影像">
@@ -110,6 +110,7 @@ import { dataFileAPI } from '../../services/api'
 
 export default {
   name: 'BaseMapSelector',
+  inject: { canEdit: { default: true } },
   props: {
     projectId: {
       type: String,
@@ -158,7 +159,7 @@ export default {
           throw new Error(result.message || '載入底圖列表失敗')
         }
       } catch (err) {
-        console.error('載入底圖列表錯誤:', err)
+
         error.value = err.message || '載入底圖列表失敗'
         baseMaps.value = []
       } finally {
@@ -335,7 +336,7 @@ export default {
         loading.value = false
         error.value = ''
       } catch (error) {
-        console.warn('BaseMapSelector 組件卸載時發生錯誤:', error)
+
       }
     })
 

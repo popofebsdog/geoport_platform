@@ -379,6 +379,7 @@
 </template>
 
 <script>
+import { staticUrl } from '@/utils/urls.js'
 import api from '@/services/api.js'
 import { ref, computed, watch, onBeforeUnmount } from 'vue'
 import CustomAlert from '@/components/CustomAlert.vue'
@@ -536,7 +537,7 @@ export default {
       
       files.forEach(file => {
         if (!file.type.startsWith('image/')) {
-          console.warn('不是有效的圖片文件:', file.name)
+
           return
         }
         
@@ -555,7 +556,7 @@ export default {
       
       files.forEach(file => {
         if (!file.type.startsWith('video/')) {
-          console.warn('不是有效的影片文件:', file.name)
+
           return
         }
         
@@ -635,7 +636,7 @@ export default {
                 )
               }
             } catch (error) {
-              console.error('刪除照片失敗:', error)
+
               errorMessage.value = `刪除照片失敗：${error.response?.data?.message || error.message || '未知錯誤'}`
               showErrorAlert.value = true
               isSubmitting.value = false
@@ -731,7 +732,7 @@ export default {
           }
         }
       } catch (error) {
-        console.error(props.isEditMode ? '更新災點紀錄失敗:' : '創建災點紀錄失敗:', error)
+
         errorMessage.value = `${props.isEditMode ? '更新' : '創建'}失敗: ${error.response?.data?.message || error.message || '未知錯誤'}`
         showErrorAlert.value = true
       } finally {
@@ -780,7 +781,7 @@ export default {
                   file: null, // 現有文件沒有 File 對象
                   type: media.media_type || 'image',
                   name: media.original_name || media.name,
-                  previewUrl: media.storage_path || media.thumbnail_path || '',
+                  previewUrl: staticUrl(media.storage_path || media.thumbnail_path),
                   progress: 100,
                   size: media.file_size || 0,
                   isExisting: true, // 標記為現有文件

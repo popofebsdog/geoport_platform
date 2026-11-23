@@ -355,8 +355,8 @@ export default {
           })
         }
       } catch (error) {
-        console.error('載入巡查記錄失敗:', error)
-        console.error('錯誤詳情:', error.response?.data || error.message)
+
+
         this.records = []
       } finally {
         this.loading = false
@@ -397,7 +397,7 @@ export default {
           throw new Error(response.message || '刪除失敗')
         }
       } catch (error) {
-        console.error('刪除記錄失敗:', error)
+
         const errorMessage = error.response?.data?.message || error.message || '未知錯誤'
         await showError('刪除失敗：' + errorMessage, '刪除失敗', this.isDarkMode)
       }
@@ -408,7 +408,7 @@ export default {
         try {
           record.inspection_data = JSON.parse(record.inspection_data)
         } catch (e) {
-          console.warn('解析 inspection_data 失敗:', e)
+
           record.inspection_data = {}
         }
       }

@@ -8,6 +8,7 @@ import multer from 'multer';
 import path from 'path';
 import fs from 'fs/promises';
 import { createMulterFileFilter, createStoredFilename, maxUploadSize } from '../config/uploadPolicy.js';
+import { resolveStoragePath, toStoragePath, storageConfig } from '../services/storageService.js';
 
 // 配置 multer 用於上傳媒體文件
 const storage = multer.diskStorage({
@@ -18,7 +19,7 @@ const storage = multer.diskStorage({
     const safeProjectId = (rawProjectId === 'default' || uuidRegex.test(rawProjectId))
       ? rawProjectId
       : 'default';
-    const uploadDir = path.join(process.cwd(), 'uploads', 'data', 'disaster-points', path.basename(safeProjectId));
+    const uploadDir = path.join(storageConfig.uploadsRoot, 'data', 'disaster-points', path.basename(safeProjectId));
     try {
       await fs.mkdir(uploadDir, { recursive: true });
       cb(null, uploadDir);
@@ -359,10 +360,7 @@ export const createDisasterPoint = async (req, res) => {
           }
         }
         
-        // 構建相對路徑：從 uploads 目錄開始的相對路徑
-        // file.path 是完整路徑，需要轉換為相對路徑
-        const relativePath = path.relative(path.join(process.cwd(), 'uploads'), file.path);
-        const storagePath = `/uploads/${relativePath.replace(/\\/g, '/')}`;
+        const storagePath = toStoragePath(file.path);
         
         // 插入到 image_records 表
         await pool.query(`
@@ -604,8 +602,7 @@ export const updateDisasterPoint = async (req, res) => {
         }
         
         // 構建相對路徑
-        const relativePath = path.relative(path.join(process.cwd(), 'uploads'), file.path);
-        const storagePath = `/uploads/${relativePath.replace(/\\/g, '/')}`;
+        const storagePath = toStoragePath(file.path);
         
         // 插入到 image_records 表
         await pool.query(`
@@ -696,14 +693,8 @@ export const deleteDisasterPoint = async (req, res) => {
     // 刪除物理文件
     const fileDeletionPromises = mediaFilesResult.rows.map(async (media) => {
       try {
-        // storage_path 格式是 /uploads/data/disaster-points/xxx/file.jpg
-        // 需要轉換為完整路徑
         if (media.storage_path) {
-          // 移除開頭的 /uploads，然後加上 process.cwd()
-          const relativePath = media.storage_path.startsWith('/uploads/')
-            ? media.storage_path.substring('/uploads/'.length)
-            : media.storage_path;
-          const fullPath = path.join(process.cwd(), 'uploads', relativePath);
+          const fullPath = resolveStoragePath(media.storage_path);
           
           // 檢查文件是否存在
           try {
@@ -810,10 +801,7 @@ export const deleteDisasterPointMedia = async (req, res) => {
     // 刪除物理文件
     if (media.storage_path) {
       try {
-        const relativePath = media.storage_path.startsWith('/uploads/')
-          ? media.storage_path.substring('/uploads/'.length)
-          : media.storage_path;
-        const fullPath = path.join(process.cwd(), 'uploads', relativePath);
+        const fullPath = resolveStoragePath(media.storage_path);
         
         try {
           await fs.access(fullPath);

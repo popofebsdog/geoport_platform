@@ -6,6 +6,24 @@
 
 import { pool } from '../config/database.js';
 import { validateUUID } from '../utils/validators.js';
+import { Project } from '../models/Project.js';
+import { ProjectReportLink } from '../models/ProjectReportLink.js';
+
+async function withReportLinks(projects) {
+  if (!projects.length) return projects;
+  const links = await ProjectReportLink.findAll({
+    where: { project_id: projects.map(project => project.project_id) },
+    order: [['created_at', 'ASC']], raw: true
+  });
+  const byProject = new Map();
+  for (const link of links) {
+    if (!byProject.has(link.project_id)) byProject.set(link.project_id, []);
+    byProject.get(link.project_id).push(link);
+  }
+  return projects.map(project => ({ ...project,
+    metadata: { ...(project.metadata || {}), reportLinks: byProject.get(project.project_id) || [] }
+  }));
+}
 
 /**
  * 獲取所有母專案列表
@@ -47,9 +65,15 @@ export const getAllParentProjects = async (req, res) => {
       ORDER BY p.created_at DESC
     `);
 
+    const bookmarks = result.rows.length ? await Project.findAll({
+      attributes: ['projectId', 'isBookmarked'],
+      where: { projectId: result.rows.map(row => row.project_id) },
+      raw: true
+    }) : [];
+    const bookmarkMap = new Map(bookmarks.map(project => [project.projectId, project.isBookmarked]));
     res.json({
       success: true,
-      data: result.rows
+      data: await withReportLinks(result.rows.map(row => ({ ...row, is_bookmarked: bookmarkMap.get(row.project_id) === true })))
     });
   } catch (error) {
     console.error('獲取母專案列表錯誤:', error);
@@ -113,7 +137,7 @@ export const getParentProjectById = async (req, res) => {
 
     res.json({
       success: true,
-      data: result.rows[0]
+      data: (await withReportLinks(result.rows))[0]
     });
   } catch (error) {
     console.error('獲取母專案詳情錯誤:', error);

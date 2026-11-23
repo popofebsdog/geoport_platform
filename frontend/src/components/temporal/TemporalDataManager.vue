@@ -79,7 +79,7 @@ export default {
           temporalDataList.value = response.data
         }
       } catch (error) {
-        console.error('載入時序資料列表失敗:', error)
+
       } finally {
         isLoading.value = false
       }
@@ -111,7 +111,7 @@ export default {
           await loadTemporalDataList()
         }
       } catch (error) {
-        console.error('刪除時序資料失敗:', error)
+
       }
     }
     
@@ -143,7 +143,7 @@ export default {
         
         emit('toggle-visibility', eventData)
       } else {
-        console.error('找不到對應的時序資料:', actualTemporalId)
+
       }
     }
     

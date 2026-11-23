@@ -1,5 +1,5 @@
 import crypto from 'node:crypto';
-import { createLogger } from '../utils/logger.js';
+import { createLogger, withRequestLogContext } from '../utils/logger.js';
 
 const log = createLogger('http');
 
@@ -14,32 +14,44 @@ export function requestLogger() {
     }
 
     const startedAt = process.hrtime.bigint();
-    const requestId = req.headers['x-request-id'] || crypto.randomUUID();
+    const suppliedId = req.headers['x-request-id'];
+    const requestId = typeof suppliedId === 'string' && /^[A-Za-z0-9._:-]{1,64}$/.test(suppliedId)
+      ? suppliedId : crypto.randomUUID();
     req.id = requestId;
     res.setHeader('X-Request-Id', requestId);
 
-    res.on('finish', () => {
+    let logged = false;
+    const complete = aborted => {
+      if (logged) return;
+      logged = true;
       const durationMs = Number(process.hrtime.bigint() - startedAt) / 1_000_000;
       const event = {
         requestId,
+        userId: req.user?.userId || null,
+        role: req.user?.role || null,
         method: req.method,
-        path: req.originalUrl || req.url,
-        statusCode: res.statusCode,
+        path: (req.originalUrl || req.url).split(/[?#]/, 1)[0],
+        statusCode: aborted ? 499 : res.statusCode,
+        aborted,
         durationMs: Number(durationMs.toFixed(1)),
         contentLength: res.getHeader('content-length') || 0,
         ip: getClientIp(req),
         userAgent: req.headers['user-agent']
       };
 
-      if (res.statusCode >= 500) {
+      if (aborted) {
+        log.warn('request aborted', event);
+      } else if (res.statusCode >= 500) {
         log.error('request completed', event);
       } else if (res.statusCode >= 400) {
         log.warn('request completed', event);
       } else {
         log.info('request completed', event);
       }
-    });
+    };
+    res.on('finish', () => complete(false));
+    res.on('close', () => complete(!res.writableFinished));
 
-    next();
+    return withRequestLogContext(req, next);
   };
 }

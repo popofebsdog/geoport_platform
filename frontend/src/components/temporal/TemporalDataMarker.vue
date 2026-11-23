@@ -105,7 +105,7 @@ export default {
             return [parseFloat(coords[1]), parseFloat(coords[0])] // [lat, lng]
           }
         } catch (error) {
-          console.error('解析 spatial_extent 失敗:', error)
+
         }
       }
       

@@ -75,17 +75,22 @@ const config = {
       min: 5,
       acquire: 30000,
       idle: 10000
-    },
-    dialectOptions: {
-      ssl: process.env.DB_SSL === 'true'
-        ? { require: true, rejectUnauthorized: true }
-        : false
     }
   }
 };
 
 const env = process.env.NODE_ENV || 'development';
 const dbConfig = config[env];
+
+if (env === 'test' && dbConfig.database === config.development.database) {
+  throw new Error('DB_NAME_TEST must differ from the main database name');
+}
+
+dbConfig.dialectOptions = {
+  ssl: process.env.DB_SSL === 'true'
+    ? { require: true, rejectUnauthorized: true }
+    : false
+};
 
 export const sequelize = new Sequelize(dbConfig);
 
@@ -127,17 +132,15 @@ export const closeConnection = async () => {
 
 // 創建 pg 連接池 (用於原生 SQL 查詢)
 export const pool = new Pool({
-  host: process.env.DB_HOST || 'localhost',
-  port: parseInt(process.env.DB_PORT || '5432'),
-  database: process.env.DB_NAME || 'geoport_db',
-  user: process.env.DB_USER || 'postgres',
-  password: process.env.DB_PASSWORD,
+  host: dbConfig.host,
+  port: parseInt(dbConfig.port, 10),
+  database: dbConfig.database,
+  user: dbConfig.username,
+  password: dbConfig.password,
   max: 20,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 2000,
-  ssl: process.env.DB_SSL === 'true'
-    ? { rejectUnauthorized: true }
-    : false
+  ssl: dbConfig.dialectOptions.ssl
 });
 
 // 測試 pg 連接池

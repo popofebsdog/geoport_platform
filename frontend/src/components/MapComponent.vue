@@ -50,6 +50,7 @@
 </template>
 
 <script>
+import { apiUrl, staticUrl } from '@/utils/urls.js'
 import L from 'leaflet'
 import dayjs from 'dayjs'
 
@@ -527,7 +528,7 @@ export default {
       if (this.selectedProject && this.selectedProject.id === 4) {
         try {
           // 載入真實的 GeoJSON 資料
-          const response = await fetch('/data/geojson/DamanProfiles.geojson')
+          const response = await fetch(staticUrl('/data/geojson/DamanProfiles.geojson'))
           if (!response.ok) throw new Error('Failed to load shapefile data')
           
           const geojsonData = await response.json()
@@ -591,7 +592,7 @@ export default {
           
           
         } catch (error) {
-          console.error('載入 shapefile 資料失敗:', error)
+
           
           // 如果載入失敗，顯示錯誤訊息
           const errorMarker = L.marker([this.selectedProject.location.lat, this.selectedProject.location.lng])
@@ -735,7 +736,7 @@ export default {
       
       try {
         // 加载CSV数据
-        const response = await fetch(this.insarDataUrl)
+        const response = await fetch(staticUrl(this.insarDataUrl))
         if (!response.ok) throw new Error('Failed to load InSAR data')
         
         const csvText = await response.text()
@@ -784,7 +785,7 @@ export default {
         
         
       } catch (error) {
-        console.error('载入 InSAR 数据失败:', error)
+
       }
     },
     
@@ -857,7 +858,7 @@ export default {
       
       try {
         // 載入里程樁號CSV數據
-        const response = await fetch(this.mileageDataUrl)
+        const response = await fetch(staticUrl(this.mileageDataUrl))
         if (!response.ok) throw new Error('Failed to load mileage data')
         
         const csvText = await response.text()
@@ -912,7 +913,7 @@ export default {
         
         
       } catch (error) {
-        console.error('載入里程樁號數據失敗:', error)
+
       }
     },
     
@@ -1011,13 +1012,13 @@ export default {
           ymax: b.getNorth().toFixed(6),
           limit: 2000
         })
-        const res = await fetch(`/api/spatial/dodshp/bbox?${params}`)
+        const res = await fetch(apiUrl(`/spatial/dodshp/bbox?${params}`))
         if (!res.ok) throw new Error(`HTTP ${res.status}`)
         const geojson = await res.json()
         this._dodshpLayer.clearLayers()
         this._dodshpLayer.addData(geojson)
       } catch (err) {
-        console.error('[DoDshp] bbox 查詢失敗:', err.message)
+
       }
     },
     
@@ -1363,4 +1364,4 @@ export default {
     bottom: 10px;
   }
 }
-</style> 
+</style>

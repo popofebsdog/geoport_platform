@@ -7,12 +7,12 @@
       </div>
     </div>
     
-    <div v-else-if="!data" class="flex items-center justify-center h-full">
+    <div v-else-if="!dataState.available" role="status" class="flex items-center justify-center h-full">
       <div class="text-center text-gray-400 dark:text-gray-500">
         <svg class="w-12 h-12 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
         </svg>
-        <p class="text-sm">暫無數據</p>
+        <p class="text-sm">{{ dataState.text }}</p>
       </div>
     </div>
     
@@ -21,6 +21,9 @@
 </template>
 
 <script>
+import { getMonitoringState } from '@/utils/monitoringData.js';
+import { markRaw } from 'vue';
+
 export default {
   name: 'MicroseismicChart',
   props: {
@@ -37,7 +40,7 @@ export default {
       default: null
     },
     regionId: {
-      type: String,
+      type: [String, Number],
       default: null
     },
     isDarkMode: {
@@ -48,8 +51,12 @@ export default {
   data() {
     return {
       chart: null,
+      renderRequestId: 0,
       updateTimer: null
     };
+  },
+  computed: {
+    dataState() { return getMonitoringState(this.data); }
   },
   watch: {
     regionCode: {
@@ -60,7 +67,7 @@ export default {
             this.chart.destroy();
             this.chart = null;
           } catch (e) {
-            console.warn('清除舊圖表時出錯:', e);
+
           }
         }
       }
@@ -102,6 +109,7 @@ export default {
     }
   },
   beforeUnmount() {
+    this.renderRequestId += 1;
     // 清除定時器
     if (this.updateTimer) {
       clearTimeout(this.updateTimer);
@@ -112,7 +120,7 @@ export default {
       try {
         this.chart.destroy();
       } catch (e) {
-        console.warn('銷毀圖表時出錯:', e);
+
       }
       this.chart = null;
     }
@@ -185,6 +193,8 @@ export default {
       });
     },
     async createChart() {
+      const requestId = ++this.renderRequestId;
+      const canvas = this.$refs.chartCanvas;
       if (!this.$refs.chartCanvas || !this.data) return;
       
       // 確保先銷毀現有的圖表實例
@@ -192,7 +202,7 @@ export default {
         try {
           this.chart.destroy();
         } catch (e) {
-          console.warn('銷毀圖表時出錯:', e);
+
         }
         this.chart = null;
       }
@@ -200,6 +210,7 @@ export default {
       try {
         const { Chart, registerables } = await import('chart.js');
         const { applyChartDefaults, baseChartOptions, axisScale } = await import('@/utils/chartDefaults.js');
+        if (requestId !== this.renderRequestId || this.loading || this.$refs.chartCanvas !== canvas) return;
         Chart.register(...registerables);
         applyChartDefaults(Chart);
 
@@ -207,7 +218,7 @@ export default {
         const dark = this.isDarkMode;
         const base = baseChartOptions(dark);
 
-        this.chart = new Chart(this.$refs.chartCanvas, {
+        const chart = new Chart(canvas, {
           type: 'scatter',
           data: chartData,
           options: {
@@ -228,7 +239,7 @@ export default {
                     return `${String(hour).padStart(2,'0')}:${String(minute).padStart(2,'0')}`;
                   },
                   label(context) {
-                    const typeMap = { 1:'TYPE I', 2:'TYPE II', 3:'TYPE III', 4:'TYPE NOISE', 5:'TYPE EARTHQUAKE' };
+                    const typeMap = { 1:'TYPE I', 2:'TYPE II', 3:'TYPE III', 4:'TYPE NOISE', 5:'TYPE EARTHQUAKE', 6:'TYPE IV' };
                     return `類型: ${typeMap[Math.round(context.parsed.y)] || ''}`;
                   }
                 }
@@ -257,9 +268,9 @@ export default {
                 type: 'linear',
                 position: 'left',
                 min: 0.5,
-                max: 5.5,
+                max: 6.5,
                 afterBuildTicks(scale) {
-                  scale.ticks = [1, 2, 3, 4, 5].map(v => ({ value: v }));
+                  scale.ticks = [1, 2, 3, 4, 5, 6].map(v => ({ value: v }));
                 },
                 grid: {
                   color: dark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)',
@@ -273,7 +284,7 @@ export default {
                   padding: 8,
                   autoSkip: false,
                   callback(value) {
-                    const map = { 1:'T-I', 2:'T-II', 3:'T-III', 4:'Noise', 5:'EQ' };
+                    const map = { 1:'T-I', 2:'T-II', 3:'T-III', 4:'Noise', 5:'EQ', 6:'T-IV' };
                     return map[value] ?? '';
                   }
                 }
@@ -281,8 +292,9 @@ export default {
             }
           }
         });
+        this.chart = markRaw(chart);
       } catch (error) {
-        console.error('創建圖表失敗:', error);
+
       }
     },
     // generateMockData() 方法已移除 - 現在只使用 API 返回的真實數據
@@ -298,7 +310,8 @@ export default {
         'TYPE II': 2,
         'TYPE III': 3,
         'TYPE NOISE': 4,
-        'TYPE EARTHQUAKE': 5
+        'TYPE EARTHQUAKE': 5,
+        'TYPE IV': 6
       };
       
       const colorMap = {
@@ -306,7 +319,8 @@ export default {
         'TYPE II':        { border: '#f59e0b', bg: 'rgba(245,158,11,0.9)' },
         'TYPE III':       { border: '#ef4444', bg: 'rgba(239,68,68,0.92)' },
         'TYPE NOISE':     { border: '#64748b', bg: 'rgba(100,116,139,0.52)' },
-        'TYPE EARTHQUAKE':{ border: '#38bdf8', bg: 'rgba(56,189,248,0.86)' }
+        'TYPE EARTHQUAKE':{ border: '#38bdf8', bg: 'rgba(56,189,248,0.86)' },
+        'TYPE IV':        { border: '#e879f9', bg: 'rgba(232,121,249,0.86)' }
       };
       
       // 過濾並處理數據：保留當日的所有類型
@@ -320,7 +334,8 @@ export default {
         'TYPE II': [],
         'TYPE III': [],
         'TYPE NOISE': [],
-        'TYPE EARTHQUAKE': []
+        'TYPE EARTHQUAKE': [],
+        'TYPE IV': []
       };
       
       // 使用 API 返回的真實數據
@@ -421,12 +436,13 @@ export default {
       };
     },
     async updateChart() {
+      this.renderRequestId += 1;
       // 確保先銷毀現有的圖表實例
       if (this.chart) {
         try {
           this.chart.destroy();
         } catch (e) {
-          console.warn('銷毀圖表時出錯:', e);
+
         }
         this.chart = null;
       }

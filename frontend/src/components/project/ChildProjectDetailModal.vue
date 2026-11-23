@@ -181,7 +181,7 @@ export default {
         
         return `${year}/${month}/${day} ${hours}:${minutes}`
       } catch (error) {
-        console.warn('格式化日期失敗:', error)
+
         return '日期格式錯誤'
       }
     }

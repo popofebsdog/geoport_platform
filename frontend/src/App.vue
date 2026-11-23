@@ -299,6 +299,7 @@ export default {
   provide() {
     return {
       isDarkMode: computed(() => this.isDarkMode),
+      canEdit: computed(() => this.isLoggedIn && ['admin', 'editor'].includes(this.currentUser?.role)),
       fontSize: computed(() => this.fontSize),
       isLoggedIn: computed(() => this.isLoggedIn)
     }

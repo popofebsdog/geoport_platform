@@ -9,6 +9,20 @@ import { createLogger } from '../utils/logger.js';
 
 const log = createLogger('external-api');
 
+function sensorObservationTime(value, epoch) {
+  let date;
+  if (Number.isFinite(epoch)) {
+    date = new Date(epoch * 1000);
+  } else {
+    if (typeof value !== 'string') return null;
+    let timestamp = value.replace(/T(\d{2})-(\d{2})-(\d{2})/, 'T$1:$2:$3');
+    if (!/^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})?$/i.test(timestamp)) return null;
+    if (!/(?:Z|[+-]\d{2}:\d{2})$/i.test(timestamp)) timestamp += 'Z';
+    date = new Date(timestamp);
+  }
+  return Number.isNaN(date.getTime()) ? null : date.toISOString();
+}
+
 // 創建自定義axios實例，允許自簽名證書（如果需要）
 const apiClient = axios.create({
   timeout: 30000, // 30秒超時
@@ -22,8 +36,9 @@ const apiClient = axios.create({
  * Base URL: http://140.113.21.54 (默認)
  */
 class MicroseismicApiService {
-  constructor(baseUrl = 'http://140.113.21.54') {
+  constructor(baseUrl = 'http://140.113.21.54', { signal } = {}) {
     this.baseUrl = baseUrl;
+    this.signal = signal;
   }
 
   /**
@@ -37,6 +52,7 @@ class MicroseismicApiService {
       const url = `${this.baseUrl}/GeoSlop/${dateStr}`;
       
       const response = await apiClient.get(url, {
+        signal: this.signal,
         responseType: 'arraybuffer'
       });
       
@@ -71,6 +87,7 @@ class MicroseismicApiService {
       const url = `${this.baseUrl}/GeoSlop/catalog/${dateStr}.csv`;
       
       const response = await apiClient.get(url, {
+        signal: this.signal,
         responseType: 'text'
       });
       
@@ -159,11 +176,30 @@ class MicroseismicApiService {
     try {
       const url = `${this.baseUrl}/GeoSlop/a_flag.json`;
       
-      const response = await apiClient.get(url);
-      
+      const response = await apiClient.get(url, { signal: this.signal });
+      let data = response.data ?? null;
+      if (typeof data === 'string') {
+        try {
+          data = JSON.parse(data);
+        } catch {
+          // The FLAG feed emits unquoted zero-padded zeros; keep all other JSON syntax strict.
+          data = JSON.parse(data.replace(/("Value"\s*:\s*)0{2,}(?=\s*[,}])/g, '$10'));
+        }
+      }
+      if (data !== null && typeof data !== 'object') throw new Error('Invalid warning flag payload');
+      let observedAt = null;
+      if (Array.isArray(data)) {
+        const stationsValid = data.length > 0 && data.every(station => Array.isArray(station?.Measurements) && station.Measurements.length > 0);
+        const measurements = stationsValid ? data.flatMap(station => station.Measurements) : [];
+        const times = measurements.map(item => Number.isFinite(item?.Value) ? sensorObservationTime(item.TimeStamp) : null);
+        if (times.length > 0 && times.every(Boolean)) observedAt = times.sort()[0];
+      } else if (data && (Array.isArray(data.warnings) || Array.isArray(data.alerts))) {
+        observedAt = sensorObservationTime(data.timestamp);
+      }
       return {
         success: true,
-        data: response.data || { warnings: [], alerts: [], timestamp: new Date().toISOString() }
+        data,
+        observedAt
       };
     } catch (error) {
       log.warn('Failed to fetch alert label', {
@@ -175,7 +211,8 @@ class MicroseismicApiService {
         success: false,
         error: error.message,
         statusCode: error.response?.status,
-        data: { warnings: [], alerts: [], timestamp: new Date().toISOString() }
+        data: null,
+        observedAt: null
       };
     }
   }
@@ -211,8 +248,9 @@ class MicroseismicApiService {
  * Base URL: http://140.113.16.140 (默認)
  */
 class RainfallEarthquakeApiService {
-  constructor(baseUrl = 'http://140.113.16.140') {
+  constructor(baseUrl = 'http://140.113.16.140', { signal } = {}) {
     this.baseUrl = baseUrl;
+    this.signal = signal;
   }
 
   /**
@@ -228,6 +266,7 @@ class RainfallEarthquakeApiService {
       
       if (format === 'png') {
         const response = await apiClient.get(url, {
+          signal: this.signal,
           responseType: 'arraybuffer'
         });
         
@@ -240,6 +279,7 @@ class RainfallEarthquakeApiService {
         };
       } else {
         const response = await apiClient.get(url, {
+          signal: this.signal,
           responseType: 'text'
         });
         
@@ -274,9 +314,10 @@ class RainfallEarthquakeApiService {
               volt: volt,
               rssi: rssi,
               accumulated: !isNaN(crain) ? crain : null,
-              hourly: !isNaN(rain) ? rain : 0,
-              value: !isNaN(rain) ? rain : 0, // 為了兼容，使用時雨量
+              hourly: Number.isFinite(rain) ? rain : null,
+              value: Number.isFinite(rain) ? rain : null,
               datetime: datetime,
+              epoch: /^\d+(?:\.\d+)?$/.test(parts[7]) ? Number(parts[7]) : null,
               index
             };
           } else if (parts.length >= 3) {
@@ -288,8 +329,8 @@ class RainfallEarthquakeApiService {
             return {
               time: time,
               accumulated: accumulated !== null && !isNaN(accumulated) ? accumulated : null,
-              hourly: !isNaN(hourly) ? hourly : 0,
-              value: !isNaN(hourly) ? hourly : 0,
+              hourly: Number.isFinite(hourly) ? hourly : null,
+              value: Number.isFinite(hourly) ? hourly : null,
               index
             };
           } else {
@@ -297,12 +338,13 @@ class RainfallEarthquakeApiService {
             return {
               time: parts[0] || `T${index}`,
               accumulated: null,
-              hourly: parts.length >= 2 ? parseFloat(parts[1]) : 0,
-              value: parts.length >= 2 ? parseFloat(parts[1]) : 0,
+              hourly: parts.length >= 2 ? parseFloat(parts[1]) : null,
+              value: parts.length >= 2 ? parseFloat(parts[1]) : null,
               index
             };
           }
-        });
+        }).filter(item => Number.isFinite(item.hourly))
+          .map(item => ({ ...item, observedAt: sensorObservationTime(item.datetime || item.time, item.epoch) }));
         
         // 計算統計數據
         const hourlyValues = timeSeries.map(item => item.hourly).filter(v => !isNaN(v));
@@ -331,6 +373,8 @@ class RainfallEarthquakeApiService {
             },
             latest: timeSeries.length > 0 ? {
               time: timeSeries[timeSeries.length - 1].time,
+              epoch: timeSeries[timeSeries.length - 1].epoch,
+              observedAt: timeSeries[timeSeries.length - 1].observedAt,
               accumulated: timeSeries[timeSeries.length - 1].accumulated,
               hourly: timeSeries[timeSeries.length - 1].hourly,
               value: timeSeries[timeSeries.length - 1].hourly
@@ -368,6 +412,7 @@ class RainfallEarthquakeApiService {
       const url = `${this.baseUrl}/pgapgv/`;
       
       const response = await apiClient.get(url, {
+        signal: this.signal,
         responseType: 'text'
       });
       
@@ -386,7 +431,7 @@ class RainfallEarthquakeApiService {
         timestamps: timestamps.sort().reverse()
       };
     } catch (error) {
-      return { success: false, timestamps: [], error: error.message };
+      return { success: false, timestamps: [], error: error.message, statusCode: error.response?.status };
     }
   }
 
@@ -414,6 +459,7 @@ class RainfallEarthquakeApiService {
       
       if (fileType.endsWith('.png')) {
         const response = await apiClient.get(url, {
+          signal: this.signal,
           responseType: 'arraybuffer'
         });
         
@@ -426,6 +472,7 @@ class RainfallEarthquakeApiService {
         };
       } else if (fileType.endsWith('.txt')) {
         const response = await apiClient.get(url, {
+          signal: this.signal,
           responseType: 'text'
         });
         
@@ -451,6 +498,7 @@ class RainfallEarthquakeApiService {
         try {
           const legendUrl = `${this.baseUrl}/pgapgv/${timestampStr}/tmp.legend`;
           const legendResponse = await apiClient.get(legendUrl, {
+            signal: this.signal,
             responseType: 'text'
           });
           legendData = this.parseLegendData(legendResponse.data);
@@ -468,10 +516,10 @@ class RainfallEarthquakeApiService {
           parsed: parsedData,
           legend: legendData,
           // 優先使用legend中的PGA和PGV，其次使用解析的數據
-          pga: legendData?.pga || parsedData.pga || null,
-          pgv: legendData?.pgv || null,
-          max_acceleration: parsedData.maxAcceleration || null,
-          acceleration: parsedData.acceleration || null
+          pga: legendData?.pga ?? parsedData.pga ?? null,
+          pgv: legendData?.pgv ?? null,
+          max_acceleration: parsedData.maxAcceleration ?? null,
+          acceleration: parsedData.acceleration ?? null
         };
         
         return {
@@ -482,6 +530,7 @@ class RainfallEarthquakeApiService {
       } else if (fileType === 'tmp.legend') {
         // 專門讀取圖例文件
         const response = await apiClient.get(url, {
+          signal: this.signal,
           responseType: 'text'
         });
         
@@ -501,6 +550,7 @@ class RainfallEarthquakeApiService {
       } else {
         // 其他文件類型（如png）
         const response = await apiClient.get(url, {
+          signal: this.signal,
           responseType: fileType.endsWith('.png') ? 'arraybuffer' : 'text'
         });
         

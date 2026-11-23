@@ -1,4 +1,5 @@
 import proj4 from 'proj4'
+import { staticUrl, tiTilerAssetUrl } from '@/utils/urls.js'
 import { logger } from '@/utils/logger.js'
 
 const log = logger.scoped('BaseMapService')
@@ -57,7 +58,7 @@ export class BaseMapService {
     }
 
     // 構建 TiTiler 瓦片 URL (使用 WebMercatorQuad 瓦片矩陣集)
-    const titilerBase = import.meta.env.VITE_TITILER_URL
+    const titilerBase = import.meta.env.VITE_TITILER_URL?.replace(/\/+$/, '')
     const titilerAssetUrl = this.getTiTilerAssetUrl(imageUrl)
     const titilerUrl = `${titilerBase}/cog/tiles/WebMercatorQuad/{z}/{x}/{y}?url=${encodeURIComponent(titilerAssetUrl)}`
     const layerBounds = boundsArray ? L.latLngBounds(boundsArray) : null
@@ -256,21 +257,7 @@ export class BaseMapService {
   }
 
   getTiTilerAssetUrl(imageUrl) {
-    const assetOrigin = import.meta.env.VITE_TITILER_ASSET_ORIGIN
-    if (!assetOrigin) {
-      return imageUrl
-    }
-
-    try {
-      const source = new URL(imageUrl)
-      const target = new URL(assetOrigin)
-      source.protocol = target.protocol
-      source.host = target.host
-      return source.toString()
-    } catch (error) {
-      log.warn('TiTiler asset URL 轉換失敗，使用原始 URL:', error)
-      return imageUrl
-    }
+    return tiTilerAssetUrl(imageUrl)
   }
 
   getStaticOrigin() {
@@ -278,7 +265,7 @@ export class BaseMapService {
   }
 
   async fetchTiTilerBounds(imageUrl, timeoutMs = 5000) {
-    const titilerBase = import.meta.env.VITE_TITILER_URL
+    const titilerBase = import.meta.env.VITE_TITILER_URL?.replace(/\/+$/, '')
     if (!titilerBase) {
       return null
     }
@@ -287,7 +274,10 @@ export class BaseMapService {
     const response = await fetch(`${titilerBase}/cog/info.geojson?url=${encodeURIComponent(titilerAssetUrl)}`, {
       signal: AbortSignal.timeout(timeoutMs)
     })
-    const result = await response.json()
+    const result = await response.json().catch(error => {
+      if (response.ok) throw error
+      return {}
+    })
     const bounds = this.parseTiTilerBounds(result)
 
     return { response, result, bounds }
@@ -341,31 +331,13 @@ export class BaseMapService {
       const GeoRasterLayer = (await import('georaster-layer-for-leaflet')).default
       
       // 載入 TIF 檔案
-      const response = await fetch(imageUrl)
+      const response = await fetch(staticUrl(imageUrl))
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`)
       }
       const arrayBuffer = await response.arrayBuffer()
       
-      // 解析 GeoTIFF（可能會出現一些警告，但不影響最終結果）
-      
-      // 暫時抑制 console.error 來避免顯示 georaster 的內部警告
-      const originalConsoleError = globalThis.console.error
-      globalThis.console.error = (...args) => {
-        // 過濾掉 georaster 的 EOI_CODE 警告
-        const message = args.join(' ')
-        if (!message.includes('EOI_CODE') && !message.includes('ran off the end of the buffer')) {
-          originalConsoleError.apply(globalThis.console, args)
-        }
-      }
-      
-      let georaster
-      try {
-        georaster = await parseGeoraster(arrayBuffer)
-      } finally {
-        // 恢復原始的 console.error
-        globalThis.console.error = originalConsoleError
-      }
+      const georaster = await parseGeoraster(arrayBuffer)
       
       
       // 創建 GeoRasterLayer（優化參數）
@@ -518,8 +490,7 @@ export class BaseMapService {
       }
       
       // 創建新的底圖圖層
-      const staticBase = this.getStaticOrigin()
-      const baseMapUrl = `${staticBase}/${baseMap.storagePath.replace(/^\//, '')}`
+      const baseMapUrl = staticUrl(baseMap.storagePath)
       
       // 根據檔案類型判斷是否為 TIF（raster / orthophoto，或副檔名為 .tif/.tiff）
       const nameLower = (baseMap.storagePath || baseMap.originalName || '').toLowerCase()

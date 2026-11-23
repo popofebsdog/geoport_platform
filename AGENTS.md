@@ -5,7 +5,7 @@
 ## 技術棧
 
 - **前端**：Vue3 + Vite + Tailwind CSS + Leaflet（地圖）+ Chart.js
-- **後端**：Node.js + Express.js + Sequelize ORM + SQLite
+- **後端**：Node.js + Express.js + Sequelize ORM + PostgreSQL / PostGIS
 - **地圖服務**：TiTiler（獨立 Python 服務，port 8080）
 - **測試**：Jest（後端）
 - **部署**：Docker Compose
@@ -42,7 +42,7 @@ backend/src/
 
 ## 環境變數
 
-- 後端：`backend/.env`（PORT=3001、JWT_SECRET、DB_PATH）
+- 後端：`backend/.env`（PORT=3001、JWT_SECRET、DB_HOST、DB_PORT、DB_NAME、DB_USER、DB_PASSWORD）
 - 前端：`frontend/.env`（VITE_API_URL=http://localhost:3001/api）
 - **`.env` 絕對不能提交到 git**
 

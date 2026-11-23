@@ -1093,6 +1093,9 @@
 </template>
 
 <script>
+import { markRaw } from 'vue'
+import { getFeatureId } from '@/utils/mapGeoUtils.js'
+import { staticUrl } from '@/utils/urls.js'
 import L from 'leaflet'
 import VueApexCharts from 'vue3-apexcharts'
 import ProjectTitleBar from '@/components/project/ProjectTitleBar.vue'
@@ -1275,7 +1278,7 @@ export default {
     
     // 計算圖片上傳數據 - 統一使用 featureUploads 作為數據源
     imageUploads() {
-      if (!this.featureDisplayData?.featureId) return []
+      if (this.featureDisplayData?.featureId == null || this.featureDisplayData.featureId === '') return []
       
       // 優先使用 featureUploads 中的數據，確保與側邊欄同步
       const uploads = this.featureUploads[this.featureDisplayData.featureId] || this.featureDisplayData.uploads || []
@@ -1439,6 +1442,9 @@ export default {
       geojsonLayers: [], // 所有可用的 GeoJSON 圖層
       activeGeojsonLayer: null, // 當前激活的圖層
       loadedGeojsonLayers: {}, // 已載入的 GeoJSON 圖層數據
+      geojsonRequests: markRaw(new Map()),
+      geojsonVisibilityRequests: new Map(),
+      isClosing: false,
       uploadedData: [],
       
       // 關聯上傳相關
@@ -1644,22 +1650,6 @@ export default {
     log.debug('載入完成後的 layerVisibility:', this.layerVisibility)
   },
   
-  beforeUnmount() {
-    log.debug('ProjectDetail 組件即將卸載，清理數據')
-    // 清理災點標記
-    this.clearDisasterPointMarkers()
-    // 清理所有響應式數據
-    this.geojsonLayers = []
-    this.loadedGeojsonLayers = {}
-    this.geojsonData = null
-    this.activeGeojsonLayer = null
-    this.featureUploads = {}
-    
-    // 通知子組件清理
-    if (this.$refs.projectMap) {
-      this.$refs.projectMap.clearAllLayers()
-    }
-  },
   methods: {
     // 從 API 載入完整的專案信息
     async loadFullProjectInfo() {
@@ -3426,54 +3416,64 @@ export default {
     
     // 資料管理方法
     async loadGeoJSONLayers() {
+      const projectId = this.project?.projectId
       try {
-        if (!this.project?.projectId) return
+        if (!projectId) return
 
         // 1. 只取圖層清單（輕量）
-        const result = await this.$api.get(`/data/project/${this.project.projectId}/geojson-list`)
+        const result = await this.$api.get(`/data/project/${projectId}/geojson-list`)
+        if (this.isClosing || this.project?.projectId !== projectId) return
 
         if (result.success && result.data && result.data.length > 0) {
           this.geojsonLayers = result.data
 
-          // 2. 只載入第一個（預設顯示）圖層，其餘懶載入
-          const firstFileId = this.geojsonLayers[0].file_id
-          await this.loadSpecificGeoJSONLayer(firstFileId)
-
-          // 3. 其餘圖層在背景依序靜默載入（不阻塞 UI）
-          if (this.geojsonLayers.length > 1) {
-            Promise.all(
-              this.geojsonLayers.slice(1).map(layer =>
-                this.$api.get(`/data/project/${this.project.projectId}/geojson?fileId=${layer.file_id}`)
-                  .then(r => { if (r.success && r.data) this.loadedGeojsonLayers[layer.file_id] = r.data })
-                  .catch(() => {})
-              )
-            )
+          // Hidden layers stay as metadata until explicitly selected.
+          for (const layer of this.geojsonLayers) {
+            if (this.layerVisibility[layer.file_id]) await this.loadSpecificGeoJSONLayer(layer.file_id)
           }
         } else {
           this.geojsonLayers = []
           this.geojsonData = null
         }
       } catch (error) {
+        if (this.isClosing || this.project?.projectId !== projectId) return
         log.error('載入 GeoJSON 圖層失敗:', error)
         this.geojsonLayers = []
         this.geojsonData = null
       }
     },
 
-    async loadSpecificGeoJSONLayer(fileId) {
+    async loadSpecificGeoJSONLayer(fileId, { activate = true } = {}) {
+      const projectId = this.project?.projectId
+      if (this.isClosing || !projectId || !fileId) return
+      this.geojsonRequests ||= markRaw(new Map())
+      const key = `${projectId}/${fileId}`
+      let pending
       try {
-        const layerInfo = this.geojsonLayers.find(layer => layer.file_id === fileId)
-
-        const result = await this.$api.get(`/data/project/${this.project.projectId}/geojson?fileId=${fileId}`)
-
-        if (result.success && result.data) {
-          this.geojsonData = result.data
-          this.loadedGeojsonLayers[fileId] = result.data
+        let data = this.loadedGeojsonLayers[fileId]
+        if (!data) {
+          pending = this.geojsonRequests.get(key)
+          if (!pending || pending.controller.signal.aborted) {
+            const controller = new AbortController()
+            pending = { controller, promise: this.$api.get(`/data/project/${projectId}/geojson?fileId=${encodeURIComponent(fileId)}`, { signal: controller.signal, timeout: 0 }) }
+            this.geojsonRequests.set(key, pending)
+          }
+          const result = await pending.promise
+          if (this.isClosing || this.project?.projectId !== projectId || pending.controller.signal.aborted) return
+          if (!result.success || !result.data) throw new Error(result.message || '圖層資料不存在')
+          data = markRaw(result.data)
+          this.loadedGeojsonLayers[fileId] = data
+        }
+        if (activate && !this.isClosing && this.project?.projectId === projectId) {
+          this.geojsonData = data
           this.activeGeojsonLayer = fileId
           await this.initAvailableFeatures()
         }
+        return data
       } catch (error) {
-        log.error('載入特定 GeoJSON 圖層失敗:', error)
+        if (!this.isClosing && error.code !== 'ERR_CANCELED') log.error('載入特定 GeoJSON 圖層失敗:', error)
+      } finally {
+        if (pending && this.geojsonRequests.get(key) === pending) this.geojsonRequests.delete(key)
       }
     },
 
@@ -3515,45 +3515,28 @@ export default {
     },
 
     async toggleGeojsonLayerVisibility(fileId) {
-      log.debug('切換圖層可見性:', fileId, '當前狀態:', this.layerVisibility[fileId])
-      log.debug('完整的 layerVisibility:', this.layerVisibility)
-      
-      // 切換圖層的可見性
-      let newVisible
-      if (this.layerVisibility[fileId] === undefined) {
-        // 如果未定義，默認為隱藏狀態（false），點擊後切換為顯示（true）
-        newVisible = true
-      } else {
-        newVisible = !this.layerVisibility[fileId]
-      }
-      
-      log.debug('新狀態:', newVisible)
-      
-      // 通知父組件更新狀態
-      this.$emit('update-layer-visibility', this.project.projectId, fileId, newVisible)
-      
-      // 如果圖層數據不存在，先載入
-      if (!this.loadedGeojsonLayers[fileId]) {
-        try {
-          const result = await this.$api.get(`/data/project/${this.project.projectId}/geojson?fileId=${fileId}`)
-          
-          if (result.success && result.data) {
-            this.loadedGeojsonLayers[fileId] = result.data
-            
-            // 等待下一個 tick 確保數據已經設置
-            await this.$nextTick()
-          }
-        } catch (error) {
-          log.error('載入圖層數據失敗:', error)
+      const projectId = this.project?.projectId
+      if (this.isClosing || !projectId) return
+      this.geojsonVisibilityRequests ||= new Map()
+      const key = `${projectId}/${fileId}`
+      const ticket = Symbol()
+      this.geojsonVisibilityRequests.set(key, ticket)
+      const visible = !this.layerVisibility[fileId]
+      this.$emit('update-layer-visibility', projectId, fileId, visible)
+      if (!visible) this.geojsonRequests?.get(key)?.controller?.abort()
+      if (visible && !this.loadedGeojsonLayers[fileId]) {
+        const data = await this.loadSpecificGeoJSONLayer(fileId)
+        if (this.geojsonVisibilityRequests.get(key) !== ticket || this.isClosing) return
+        if (!data) {
+          this.$emit('update-layer-visibility', projectId, fileId, false)
+          this.showAlert?.({ type: 'error', title: '圖層載入失敗', message: '請確認圖資格式與檔案是否存在後重試' })
+          return
         }
       }
-      
-      // 通知地圖組件更新圖層顯示
-      if (this.$refs.projectMap) {
-        // 等待下一個 tick 確保數據已經更新
-        await this.$nextTick()
-        this.$refs.projectMap.updateLayerVisibility(fileId, newVisible)
-      }
+      await this.$nextTick()
+      if (this.isClosing || this.project?.projectId !== projectId || this.geojsonVisibilityRequests.get(key) !== ticket) return
+      this.$refs.projectMap?.updateLayerVisibility(fileId, visible)
+      this.geojsonVisibilityRequests.delete(key)
     },
     
     async loadUploadedData() {
@@ -3587,14 +3570,15 @@ export default {
     // 初始化 features 列表
     async initAvailableFeatures() {
       if (this.geojsonData && this.geojsonData.geojson && this.geojsonData.geojson.features) {
-        this.availableFeatures = this.geojsonData.geojson.features.map(feature => {
+        this.availableFeatures = this.geojsonData.geojson.features.map((feature, index) => {
           // 支持多種 feature ID 格式
-          const featureId = feature.properties.Id || feature.properties.ProfileId || feature.properties.ID || feature.properties.fid
+          const properties = feature.properties || {}
+          const featureId = getFeatureId(feature, index)
           return {
             id: featureId,
             name: featureId,
-            description: feature.properties.Description || '無描述',
-            properties: feature.properties
+            description: properties.Description || '無描述',
+            properties
           }
         })
         
@@ -3602,13 +3586,13 @@ export default {
         
         // 初始化每個 feature 的上傳表單
         this.availableFeatures.forEach(feature => {
-          if (feature.id) { // 確保 feature ID 存在
-            this.featureUploadForms[feature.id] = {
+          if (feature.id != null) {
+            this.featureUploadForms[feature.id] ||= {
               name: '',
               description: '',
               file: null
             }
-            this.featureUploads[feature.id] = []
+            this.featureUploads[feature.id] ||= []
             this.featureExpanded[feature.id] = true
           } else {
             log.warn('Feature 沒有有效的 ID:', feature)
@@ -3635,7 +3619,7 @@ export default {
         return
       }
 
-      const features = this.availableFeatures.filter(feature => feature.id)
+      const features = this.availableFeatures.filter(feature => feature.id != null)
       const batchSize = 5 // 每批處理 5 個請求
       const totalBatches = Math.ceil(features.length / batchSize)
       
@@ -3677,7 +3661,7 @@ export default {
     // 資料操作方法
     async locateData(data) {
       // 檢查是否為 GeoJSON 或 KML 檔案
-      if (data.file_extension === '.geojson' || data.file_extension === '.kml') {
+      if (['.geojson', '.json', '.kml'].includes(data.file_extension)) {
         if (this.$refs.projectMap) {
           try {
             log.debug('=== 定位開始 ===')
@@ -3961,11 +3945,15 @@ export default {
     },
     
     async associateData(data) {
+      const projectId = this.project?.projectId
       // 檢查是否為潛勢分析圖層
       const isOriginalPotentialAnalysis = data.metadata?.data_type === 'potential_analysis'
       const isSnapshotPotentialAnalysis = data.metadata?.data_type === 'potential_analysis_snapshot'
       
       this.associateTargetData = data
+      this.availableFeatures = []
+      this.featureUploadForms = {}
+      this.featureUploads = {}
       
       // 如果是原始潛勢分析圖層，創建一個虛擬的 feature 來處理關聯上傳
       if (isOriginalPotentialAnalysis) {
@@ -4015,11 +4003,16 @@ export default {
         // 載入快照圖層的上傳資料
         await this.loadFeatureUploads('snapshot_overall')
       } else {
-        // 一般圖層的處理邏輯
-        // 載入所有 features 的上傳資料（使用分批處理）
-        if (this.availableFeatures.length > 0) {
-          await this.loadAllFeatureUploads()
+        const loaded = await this.loadSpecificGeoJSONLayer(data.file_id, { activate: false })
+        if (this.isClosing || this.project?.projectId !== projectId || this.associateTargetData?.file_id !== data.file_id) return
+        if (!loaded?.geojson?.features) {
+          this.showAlert({ type: 'error', title: '圖層載入失敗', message: '無法載入關聯圖徵，請稍後重試' })
+          return
         }
+        this.geojsonData = loaded
+        this.activeGeojsonLayer = data.file_id
+        await this.initAvailableFeatures()
+        await this.loadAllFeatureUploads()
       }
     },
     
@@ -4553,19 +4546,7 @@ export default {
 
     // 輔助函數：獲取檔案 URL
     getFileUrl(storagePath) {
-      if (!storagePath) {
-        return ''
-      }
-      
-      if (storagePath.startsWith('http')) {
-        return storagePath
-      }
-      
-      // Static files (uploads/, data/) go through a dedicated Vite proxy
-      // rule that maps /uploads → localhost:3001/uploads directly.
-      // Do NOT prefix with VITE_API_URL (/api) or they become /api/uploads.
-      const cleanPath = storagePath.startsWith('/') ? storagePath : `/${storagePath}`
-      return cleanPath
+      return staticUrl(storagePath)
     },
 
     // 輔助函數：獲取檔案類型顯示名稱
@@ -4696,23 +4677,16 @@ export default {
     // 定位 COG 正射影像
     async locateCOGBaseMap(baseMap) {
       try {
-        const staticBase = import.meta.env.VITE_STATIC_URL || window.location.origin
-        const tiTilerBase = import.meta.env.VITE_TITILER_URL || 'http://localhost:8080'
-        const imageUrl = `${staticBase}/${baseMap.storagePath.replace(/^\//, '')}`
-        const tiTilerAssetUrl = this.$refs.projectMap.baseMapService?.getTiTilerAssetUrl(imageUrl) || imageUrl
-        
-        // 從 TiTiler 獲取邊界
-        const response = await fetch(`${tiTilerBase}/cog/info.geojson?url=${encodeURIComponent(tiTilerAssetUrl)}`)
+        const imageUrl = staticUrl(baseMap.storagePath)
+        const info = await this.$refs.projectMap.baseMapService.fetchTiTilerBounds(imageUrl)
+        if (!info) throw new Error('TiTiler 未設定')
+        const { response, result, bounds } = info
         if (!response.ok) {
-          const errBody = await response.json().catch(() => ({}))
           if (response.status === 404) {
             throw new Error('伺服器找不到此影像檔案，可能已被刪除，請重新上傳')
           }
-          throw new Error(errBody.error || `TiTiler 回傳錯誤 (${response.status})`)
+          throw new Error(result.error || `TiTiler 回傳錯誤 (${response.status})`)
         }
-        const result = await response.json()
-        
-        const bounds = this.$refs.projectMap.baseMapService?.parseTiTilerBounds(result)
         
         if (bounds) {
           
@@ -4743,8 +4717,7 @@ export default {
     // 定位傳統 TIF 正射影像
     async locateTraditionalBaseMap(baseMap) {
       try {
-        const staticBase = import.meta.env.VITE_STATIC_URL || window.location.origin
-        const imageUrl = `${staticBase}/${baseMap.storagePath.replace(/^\//, '')}`
+        const imageUrl = staticUrl(baseMap.storagePath)
         
         // 使用 BaseMapService 計算邊界
         const boundsArray = await this.$refs.projectMap.baseMapService.calculateTifBounds(
@@ -4852,7 +4825,7 @@ export default {
       
       try {
         log.debug('[ProjectDetail] 請求 GeoJSON 數據...')
-        const response = await fetch('/uploads/monitoring/taiwan7/alertRoad.geojson')
+        const response = await fetch(staticUrl('/uploads/monitoring/taiwan7/alertRoad.geojson'))
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`)
         }
@@ -4866,8 +4839,8 @@ export default {
           this.map.removeLayer(this.mileagePointsLayer)
         }
         
-        // 創建新圖層
-        this.mileagePointsLayer = L.geoJSON(geojsonData, {
+        // Keep Leaflet renderers outside Vue reactivity so redraw cancellation uses the same instance.
+        this.mileagePointsLayer = markRaw(L.geoJSON(geojsonData, {
           pointToLayer: (feature, latlng) => {
             return L.circleMarker(latlng, {
               radius: 4,
@@ -4902,7 +4875,7 @@ export default {
             `
             layer.bindPopup(popupContent)
           }
-        })
+        }))
         
         // 默認添加到地圖（常駐顯示）
         if (this.highwayMileageVisible) {
@@ -5440,7 +5413,7 @@ export default {
         return
       }
       
-      const featureId = this.featureDisplayData?.feature?.properties?.Id || this.featureDisplayData?.featureId
+      const featureId = this.featureDisplayData?.feature?.properties?.Id ?? this.featureDisplayData?.featureId
       const fileId = this.featureDisplayData?.fileId
       
       log.debug('提取的信息:', { featureId, fileId })
@@ -5451,7 +5424,7 @@ export default {
         uploads: this.featureDisplayData?.uploads
       })
       
-      if (!featureId || !fileId) {
+      if (featureId == null || featureId === '' || !fileId) {
         log.error('缺少必要信息:', { featureId, fileId })
         this.showAlert({
           type: 'error',
@@ -5586,6 +5559,17 @@ export default {
     }
   },
   beforeUnmount() {
+    this.isClosing = true
+    for (const request of this.geojsonRequests.values()) request.controller.abort()
+    this.geojsonRequests.clear()
+    this.geojsonVisibilityRequests.clear()
+    this.clearDisasterPointMarkers()
+    this.$refs.projectMap?.clearAllLayers()
+    this.geojsonLayers = []
+    this.loadedGeojsonLayers = {}
+    this.geojsonData = null
+    this.activeGeojsonLayer = null
+    this.featureUploads = {}
     // 清理定時器
     if (this.animationTimer) {
       clearInterval(this.animationTimer)

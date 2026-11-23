@@ -215,6 +215,7 @@
 </template>
 
 <script>
+import { staticUrl } from '@/utils/urls.js'
 import api from '@/services/api';
 import { alert as showAlert, error as showError, success as showSuccess } from '@/utils/simpleAlertService';
 
@@ -333,7 +334,7 @@ export default {
     async loadRoadSections() {
       try {
         // 從 GeoJSON 文件讀取路線選項
-        const response = await fetch('/uploads/monitoring/taiwan7/alertRoad.geojson');
+        const response = await fetch(staticUrl('/uploads/monitoring/taiwan7/alertRoad.geojson'));
         const geojsonData = await response.json();
 
         // 提取所有唯一的路線名稱
@@ -354,7 +355,7 @@ export default {
         }));
         
       } catch (error) {
-        console.error('載入路線選項失敗:', error);
+
         // 如果載入失敗，使用預設選項
         this.availableRoads = [
           { value: '台7線', label: '台7線' },
@@ -388,7 +389,7 @@ export default {
     async loadWorkSections(roadSection) {
       try {
         // 從 GeoJSON 文件讀取該路線的所有工務段
-        const response = await fetch('/uploads/monitoring/taiwan7/alertRoad.geojson');
+        const response = await fetch(staticUrl('/uploads/monitoring/taiwan7/alertRoad.geojson'));
         const geojsonData = await response.json();
 
         // 提取該路線的所有唯一工務段
@@ -405,7 +406,7 @@ export default {
         this.availableWorkSections = Array.from(sectionSet).sort();
         
       } catch (error) {
-        console.error('載入工務段選項失敗:', error);
+
         this.availableWorkSections = [];
       }
     },
@@ -530,7 +531,7 @@ export default {
           throw new Error(response.message || (this.editMode ? '更新失敗' : '建立失敗'));
         }
       } catch (error) {
-        console.error(this.editMode ? '更新地區專案失敗:' : '建立地區專案失敗:', error);
+
         const errorMessage = error.response?.data?.message || error.message;
         // 如果錯誤信息包含地區代碼已存在，提供更友好的提示
         if (errorMessage && errorMessage.includes('地區代碼已存在')) {

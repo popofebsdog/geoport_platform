@@ -74,7 +74,7 @@
         </svg>
       </button>
 
-      <button @click="editData"
+      <button v-if="canEdit" @click="editData"
               class="p-1 rounded transition-colors duration-150"
               :class="isDarkMode ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-600' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'"
               title="編輯">
@@ -83,7 +83,7 @@
         </svg>
       </button>
 
-      <button @click="deleteData"
+      <button v-if="canEdit" @click="deleteData"
               class="p-1 rounded transition-colors duration-150"
               :class="isDarkMode ? 'text-gray-400 hover:text-red-400 hover:bg-red-400/10' : 'text-gray-400 hover:text-red-600 hover:bg-red-50'"
               title="刪除">
@@ -100,6 +100,7 @@ import { ref, inject } from 'vue'
 
 export default {
   name: 'TemporalDataLayerCard',
+  inject: { canEdit: { default: true } },
   props: {
     temporalData: {
       type: Object,

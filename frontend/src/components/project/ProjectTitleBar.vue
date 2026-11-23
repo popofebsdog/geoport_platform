@@ -29,6 +29,7 @@
         
         <!-- 編輯母專案資訊按鈕 -->
         <button 
+          v-if="canEdit"
           @click="$emit('edit-project')" 
           class="icon-button"
           :class="isDarkMode ? 'icon-button-dark' : 'icon-button-light'"
@@ -54,6 +55,7 @@
       
       <!-- 編輯專案資訊按鈕 -->
         <button 
+          v-if="canEdit"
           @click="$emit('edit-project')" 
           class="icon-button"
           :class="isDarkMode ? 'icon-button-dark' : 'icon-button-light'"
@@ -81,6 +83,7 @@
 <script>
 export default {
   name: 'ProjectTitleBar',
+  inject: { canEdit: { default: true } },
   props: {
     project: {
       type: Object,

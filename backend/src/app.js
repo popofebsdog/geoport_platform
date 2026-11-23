@@ -23,7 +23,6 @@ import parentProjectRoutes from './routes/parentProjects.js';
 import childProjectRoutes from './routes/childProjects.js';
 import warningRegionsRoutes from './routes/warningRegions.js';
 import spatialLayersRoutes from './routes/spatialLayers.js';
-import probeRoutes from './routes/probe.js';
 import adminRoutes from './routes/admin.js';
 
 // 導入中間件
@@ -37,6 +36,7 @@ import { logStartupReport } from './config/envReport.js';
 import { getDeepHealth } from './services/healthService.js';
 import { ensureLocalStorageRoots, storageConfig } from './services/storageService.js';
 import { installConsoleBridge, logger } from './utils/logger.js';
+import { parseTrustProxy } from './config/trustProxy.js';
 
 // 載入環境變數
 dotenv.config();
@@ -75,7 +75,8 @@ const allowedOrigins = (process.env.ALLOWED_ORIGINS || process.env.FRONTEND_URL 
   .filter(Boolean);
 
 // 中間件
-app.set('trust proxy', process.env.TRUST_PROXY || (isProduction ? 1 : false));
+app.set('trust proxy', parseTrustProxy(process.env.TRUST_PROXY, isProduction));
+app.use(requestLogger());
 
 app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" }
@@ -90,7 +91,6 @@ app.use(cors({
 }));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
-app.use(requestLogger());
 
 // 靜態文件服務（local storage adapter）
 app.use(storageConfig.uploadsPublicPath, (req, res, next) => {
@@ -118,7 +118,6 @@ app.use('/api/temporal-data-enhanced', temporalDataEnhancedRoutes);
 app.use('/api/disaster-points', disasterPointsRoutes);
 app.use('/api/warning-regions', warningRegionsRoutes);
 app.use('/api/spatial', spatialLayersRoutes);
-app.use('/api/probe', probeRoutes);
 app.use('/api/admin', adminRoutes);
 
 // 健康檢查端點
@@ -137,12 +136,20 @@ app.get('/api/health/deep', async (req, res) => {
   res.status(statusCode).json(health);
 });
 
+app.get('/api/ready', async (req, res, next) => {
+  try {
+    const health = await getDeepHealth();
+    const components = Object.fromEntries(Object.entries(health.components).map(([name, component]) => [name, { status: component.status }]));
+    return res.status(health.status === 'ok' ? 200 : 503).json({ status: health.status, components });
+  } catch (error) { next(error); }
+});
+
 // 錯誤處理中間件
 app.use(notFound);
 app.use(errorHandler);
 
 // 啟動服務器
-app.listen(PORT, async () => {
+if (process.env.NODE_ENV !== 'test') app.listen(PORT, async () => {
   log.info('GeoPort backend server started', {
     port: PORT,
     url: `http://localhost:${PORT}`,

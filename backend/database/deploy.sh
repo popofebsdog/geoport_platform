@@ -3,7 +3,7 @@
 # GeoPort PostgreSQL 資料庫部署腳本
 # 創建時間: 2025-09-24
 
-set -e
+set -euo pipefail
 
 # 顏色定義
 RED='\033[0;31m'
@@ -29,6 +29,11 @@ if ! command -v psql &> /dev/null; then
     echo -e "${RED}❌ PostgreSQL 未安裝，請先安裝 PostgreSQL${NC}"
     exit 1
 fi
+
+# Ignore user psqlrc settings and stop on the first SQL error.
+psql() {
+    command psql -X -v ON_ERROR_STOP=1 "$@"
+}
 
 # 檢查環境變數
 if [ -z "$DB_PASSWORD" ]; then
@@ -56,7 +61,9 @@ echo -e "${GREEN}✅ 資料庫連線成功${NC}"
 
 # 創建資料庫 (如果不存在)
 echo -e "${BLUE}📦 創建資料庫...${NC}"
-if psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d postgres -lqt | cut -d \| -f 1 | grep -qw "$DB_NAME"; then
+database_list=$(psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d postgres -lqt)
+database_exists=false
+if cut -d \| -f 1 <<< "$database_list" | grep -qw -- "$DB_NAME"; then
     echo -e "${YELLOW}⚠️  資料庫 '$DB_NAME' 已存在${NC}"
     read -p "是否要重新創建資料庫？這將刪除所有現有資料！(y/N): " -n 1 -r
     echo
@@ -66,10 +73,11 @@ if psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d postgres -lqt | cut -d \| -
         echo -e "${GREEN}✅ 資料庫已刪除${NC}"
     else
         echo -e "${BLUE}📝 使用現有資料庫${NC}"
+        database_exists=true
     fi
 fi
 
-if ! psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d postgres -lqt | cut -d \| -f 1 | grep -qw "$DB_NAME"; then
+if [ "$database_exists" = false ]; then
     echo -e "${BLUE}🆕 創建新資料庫...${NC}"
     psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d postgres -c "CREATE DATABASE $DB_NAME;"
     echo -e "${GREEN}✅ 資料庫 '$DB_NAME' 創建成功${NC}"
@@ -83,6 +91,10 @@ echo -e "${GREEN}✅ 資料庫初始化完成${NC}"
 # 執行遷移腳本
 echo -e "${BLUE}📋 執行資料庫遷移...${NC}"
 
+# The functions migration sorts before the tracking-table migration on a fresh DB.
+psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" \
+    --single-transaction -f "$SCRIPT_DIR/migrations/000_create_schema_migrations.sql"
+
 # 按檔名順序執行所有遷移腳本，並寫入 schema_migrations
 shopt -s nullglob
 MIGRATION_PATHS=("$SCRIPT_DIR"/migrations/*.sql)
@@ -90,10 +102,12 @@ if [ ${#MIGRATION_PATHS[@]} -eq 0 ]; then
     echo -e "${YELLOW}  ⚠️  找不到 migration 檔案${NC}"
 fi
 
+migration_sql=$(mktemp)
+trap 'rm -f "$migration_sql"' EXIT
 for migration_path in "${MIGRATION_PATHS[@]}"; do
     migration_file="$(basename "$migration_path")"
     if [ "$migration_file" != "000_create_schema_migrations.sql" ]; then
-        already_applied=$(psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -tAc "SELECT 1 FROM schema_migrations WHERE version = '$migration_file' LIMIT 1;" 2>/dev/null || true)
+        already_applied=$(psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -tAc "SELECT 1 FROM schema_migrations WHERE version = '$migration_file' LIMIT 1;")
         if [ "$already_applied" = "1" ]; then
             echo -e "${GREEN}  ⏭️  $migration_file 已套用，略過${NC}"
             continue
@@ -101,10 +115,15 @@ for migration_path in "${MIGRATION_PATHS[@]}"; do
     fi
 
     echo -e "${BLUE}  📄 執行 $migration_file...${NC}"
-    psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -f "$migration_path"
-
     checksum=$(shasum -a 256 "$migration_path" | awk '{print $1}')
-    psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -c "
+    if [ "$migration_file" = "017_migrate_existing_projects_to_parent_child.sql" ]; then
+        # 017 has one audited outer BEGIN/COMMIT; keep its PL/pgSQL blocks intact.
+        sed '/^BEGIN;$/d; /^COMMIT;$/d' "$migration_path" > "$migration_sql"
+    else
+        cp "$migration_path" "$migration_sql"
+    fi
+    psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" \
+      --single-transaction -f "$migration_sql" -c "
       INSERT INTO schema_migrations (version, checksum)
       VALUES ('$migration_file', '$checksum')
       ON CONFLICT (version) DO UPDATE
@@ -149,33 +168,20 @@ FROM pg_proc
 WHERE pronamespace = (SELECT oid FROM pg_namespace WHERE nspname = 'public');
 "
 
-# 創建預設管理員用戶 (可選)
-echo -e "${BLUE}👤 是否要創建預設管理員用戶？${NC}"
-read -p "創建預設管理員用戶 (y/N): " -n 1 -r
-echo
-if [[ $REPLY =~ ^[Yy]$ ]]; then
-    read -p "請輸入管理員用戶名 (預設: admin): " admin_username
-    admin_username=${admin_username:-admin}
-    
-    read -s -p "請輸入管理員密碼: " admin_password
-    echo
-    
-    read -p "請輸入管理員郵箱: " admin_email
-    
-    # 這裡需要實際的密碼雜湊邏輯
-    echo -e "${YELLOW}⚠️  請手動創建管理員用戶，或使用應用程式的註冊功能${NC}"
-fi
+echo "Create the administrator separately with seed_admin.js and ADMIN_PASSWORD or ADMIN_PASSWORD_FILE."
 
 echo -e "${GREEN}🎉 資料庫部署完成！${NC}"
 echo -e "${BLUE}📋 部署摘要:${NC}"
 echo "  - 資料庫名稱: $DB_NAME"
 echo "  - 主機: $DB_HOST:$DB_PORT"
 echo "  - 用戶: $DB_USER"
-echo "  - 表數量: $(psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -t -c "SELECT COUNT(*) FROM pg_tables WHERE schemaname = 'public';")"
-echo "  - 視圖數量: $(psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -t -c "SELECT COUNT(*) FROM pg_views WHERE schemaname = 'public';")"
+table_count=$(psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -t -c "SELECT COUNT(*) FROM pg_tables WHERE schemaname = 'public';")
+view_count=$(psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -t -c "SELECT COUNT(*) FROM pg_views WHERE schemaname = 'public';")
+echo "  - 表數量: $table_count"
+echo "  - 視圖數量: $view_count"
 
 echo -e "${BLUE}🔗 連線字串範例:${NC}"
-echo "postgresql://$DB_USER:$DB_PASSWORD@$DB_HOST:$DB_PORT/$DB_NAME"
+echo "postgresql://$DB_USER:<redacted>@$DB_HOST:$DB_PORT/$DB_NAME"
 
 echo -e "${YELLOW}📝 下一步:${NC}"
 echo "1. 更新 .env 文件中的資料庫配置"

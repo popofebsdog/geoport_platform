@@ -44,7 +44,7 @@
             </button>
 
             <!-- 操作按鈕（選中後滑入） -->
-            <div class="region-actions flex items-center gap-0">
+            <div v-if="canEdit" class="region-actions flex items-center gap-0">
               <button
                 @click.stop="$emit('edit', region)"
                 class="p-1.5 h-full flex items-center transition-colors"
@@ -111,7 +111,7 @@ import { error as showError } from '@/utils/simpleAlertService';
 export default {
   name: 'RegionSelector',
   components: { DeleteConfirmModal },
-  inject: ['isDarkMode'],
+  inject: { isDarkMode: { default: false }, canEdit: { default: true } },
   props: {
     modelValue:        { type: [String, Number], default: null },
     showCreateButton:  { type: Boolean, default: true }
@@ -151,7 +151,7 @@ export default {
           this.$emit('regions-loaded', this.regions);
         }
       } catch (error) {
-        console.error('載入預警地區列表失敗:', error);
+
       } finally {
         this.loading = false;
       }
@@ -187,7 +187,7 @@ export default {
           this.cancelDelete();
         }
       } catch (err) {
-        console.error('刪除監測地區專案失敗:', err);
+
         showError('刪除失敗：' + (err.response?.data?.message || err.message), '刪除失敗', this.isDarkMode);
         this.cancelDelete();
       }

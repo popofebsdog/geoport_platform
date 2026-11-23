@@ -7,3 +7,11 @@ logs
 uploads
 data
 coverage
+.venv/
+
+# Database backups (including legacy locations and incomplete dumps)
+**/backups
+**/geoport_backup_*
+**/.geoport_backup_*
+**/geoport_bundle_*
+**/.geoport_bundle_*

@@ -1,7 +1,7 @@
 <template>
   <Teleport to="body">
     <div v-if="isVisible" class="fixed inset-0 z-[1200] flex items-center justify-center bg-black bg-opacity-50">
-    <div class="rounded border mx-4 flex flex-col transition-all duration-300"
+    <div class="rounded border mx-4 min-w-0 flex flex-col transition-all duration-300"
          :class="[
            isDarkMode ? 'bg-slate-800' : 'bg-white',
            isEditMode ? 'w-full max-w-2xl max-h-[60vh]' : 'w-full max-w-5xl h-[90vh]'
@@ -28,11 +28,11 @@
       </div>
       
       <!-- 內容區域 -->
-      <div class="flex flex-1 min-h-0">
+      <div class="flex flex-col sm:flex-row flex-1 min-h-0 overflow-y-auto sm:overflow-hidden">
         <!-- 左側表單區域 -->
         <div :class="[
-          'p-6 overflow-y-auto',
-          isEditMode ? 'w-full' : ((formData.type === 'csv') ? 'w-1/2 border-r' : 'w-full'),
+          'p-6 min-w-0 flex-shrink-0 sm:flex-shrink overflow-visible sm:overflow-y-auto',
+          isEditMode ? 'w-full' : ((formData.type === 'csv') ? 'w-full sm:w-1/2 sm:border-r' : 'w-full'),
           isDarkMode ? 'border-slate-600' : 'border-gray-200'
         ]">
           <form @submit.prevent="handleSubmit" class="space-y-4">
@@ -392,7 +392,7 @@
         </div>
         
         <!-- 右側預覽區域 (僅 CSV 時顯示，編輯模式下不顯示) -->
-        <div v-if="formData.type === 'csv' && !isEditMode" class="w-1/2 p-6"
+        <div v-if="formData.type === 'csv' && !isEditMode" class="w-full sm:w-1/2 min-w-0 flex-shrink-0 sm:flex-shrink sm:overflow-y-auto p-6"
              :class="isDarkMode ? 'bg-slate-800' : 'bg-gray-50'">
           <div class="space-y-3">
             <h4 class="text-lg font-semibold transition-colors duration-300"
@@ -569,6 +569,7 @@
 <script>
 import { show as showAlert } from '@/utils/simpleAlertService'
 import { logger } from '@/utils/logger.js'
+import Papa from 'papaparse'
 
 const log = logger.scoped('TemporalDataUploadModal')
 
@@ -755,6 +756,7 @@ export default {
       previewData: [],
       previewColumns: [],
       isParsingFile: false,
+      csvPreviewRequest: 0,
       // 圖表配置
       chartConfig: {
         xAxisColumns: [], // X 軸時間欄位（可多選，會合併）
@@ -776,6 +778,7 @@ export default {
     },
     
     resetForm() {
+      this.csvPreviewRequest++
       log.debug('[resetForm] 重置表單，isEditMode:', this.isEditMode, 'editingData:', this.editingData)
       // 只有在非編輯模式下才重置表單
       // 編輯模式下保留已載入的數據
@@ -899,95 +902,28 @@ export default {
     },
     
     parseCSVFile(file) {
-      if (!file || (!file.type.includes('csv') && !file.name.toLowerCase().endsWith('.csv'))) {
-        this.previewData = []
-        this.previewColumns = []
-        this.isParsingFile = false
-        return
-      }
-      
-      this.isParsingFile = true
+      const request = ++this.csvPreviewRequest
       this.previewData = []
       this.previewColumns = []
-      
-      const reader = new FileReader()
-      reader.onload = (e) => {
-        try {
-          const csvText = e.target.result
-          const lines = csvText.split('\n').filter(line => line.trim())
-          
-          if (lines.length === 0) {
-            this.previewData = []
-            this.previewColumns = []
-            this.isParsingFile = false
-            return
-          }
-          
-          // 解析 CSV 標題行
-          const headers = this.parseCSVLine(lines[0])
-          this.previewColumns = headers
-          
-          // 解析資料行（最多解析前 100 行以避免性能問題）
-          const dataRows = lines.slice(1, 101).map(line => {
-            const values = this.parseCSVLine(line)
-            const row = {}
-            headers.forEach((header, index) => {
-              row[header] = values[index] || ''
-            })
-            return row
-          })
-          
-          this.previewData = dataRows
+      this.isParsingFile = false
+      if (!file || !file.name.toLowerCase().endsWith('.csv')) return
+      this.isParsingFile = true
+      Papa.parse(file, {
+        header: true, preview: 100, chunkSize: 256 * 1024, skipEmptyLines: 'greedy',
+        transformHeader: header => header.replace(/^\uFEFF/, '').trim(),
+        complete: result => {
+          if (request !== this.csvPreviewRequest) return
+          const errors = result.errors.filter(error => error.code !== 'UndetectableDelimiter')
+          this.previewColumns = errors.length ? [] : result.meta.fields || []
+          this.previewData = errors.length ? [] : result.data
           this.isParsingFile = false
-          
-        } catch (error) {
+        },
+        error: error => {
+          if (request !== this.csvPreviewRequest) return
           log.error('CSV 解析錯誤:', error)
-          this.previewData = []
-          this.previewColumns = []
           this.isParsingFile = false
         }
-      }
-      
-      reader.onerror = () => {
-        log.error('檔案讀取錯誤')
-        this.previewData = []
-        this.previewColumns = []
-        this.isParsingFile = false
-      }
-      
-      reader.readAsText(file, 'UTF-8')
-    },
-    
-    parseCSVLine(line) {
-      const result = []
-      let current = ''
-      let inQuotes = false
-      
-      for (let i = 0; i < line.length; i++) {
-        const char = line[i]
-        
-        if (char === '"') {
-          if (inQuotes && line[i + 1] === '"') {
-            // 處理雙引號轉義
-            current += '"'
-            i++ // 跳過下一個引號
-          } else {
-            // 切換引號狀態
-            inQuotes = !inQuotes
-          }
-        } else if (char === ',' && !inQuotes) {
-          // 遇到逗號且不在引號內，結束當前欄位
-          result.push(current.trim())
-          current = ''
-        } else {
-          current += char
-        }
-      }
-      
-      // 添加最後一個欄位
-      result.push(current.trim())
-      
-      return result
+      })
     },
     
     // 切換軸線選擇模式

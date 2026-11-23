@@ -256,7 +256,7 @@ export default {
             try {
               data = JSON.parse(data)
             } catch (e) {
-              console.warn('解析 inspection_data 失敗:', e)
+
               data = {}
             }
           }
@@ -299,7 +299,7 @@ export default {
           try {
             data = JSON.parse(data)
           } catch (e) {
-            console.warn('解析 inspection_data 失敗:', e)
+
             data = {}
           }
         }
@@ -415,7 +415,7 @@ export default {
           this.handleClose()
         }
       } catch (error) {
-        console.error('保存特別巡查記錄失敗:', error)
+
         const errorMessage = error.response?.data?.message || error.message || '未知錯誤'
         await showError('保存失敗：' + errorMessage, '保存失敗', this.isDarkMode)
       } finally {

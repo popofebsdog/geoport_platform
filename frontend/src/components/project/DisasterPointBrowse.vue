@@ -61,7 +61,7 @@ export default {
         }
       } catch (error) {
         // 地圖可能已經被銷毀，忽略錯誤
-        console.warn('清理地圖動畫時發生錯誤（地圖可能已銷毀）:', error)
+
       }
     }
     this.isAnimating = false

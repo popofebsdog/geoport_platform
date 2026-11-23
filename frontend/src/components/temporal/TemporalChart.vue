@@ -375,7 +375,7 @@ export default {
           this.error = response.data.message || '載入圖表數據失敗'
         }
       } catch (error) {
-        console.error('載入圖表數據失敗:', error)
+
         this.error = '載入圖表數據失敗: ' + (error.response?.data?.message || error.message)
       } finally {
         this.isLoading = false

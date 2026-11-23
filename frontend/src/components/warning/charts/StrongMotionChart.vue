@@ -7,27 +7,33 @@
       </div>
     </div>
     
-    <div v-else-if="!data" class="flex items-center justify-center h-full">
+    <div v-else-if="!dataState.available" role="status" class="flex items-center justify-center h-full">
       <div class="text-center text-gray-400 dark:text-gray-500">
         <svg class="w-12 h-12 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
         </svg>
-        <p class="text-sm">暫無數據</p>
+        <p class="text-sm">{{ dataState.text }}</p>
       </div>
     </div>
     
-    <div v-else class="relative w-full h-full">
-      <canvas ref="chartCanvas" class="w-full h-full"></canvas>
-      <div v-if="chart && !hasMotionSignal" class="chart-empty-state"
-           :class="isDarkMode ? 'chart-empty-state--dark' : 'chart-empty-state--light'">
-        <span>無強地動事件</span>
-        <small>PGA 維持背景值</small>
+    <div v-else class="relative w-full h-full motion-content">
+      <small v-if="data.parsed?.metadata?.startTime" class="event-caption" :class="{ 'is-dark': isDarkMode }">{{ getChartTitle() }}</small>
+      <div class="motion-plot">
+        <canvas ref="chartCanvas" class="w-full h-full"></canvas>
+        <div v-if="chart && !hasMotionSignal" class="chart-empty-state"
+             :class="isDarkMode ? 'chart-empty-state--dark' : 'chart-empty-state--light'">
+          <span>此筆資料無明顯波動</span>
+          <small>{{ dataState.status === 'historical' ? '歷史事件紀錄' : '依目前已取得資料' }}</small>
+        </div>
       </div>
     </div>
   </div>
 </template>
 
 <script>
+import { getMonitoringState } from '@/utils/monitoringData.js';
+import { markRaw } from 'vue';
+
 export default {
   name: 'StrongMotionChart',
   props: {
@@ -44,7 +50,7 @@ export default {
       default: null
     },
     regionId: {
-      type: String,
+      type: [String, Number],
       default: null
     },
     isDarkMode: {
@@ -55,8 +61,12 @@ export default {
   data() {
     return {
       chart: null,
+      renderRequestId: 0,
       hasMotionSignal: true
     };
+  },
+  computed: {
+    dataState() { return getMonitoringState(this.data); }
   },
   watch: {
     regionCode: {
@@ -67,7 +77,7 @@ export default {
             this.chart.destroy();
             this.chart = null;
           } catch (e) {
-            console.warn('清除舊圖表時出錯:', e);
+
           }
         }
       }
@@ -97,6 +107,7 @@ export default {
     }
   },
   beforeUnmount() {
+    this.renderRequestId += 1;
     if (this.chart) {
       this.chart.destroy();
     }
@@ -157,25 +168,11 @@ export default {
       });
     },
     getChartTitle() {
-      // 地震事件模式：只有今日数据才显示事件时间
-      if (this.data && this.data.parsed && this.data.parsed.metadata && this.data.parsed.metadata.startTime) {
-        const isToday = this.isEventToday();
-        if (isToday) {
-          const startTime = this.data.parsed.metadata.startTime;
-          const stationCode = this.data.parsed.metadata.stationCode;
-          try {
-            const match = startTime.match(/(\d{4})\/(\d{2})\/(\d{2})-(\d{2}):(\d{2}):(\d{2})/);
-            if (match) {
-              return `地震事件波形 - ${stationCode} (${match[1]}/${match[2]}/${match[3]} ${match[4]}:${match[5]})`;
-            }
-          } catch (e) {
-            // 忽略错误
-          }
-          return `地震事件波形 - ${stationCode}`;
-        }
+      const metadata = this.data?.parsed?.metadata;
+      if (metadata?.startTime) {
+        const prefix = this.isEventToday() ? '事件波形' : '歷史事件波形';
+        return `${prefix} ${metadata.stationCode || ''} ${metadata.startTime}`;
       }
-      
-      // 日常监测模式或非今日数据：显示当前日期
       return `強地動監測數據 - ${this.getCurrentDateTitle()}`;
     },
     isEventToday() {
@@ -196,12 +193,14 @@ export default {
           return eventDate === todayStr;
         }
       } catch (e) {
-        console.warn('解析地震事件日期失敗:', e);
+
       }
       
       return false;
     },
     async createChart() {
+      const requestId = ++this.renderRequestId;
+      const canvas = this.$refs.chartCanvas;
       if (!this.$refs.chartCanvas || !this.data) return;
       
       // 確保先銷毀現有的圖表實例
@@ -209,7 +208,7 @@ export default {
         try {
           this.chart.destroy();
         } catch (e) {
-          console.warn('銷毀圖表時出錯:', e);
+
         }
         this.chart = null;
       }
@@ -217,6 +216,7 @@ export default {
       try {
         const { Chart, registerables } = await import('chart.js');
         const { applyChartDefaults, baseChartOptions, axisScale } = await import('@/utils/chartDefaults.js');
+        if (requestId !== this.renderRequestId || this.loading || this.$refs.chartCanvas !== canvas) return;
         Chart.register(...registerables);
         applyChartDefaults(Chart);
 
@@ -224,7 +224,7 @@ export default {
         const base = baseChartOptions(dark);
         const chartData = this.prepareChartData();
 
-        this.chart = new Chart(this.$refs.chartCanvas, {
+        const chart = new Chart(canvas, {
           type: 'line',
           data: chartData,
           options: {
@@ -267,14 +267,15 @@ export default {
             }
           }
         });
+        this.chart = markRaw(chart);
       } catch (error) {
-        console.error('創建圖表失敗:', error);
+
       }
     },
     prepareChartData() {
       
       if (!this.data) {
-        console.warn('強地動數據為空');
+
         const labels = this.generateTimeLabels();
         const values = new Array(24).fill(0);
         this.hasMotionSignal = false;
@@ -298,32 +299,9 @@ export default {
       const hasEventData = this.data.parsed && 
                           this.data.parsed.metadata && 
                           this.data.parsed.timeSeries && 
-                          this.data.parsed.timeSeries.length > 1000;
+                          this.data.parsed.timeSeries.length > 0;
       
       if (hasEventData) {
-        // 检查是否为今日数据
-        const isToday = this.isEventToday();
-        if (!isToday) {
-          console.warn('⚠️ 地震事件數據不是今日，不顯示');
-          // 返回空数据
-          const labels = this.generateTimeLabels();
-          const values = new Array(24).fill(0);
-          this.hasMotionSignal = false;
-          return {
-            labels: labels,
-            datasets: [{
-              label: '加速度 (gal)',
-              data: values,
-              borderColor: this.isDarkMode ? '#22d3ee' : '#0f766e',
-              backgroundColor: this.isDarkMode ? 'rgba(34,211,238,0.1)' : 'rgba(15,118,110,0.08)',
-              tension: 0.34,
-              fill: false,
-              pointRadius: 0,
-              pointHoverRadius: 4,
-              borderWidth: 2.2
-            }]
-          };
-        }
         return this.prepareEventChartData();
       }
       
@@ -432,12 +410,13 @@ export default {
       
       // 降采样：从24000个点降到120个点（每秒1个点）
       const sampledData = [];
-      const samplesPerSecond = metadata.sampleRate; // 200
+      const sampleRate = Number(metadata.sampleRate);
+      const samplesPerSecond = Number.isFinite(sampleRate) && sampleRate > 0 ? Math.max(1, Math.round(sampleRate)) : 1;
       for (let i = 0; i < timeSeries.length; i += samplesPerSecond) {
         // 取这一秒内的最大absAcceleration
         let maxAcc = 0;
         for (let j = i; j < Math.min(i + samplesPerSecond, timeSeries.length); j++) {
-          const acc = timeSeries[j].absAcceleration || 0;
+          const acc = Math.abs(Number(timeSeries[j].absAcceleration ?? timeSeries[j].acceleration));
           if (acc > maxAcc) maxAcc = acc;
         }
         sampledData.push({
@@ -467,12 +446,13 @@ export default {
       };
     },
     async updateChart() {
+      this.renderRequestId += 1;
       // 確保先銷毀現有的圖表實例
       if (this.chart) {
         try {
           this.chart.destroy();
         } catch (e) {
-          console.warn('銷毀圖表時出錯:', e);
+
         }
         this.chart = null;
       }
@@ -490,10 +470,36 @@ export default {
 
 <style scoped>
 .strong-motion-chart {
+  position: relative;
   min-height: 0;
   height: 100%;
   width: 100%;
   overflow: hidden;
+}
+
+.event-caption {
+  flex-shrink: 0;
+  line-height: 16px;
+  text-align: center;
+  font-size: 11px;
+  color: #526579;
+  pointer-events: none;
+}
+
+.event-caption.is-dark {
+  color: #cbd5e1;
+}
+
+.motion-content {
+  display: flex;
+  flex-direction: column;
+}
+
+.motion-plot {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
 }
 
 .chart-empty-state {

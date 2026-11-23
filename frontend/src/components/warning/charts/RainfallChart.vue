@@ -6,12 +6,12 @@
         <p class="text-xs" :class="isDarkMode ? 'text-slate-500' : 'text-gray-400'">載入中...</p>
       </div>
     </div>
-    <div v-else-if="!data && !chartData" class="flex items-center justify-center h-full">
+    <div v-else-if="!dataState.available" role="status" class="flex items-center justify-center h-full">
       <div class="text-center" :class="isDarkMode ? 'text-slate-600' : 'text-gray-400'">
         <svg class="w-10 h-10 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z"/>
         </svg>
-        <p class="text-xs">暫無數據</p>
+        <p class="text-xs">{{ dataState.text }}</p>
       </div>
     </div>
 
@@ -34,6 +34,8 @@
 </template>
 
 <script>
+import { apiUrl } from '@/utils/urls.js'
+import { getMonitoringState } from '@/utils/monitoringData.js';
 import VueApexCharts from 'vue3-apexcharts';
 
 export default {
@@ -49,6 +51,7 @@ export default {
     isDarkMode:   { type: Boolean, default: false },
     selectedDate: { type: String,  default: null },
     thresholds:   { type: Object,  default: () => ({ yellow: 20, red: 40 }) },
+    managed:      { type: Boolean, default: false },
   },
   data() {
     const d = new Date();
@@ -58,6 +61,7 @@ export default {
       maxDate: today,
       loadingData: false,
       chartData: null,
+      dataRequestId: 0,
       localThresholds: { yellow: 20, red: 40 },
       chartReady: false,
       hasRainSignal: true,
@@ -75,7 +79,7 @@ export default {
     selectedDate(newVal) {
       if (newVal && newVal !== this.currentDate) {
         this.currentDate = newVal;
-        if (this.regionCode) {
+        if (!this.managed && (this.regionId || this.regionCode)) {
           this.loadDataForDate(this.currentDate);
         } else {
           this.markChartReady();
@@ -98,6 +102,7 @@ export default {
     }
   },
   computed: {
+    dataState() { return getMonitoringState(this.managed ? this.data : this.chartData || this.data); },
     isToday() {
       const d = new Date();
       const local = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
@@ -129,11 +134,14 @@ export default {
   },
   mounted() {
     if (this.selectedDate) this.currentDate = this.selectedDate;
-    if (this.regionCode) {
+    if (!this.managed && (this.regionId || this.regionCode)) {
       this.loadDataForDate(this.currentDate);
     } else if (this.data && !this.loading) {
       this.markChartReady();
     }
+  },
+  beforeUnmount() {
+    this.dataRequestId += 1;
   },
   methods: {
     formatTimeLabel(timeStr) {
@@ -173,12 +181,16 @@ export default {
       return labels;
     },
     async loadDataForDate(dateStr) {
-      if (!this.regionCode) return;
-      
+      if (!this.regionId && !this.regionCode) return;
+      const requestId = ++this.dataRequestId;
       this.loadingData = true;
       try {
         const axios = (await import('axios')).default;
-        const response = await axios.get(`/api/warning-regions/${this.regionCode}/data`, {
+        const path = this.regionId
+          ? `/warning-regions/id/${encodeURIComponent(this.regionId)}/data`
+          : `/warning-regions/${encodeURIComponent(this.regionCode)}/data`;
+        const response = await axios.get(apiUrl(path), {
+          timeout: 30000,
           params: { 
             dataType: 'chart2', 
             useExternalApi: 'true',
@@ -187,19 +199,20 @@ export default {
         });
         
         
-        if (response.data.success && response.data.source === 'external_api') {
+        if (requestId !== this.dataRequestId) return;
+        if (response.data.source === 'external_api' && response.data.data) {
           this.chartData = response.data.data;
         } else {
-          console.warn('雨量API返回失敗:', response.data);
-          this.chartData = null;
+          this.chartData = { dataStatus: 'error' };
         }
       } catch (error) {
-        console.error('載入雨量數據失敗:', error);
-        this.chartData = null;
+        if (requestId === this.dataRequestId) this.chartData = { dataStatus: 'error' };
       } finally {
-        this.loadingData = false;
-        await this.$nextTick();
-        this.markChartReady();
+        if (requestId === this.dataRequestId) {
+          this.loadingData = false;
+          await this.$nextTick();
+          this.markChartReady();
+        }
       }
     },
     // 將時間字符串轉換為小時索引（0-23）
@@ -270,14 +283,14 @@ export default {
       
       // 调试：如果不匹配且有雨量，输出详细信息
       if (!isMatch && (item.hourly > 0 || item.accumulated > 0)) {
-        console.warn(`⚠️ 日期不匹配: dataTimeStr=${dataTimeStr}, 解析後=${dataDateStr}, 期望=${selectedDateStr}`);
+
       }
       
       return isMatch;
     },
     prepareChartData() {
       // 優先使用本地載入的數據（chartData），其次使用props傳入的數據（data）
-      const dataSource = this.chartData || this.data;
+      const dataSource = this.managed ? this.data : this.chartData || this.data;
       
       if (dataSource) {
         if (dataSource.time_series) {
@@ -298,7 +311,7 @@ export default {
       const accumulatedValues = new Array(maxHour + 1).fill(0);
       
       if (!dataSource) {
-        console.warn('雨量數據為空');
+
         return {
           labels,
           hourlyValuesForDisplay: hourlyValues,
@@ -349,7 +362,7 @@ export default {
             }
           } else {
             if (hourlyValue > 0 || idx < 5) {
-              console.warn(`❌ 無法處理 [${idx}]: timeStr=${timeStr}, hourIndex=${hourIndex}, maxHour=${maxHour}`);
+
             }
           }
         });
@@ -445,8 +458,8 @@ export default {
       });
       
       if (rainyHours.length === 0 && Math.max(...accumulatedValues) === 0) {
-        console.warn('⚠️ 警告：沒有檢測到任何雨量數據！');
-        console.warn('請檢查API數據和日期過濾邏輯');
+
+
       }
       
       // 计算Y轴的合理范围

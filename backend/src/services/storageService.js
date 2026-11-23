@@ -3,12 +3,12 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
 
-dotenv.config();
-
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const backendRoot = path.resolve(__dirname, '..', '..');
 const projectRoot = path.resolve(backendRoot, '..');
+
+dotenv.config({ path: path.join(backendRoot, '.env') });
 
 const provider = (process.env.STORAGE_PROVIDER || 'local').toLowerCase();
 
@@ -96,14 +96,11 @@ class LocalStorageAdapter extends StorageAdapter {
   }
 
   publicUrl(storagePath) {
-    if (!storagePath) return null;
-    const normalized = storagePath.replace(/\\/g, '/');
-    if (normalized.startsWith(storageConfig.uploadsPublicPath)) return normalized;
-    if (normalized.startsWith('/data/')) return normalized;
-    if (normalized.startsWith('uploads/')) {
-      return `${storageConfig.uploadsPublicPath}/${normalized.replace(/^uploads\/?/, '')}`;
-    }
-    return normalized.startsWith('/') ? normalized : `${storageConfig.dataPublicPath}/${normalized}`;
+    if (!resolveStoragePath(storagePath)) return null;
+    const portable = toStoragePath(storagePath);
+    const uploads = portable.startsWith('uploads/');
+    const prefix = uploads ? this.config.uploadsPublicPath : this.config.dataPublicPath;
+    return `${prefix.replace(/\/$/, '')}/${portable.slice(portable.indexOf('/') + 1)}`;
   }
 }
 
@@ -141,33 +138,58 @@ export function isLocalStorage() {
 }
 
 export function isAllowedLocalPath(candidate) {
-  const resolved = path.resolve(candidate);
-  return resolved === storageConfig.uploadsRoot ||
-    resolved === storageConfig.dataRoot ||
-    resolved.startsWith(`${storageConfig.uploadsRoot}${path.sep}`) ||
-    resolved.startsWith(`${storageConfig.dataRoot}${path.sep}`);
+  return typeof candidate === 'string' && path.isAbsolute(candidate) &&
+    [storageConfig.uploadsRoot, storageConfig.dataRoot].some(root => isWithinRoot(root, candidate));
+}
+
+function isWithinRoot(root, candidate) {
+  const relative = path.relative(root, candidate);
+  return relative === '' || (!relative.startsWith(`..${path.sep}`) && relative !== '..' && !path.isAbsolute(relative));
 }
 
 export function resolveStoragePath(storagePath) {
-  if (!storagePath) return null;
-
+  if (typeof storagePath !== 'string' || !storagePath || storagePath.includes('\0')) return null;
   const normalized = storagePath.replace(/\\/g, '/');
-  const stripped = normalized
-    .replace(/^\/uploads\/?/, '')
-    .replace(/^uploads\/?/, '');
+  if (path.isAbsolute(normalized) && isAllowedLocalPath(normalized)) return path.resolve(normalized);
 
-  const candidates = [];
-  if (path.isAbsolute(storagePath)) candidates.push(storagePath);
-  candidates.push(
-    path.join(backendRoot, storagePath),
-    path.join(storageConfig.uploadsRoot, stripped),
-    path.join(storageConfig.uploadsRoot, storagePath),
-    path.join(projectRoot, storagePath)
-  );
+  // Old default absolute paths remain portable after moving the storage roots.
+  const roots = [
+    [path.join(backendRoot, 'uploads'), storageConfig.uploadsRoot],
+    [path.join(projectRoot, 'data'), storageConfig.dataRoot]
+  ];
+  if (path.isAbsolute(normalized)) {
+    for (const [legacyRoot, root] of roots) {
+      if (isWithinRoot(legacyRoot, normalized)) return path.join(root, path.relative(legacyRoot, normalized));
+    }
+  }
 
-  return candidates
-    .map(candidate => path.resolve(candidate))
-    .find(isAllowedLocalPath) || null;
+  const namespaces = [
+    ['uploads', storageConfig.uploadsRoot],
+    ['data', storageConfig.dataRoot],
+    ['../data', storageConfig.dataRoot],
+    [storageConfig.uploadsPublicPath.replace(/^\/|\/$/g, ''), storageConfig.uploadsRoot],
+    [storageConfig.dataPublicPath.replace(/^\/|\/$/g, ''), storageConfig.dataRoot]
+  ];
+  const value = normalized.replace(/^\//, '');
+  for (const [prefix, root] of namespaces) {
+    if (!prefix) continue;
+    if (value !== prefix && !value.startsWith(`${prefix}/`)) continue;
+    const relative = value.slice(prefix.length).replace(/^\//, '');
+    if (relative.split('/').includes('..')) return null;
+    const resolved = path.resolve(root, relative);
+    return isWithinRoot(root, resolved) ? resolved : null;
+  }
+  return null;
+}
+
+export function toStoragePath(storagePath) {
+  const resolved = resolveStoragePath(storagePath);
+  if (!resolved) throw new Error('Storage path is outside allowed roots');
+  const roots = [['uploads', storageConfig.uploadsRoot], ['data', storageConfig.dataRoot]]
+    .sort((a, b) => b[1].length - a[1].length);
+  for (const [prefix, root] of roots) {
+    if (isWithinRoot(root, resolved)) return `${prefix}/${path.relative(root, resolved).split(path.sep).join('/')}`;
+  }
 }
 
 export async function statStoragePath(storagePath, storageType = 'local') {
@@ -179,12 +201,7 @@ export async function directoryStats(root) {
   let fileCount = 0;
 
   async function walk(current) {
-    let entries = [];
-    try {
-      entries = await fs.readdir(current, { withFileTypes: true });
-    } catch {
-      return;
-    }
+    const entries = await fs.readdir(current, { withFileTypes: true });
 
     await Promise.all(entries.map(async entry => {
       const entryPath = path.join(current, entry.name);

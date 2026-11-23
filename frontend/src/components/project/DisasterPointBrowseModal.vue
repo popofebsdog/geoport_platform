@@ -207,6 +207,7 @@
 </template>
 
 <script>
+import { staticUrl } from '@/utils/urls.js'
 export default {
   name: 'DisasterPointBrowseModal',
   props: {
@@ -500,29 +501,7 @@ export default {
     },
     
     getMediaUrl(media) {
-      
-      // 構建媒體文件的 URL
-      if (media.storage_path) {
-        let url = ''
-        // 如果是相對路徑（以 /uploads/ 開頭），直接使用（後端會通過 /uploads 路由提供）
-        if (media.storage_path.startsWith('/uploads/')) {
-          // 確保路徑正確：如果是 Windows 路徑風格，轉換為 Unix 風格
-          url = media.storage_path.replace(/\\/g, '/')
-        } else {
-          // 如果是完整路徑，直接使用
-          url = media.storage_path
-        }
-        
-        return url
-      }
-      
-      // 如果有 thumbnail_path，使用縮圖
-      if (media.thumbnail_path) {
-        return media.thumbnail_path
-      }
-      
-      // 如果沒有 storage_path，返回空字符串（前端會顯示錯誤處理）
-      return ''
+      return staticUrl(media.storage_path || media.thumbnail_path)
     },
     
     

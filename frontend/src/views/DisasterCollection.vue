@@ -18,7 +18,7 @@
         
         <div class="flex items-center space-x-3 h-9">
           <!-- 新增按鈕 -->
-          <button v-if="!showTrash && !showReports" @click="showCreateParentModal = true"
+          <button v-if="canEdit && !showTrash && !showReports" @click="showCreateParentModal = true"
                   class="flex items-center px-3 py-1.5 text-xs font-medium bg-brand hover:bg-brand-700 text-white rounded transition-colors duration-150 border border-brand">
             <svg class="w-3.5 h-3.5 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
@@ -30,7 +30,7 @@
     </div>
 
     <!-- 主要內容區域 -->
-    <div class="flex-1 flex overflow-hidden">
+    <div class="dc-main flex-1 flex overflow-hidden">
       <!-- 左側邊欄 -->
       <div class="dc-sidebar w-56 border-r transition-colors duration-300 flex-shrink-0"
            :class="isDarkMode ? 'border-slate-700 bg-slate-800' : 'border-gray-200 bg-white'">
@@ -38,7 +38,7 @@
           <!-- 專案分類 -->
           <p class="section-label mb-2 px-2"
              :class="isDarkMode ? 'text-slate-500' : 'text-gray-400'">專案</p>
-          <div class="space-y-0.5">
+          <div class="dc-nav-group space-y-0.5">
             <button @click="showProjectList"
                     class="dc-nav-item w-full"
                     :class="[isDarkMode ? 'dc-nav-dark' : 'dc-nav-light',
@@ -77,7 +77,7 @@
           <!-- GeoPort報告 -->
           <p class="section-label mb-2 px-2"
              :class="isDarkMode ? 'text-slate-500' : 'text-gray-400'">報告</p>
-          <div class="space-y-0.5">
+          <div class="dc-nav-group space-y-0.5">
             <button @click="toggleReports"
                     class="dc-nav-item w-full"
                     :class="[isDarkMode ? 'dc-nav-dark' : 'dc-nav-light',
@@ -96,7 +96,7 @@
           <!-- 垃圾桶 -->
           <p class="section-label mb-2 px-2"
              :class="isDarkMode ? 'text-slate-500' : 'text-gray-400'">垃圾桶</p>
-          <div class="space-y-0.5">
+          <div class="dc-nav-group space-y-0.5">
             <button @click="toggleTrashContent('projects')"
                     class="dc-nav-item w-full"
                     :class="[(showTrash && showTrashContent === 'projects') ?
@@ -133,7 +133,7 @@
       </div>
       
       <!-- 右側主要內容區域 -->
-      <div class="flex-1 flex flex-col overflow-hidden">
+      <div class="dc-content flex-1 flex flex-col overflow-hidden">
         <!-- 工具欄 -->
         <div v-if="!showReports" class="dc-toolbar px-6 py-3 border-b transition-colors duration-300 relative"
              :class="isDarkMode ? 'border-slate-700 bg-slate-800' : 'border-gray-200 bg-white'">
@@ -154,8 +154,8 @@
                       class="toolbar-btn transition-colors duration-150"
                       :class="[isDarkMode ? 'toolbar-btn-dark' : 'toolbar-btn-light',
                                viewMode === 'map' ? 'toolbar-btn-active' : '']"
-                      @click="viewMode = 'map'"
-                      title="地圖視圖">
+                      @click="viewMode = viewMode === 'map' ? 'list' : 'map'"
+                      :title="viewMode === 'map' ? '清單視圖' : '地圖視圖'">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"></path>
                 </svg>
@@ -308,7 +308,7 @@
              :class="isDarkMode ? 'bg-slate-900' : 'bg-gray-50'">
           
           <!-- 地圖視圖 -->
-          <div v-if="viewMode === 'map'" 
+          <div v-if="viewMode === 'map' && !showReports && !showTrash"
                class="flex-1 transition-all duration-300 relative"
                :class="(showSearchPanel || showFilterPanel) ? 'pt-0' : 'pt-0'">
             
@@ -462,7 +462,7 @@
           </div>
           
           <!-- 清單視圖 -->
-          <div v-else class="flex-1 overflow-y-auto">
+          <div v-else-if="viewMode !== 'map' || showTrash" class="flex-1 overflow-y-auto">
             <!-- 垃圾桶內容 -->
             <TrashArea 
               v-if="showTrash"
@@ -480,7 +480,7 @@
             <!-- 專案清單 - 母子專案資料夾視圖 -->
             <div v-else class="dc-list flex-1 overflow-y-auto p-6">
               <!-- 載入中 -->
-              <div v-if="!isDataLoaded" class="flex items-center justify-center h-64">
+              <div v-if="!isDataLoaded || isLoadingProjects" class="flex items-center justify-center h-64">
                 <div class="flex flex-col items-center space-y-3">
                   <svg class="animate-spin h-10 w-10" :class="isDarkMode ? 'text-blue-400' : 'text-blue-600'" fill="none" viewBox="0 0 24 24">
                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -488,6 +488,11 @@
                   </svg>
                   <p :class="isDarkMode ? 'text-gray-400' : 'text-gray-600'">載入中...</p>
                 </div>
+              </div>
+
+              <div v-else-if="projectLoadError" role="alert" class="flex flex-col items-center justify-center h-64 gap-3">
+                <p class="text-sm" :class="isDarkMode ? 'text-gray-300' : 'text-gray-600'">{{ projectLoadError }}</p>
+                <button @click="loadProjects" class="px-3 py-1.5 text-xs border rounded" :class="isDarkMode ? 'text-gray-200 border-slate-600' : 'text-gray-700 border-gray-300'">重試</button>
               </div>
 
               <!-- 空狀態 -->
@@ -508,6 +513,11 @@
                 >
                   新增地點專案
                 </button>
+              </div>
+
+              <div v-else-if="filteredParentProjects.length === 0" role="status" class="flex flex-col items-center justify-center h-64 gap-3">
+                <p class="text-sm" :class="isDarkMode ? 'text-gray-300' : 'text-gray-600'">沒有符合條件的地點專案</p>
+                <button @click="showProjectList" class="px-3 py-1.5 text-xs border rounded" :class="isDarkMode ? 'text-gray-200 border-slate-600' : 'text-gray-700 border-gray-300'">清除搜尋與篩選</button>
               </div>
 
               <!-- 專案列表 - 資料夾視圖 -->
@@ -1548,6 +1558,7 @@
 </template>
 
 <script>
+import { staticUrl } from '@/utils/urls.js'
 import dayjs from 'dayjs'
 import L from 'leaflet'
 import { alert, confirm, success } from '@/utils/simpleAlertService'
@@ -1584,7 +1595,10 @@ export default {
     CreateChildProjectModal,
     EditChildProjectModal
   },
-  inject: ['isDarkMode', 'fontSize', 'isLoggedIn'],
+  inject: {
+    isDarkMode: { default: false }, fontSize: { default: 'medium' }, isLoggedIn: { default: false },
+    canEdit: { default: true }
+  },
   data() {
     return {
       // 視圖模式
@@ -1592,6 +1606,10 @@ export default {
       
       // 防止重複載入的標記
       isDataLoaded: false,
+      isLoadingProjects: false,
+      projectLoadError: '',
+      projectsLoadRequestId: 0,
+      reportLinksRequestId: 0,
       
       // 從 URL 載入專案時的等待標記（避免顯示閃爍的空白頁面）
       isLoadingFromUrl: false,
@@ -1871,6 +1889,8 @@ export default {
     await this.loadTrashCounts()
     // 載入所有母專案的報告連結
     await this.loadAllReportLinks()
+    const reportProject = this.parentProjects.find(project => project.project_id === this.$route?.query?.reportLinks)
+    if (reportProject && this.canEdit) await this.openReportLinkModal(reportProject)
     
     // 標記數據已載入
     this.isDataLoaded = true
@@ -1926,11 +1946,11 @@ export default {
       }
 
       // 搜尋篩選
-      if (this.searchQuery) {
-        const query = this.searchQuery.toLowerCase()
+      if (this.searchQuery.trim()) {
+        const query = this.searchQuery.trim().toLowerCase()
         filtered = filtered.filter(project => 
-          project.name.toLowerCase().includes(query) ||
-          project.description.toLowerCase().includes(query)
+          String(project.name || '').toLowerCase().includes(query) ||
+          String(project.description || '').toLowerCase().includes(query)
         )
       }
 
@@ -1947,15 +1967,15 @@ export default {
       // 日期篩選
       if (this.filterStartDate) {
         filtered = filtered.filter(project => {
-          const projectDate = new Date(project.startDate).toISOString().split('T')[0]
-          return projectDate >= this.filterStartDate
+          const date = dayjs(project.startDate)
+          return date.isValid() && date.format('YYYY-MM-DD') >= this.filterStartDate
         })
       }
 
       if (this.filterEndDate) {
         filtered = filtered.filter(project => {
-          const projectDate = new Date(project.startDate).toISOString().split('T')[0]
-          return projectDate <= this.filterEndDate
+          const date = dayjs(project.startDate)
+          return date.isValid() && date.format('YYYY-MM-DD') <= this.filterEndDate
         })
       }
 
@@ -1966,11 +1986,17 @@ export default {
     filteredParentProjects() {
       let filtered = this.parentProjects || []
 
+      if (this.showBookmarkedOnly) {
+        const marked = new Set(this.projects.filter(project => project.isBookmarked)
+          .map(project => project.parent_project_id || project.projectId))
+        filtered = filtered.filter(parent => parent.is_bookmarked === true || marked.has(parent.project_id))
+      }
+
       // 搜尋篩選
-      if (this.searchQuery) {
-        const query = this.searchQuery.toLowerCase()
+      if (this.searchQuery.trim()) {
+        const query = this.searchQuery.trim().toLowerCase()
         filtered = filtered.filter(parent =>
-          parent.name.toLowerCase().includes(query) ||
+          String(parent.name || '').toLowerCase().includes(query) ||
           parent.description?.toLowerCase().includes(query) ||
           parent.road_number?.toLowerCase().includes(query) ||
           parent.location_name?.toLowerCase().includes(query)
@@ -1985,6 +2011,23 @@ export default {
       // 道路編號篩選
       if (this.filterHighway) {
         filtered = filtered.filter(parent => parent.road_number === this.filterHighway)
+      }
+
+      if (this.filterStartDate || this.filterEndDate) {
+        filtered = filtered.filter(parent => {
+          const children = this.getChildProjects(parent.project_id)
+          const periods = children.length ? children.map(child => ({
+            start: child.event_date || child.start_date,
+            end: child.event_date || child.end_date || child.start_date
+          })) : [{ start: parent.earliest_start_date || parent.start_date,
+            end: parent.latest_end_date || parent.end_date || parent.earliest_start_date || parent.start_date }]
+          return periods.some(period => {
+            const start = dayjs(period.start || null), end = dayjs(period.end || null)
+            return start.isValid() && end.isValid()
+              && (!this.filterStartDate || end.format('YYYY-MM-DD') >= this.filterStartDate)
+              && (!this.filterEndDate || start.format('YYYY-MM-DD') <= this.filterEndDate)
+          })
+        })
       }
 
       return filtered
@@ -2029,11 +2072,11 @@ export default {
       }
 
       // 搜尋篩選
-      if (this.searchQuery) {
-        const query = this.searchQuery.toLowerCase()
+      if (this.searchQuery.trim()) {
+        const query = this.searchQuery.trim().toLowerCase()
         filtered = filtered.filter(report => 
-          report.title.toLowerCase().includes(query) ||
-          report.description.toLowerCase().includes(query)
+          String(report.title || '').toLowerCase().includes(query) ||
+          String(report.description || '').toLowerCase().includes(query)
         )
       }
 
@@ -2805,19 +2848,19 @@ export default {
         const response = await this.$api.projectAPI.toggleBookmark(project.projectId)
         
         if (response.success) {
-          // 更新本地狀態
-      project.isBookmarked = !project.isBookmarked
+          project.isBookmarked = response.data?.isBookmarked ?? !project.isBookmarked
+          this.projects.forEach(item => { if (item.projectId === project.projectId) item.isBookmarked = project.isBookmarked })
+          this.parentProjects.forEach(item => { if (item.project_id === project.projectId) item.is_bookmarked = project.isBookmarked })
+          Object.values(this.childProjectsMap).flat().forEach(item => {
+            if (item.project_id === project.projectId) item.is_bookmarked = project.isBookmarked
+          })
       const action = project.isBookmarked ? '已標記' : '已取消標記'
           await success(`專案「${project.name}」${action}`, '標記狀態', this.isDarkMode)
         } else {
-          // 如果 API 失敗，恢復原狀態
-          project.isBookmarked = !project.isBookmarked
           await alert(response.message || '標記操作失敗', '錯誤', this.isDarkMode)
         }
       } catch (error) {
         log.error('標記專案錯誤:', error)
-        // 如果 API 失敗，恢復原狀態
-        project.isBookmarked = !project.isBookmarked
         await alert('標記專案時發生錯誤，請稍後再試', '錯誤', this.isDarkMode)
       }
     },
@@ -3025,20 +3068,26 @@ export default {
     },
     
     async loadProjects() {
+      const requestId = ++this.projectsLoadRequestId
+      this.projectLoadError = ''
+      this.isLoadingProjects = true
       try {
         log.debug('開始載入母專案列表...')
         const response = await this.$api.get('/parent-projects')
+        if (requestId !== this.projectsLoadRequestId) return
         log.debug('API 響應:', response)
         
         if (response && response.success) {
           // 載入母專案列表
           this.parentProjects = response.data || []
+          this.childProjectsMap = {}
           log.debug('成功載入母專案列表，專案數量:', this.parentProjects.length)
           
           // 載入每個母專案的子專案
           for (const parent of this.parentProjects) {
-            await this.loadChildProjects(parent.project_id)
+            await this.loadChildProjects(parent.project_id, requestId)
           }
+          if (requestId !== this.projectsLoadRequestId) return
           
           // 保持向後兼容，保留原有 projects 數據結構（用於其他功能）
           // 先加入母專案
@@ -3046,6 +3095,7 @@ export default {
             projectId: parent.project_id,
             name: parent.name,
             description: parent.description,
+            isBookmarked: parent.is_bookmarked === true,
                 location: {
               lat: parent.latitude || parent.location?.lat,
               lng: parent.longitude || parent.location?.lng
@@ -3071,6 +3121,7 @@ export default {
                 projectId: child.project_id,
                 name: child.name,
                 description: child.description,
+                isBookmarked: child.is_bookmarked === true,
                 location: {
                   lat: child.latitude || child.location?.lat || parent.latitude || parent.location?.lat,
                   lng: child.longitude || child.location?.lng || parent.longitude || parent.location?.lng
@@ -3102,19 +3153,25 @@ export default {
             parent_project_id: p.parent_project_id
           })))
         } else {
-          log.error('載入母專案列表失敗:', response?.message || '未知錯誤')
-          this.parentProjects = []
+          throw new Error(response?.message || '載入地點專案失敗')
         }
       } catch (error) {
         log.error('載入母專案列表錯誤:', error)
-        this.loadSampleData()
+        if (requestId !== this.projectsLoadRequestId) return
+        this.parentProjects = []
+        this.projects = []
+        this.childProjectsMap = {}
+        this.projectLoadError = '無法載入地點專案，請稍後重試'
+      } finally {
+        if (requestId === this.projectsLoadRequestId) this.isLoadingProjects = false
       }
     },
     
     // 載入子專案列表
-    async loadChildProjects(parentId) {
+    async loadChildProjects(parentId, requestId = this.projectsLoadRequestId) {
       try {
         const response = await this.$api.get(`/parent-projects/${parentId}/children`)
+        if (requestId !== this.projectsLoadRequestId) return
         if (response && response.success) {
           this.childProjectsMap = {
             ...this.childProjectsMap,
@@ -3123,6 +3180,7 @@ export default {
           log.debug(`母專案 ${parentId} 的子專案:`, response.data.children.length, '個')
         }
       } catch (error) {
+        if (requestId !== this.projectsLoadRequestId) return
         log.error(`載入母專案 ${parentId} 的子專案失敗:`, error)
         this.childProjectsMap = {
           ...this.childProjectsMap,
@@ -3142,7 +3200,7 @@ export default {
       let orderNumber = 1
       
       // 遍歷所有母專案，收集子專案
-      this.parentProjects.forEach(parent => {
+      this.filteredParentProjects.forEach(parent => {
         const children = this.getChildProjects(parent.project_id) || []
         children.forEach(child => {
           // 提取座標（優先使用子專案本身的座標，否則使用母專案的座標）
@@ -3276,7 +3334,7 @@ export default {
     async handleParentUpdated(updatedParent) {
       log.debug('母專案更新成功:', updatedParent)
       // 重新載入母專案列表
-      await this.loadParentProjects()
+      await this.loadProjects()
       // 關閉模態框
       this.showEditParentModal = false
       this.selectedParentForEdit = null
@@ -3351,7 +3409,7 @@ export default {
         log.debug('[DisasterCollection] 地圖縮放:', map.getZoom())
         
         // 載入 GeoJSON 文件
-        const response = await fetch('/uploads/monitoring/taiwan7/alertRoad.geojson')
+        const response = await fetch(staticUrl('/uploads/monitoring/taiwan7/alertRoad.geojson'))
         log.debug('[DisasterCollection] 📥 Fetch 完成 - ok:', response.ok, 'status:', response.status)
         
         if (!response.ok) {
@@ -3525,6 +3583,7 @@ export default {
     },
 
     closeReportLinkModal() {
+      this.reportLinksRequestId += 1
       this.showReportLinkModal = false
       this.reportLinkTargetProject = null
       this.reportLinkList = []
@@ -3535,14 +3594,17 @@ export default {
 
     async fetchReportLinks() {
       if (!this.reportLinkTargetProject) return
+      const projectId = this.reportLinkTargetProject.project_id
+      const requestId = ++this.reportLinksRequestId
       try {
         const response = await this.$api.get(
-          `/parent-projects/${this.reportLinkTargetProject.project_id}/report-links`
+          `/parent-projects/${projectId}/report-links`
         )
+        if (requestId !== this.reportLinksRequestId || this.reportLinkTargetProject?.project_id !== projectId) return
         if (response && response.success) {
           this.reportLinkList = response.data
           // 同步更新 parentProjects 中的連結資料（供卡片顯示數量）
-          this.syncReportLinksToParent(this.reportLinkTargetProject.project_id, response.data)
+          this.syncReportLinksToParent(projectId, response.data)
         }
       } catch (error) {
         log.error('取得報告連結失敗:', error)
@@ -4055,6 +4117,29 @@ export default {
 
 .dc-list {
   width: 100%;
+}
+
+.dc-main,
+.dc-content {
+  min-width: 0;
+  min-height: 0;
+}
+
+@media (max-width: 767px) {
+  .dc-main { flex-direction: column; }
+  .dc-topbar { padding: 12px 16px; }
+  .dc-topbar .tracking-widest { display: none; }
+  .dc-sidebar { width: 100%; border-right: 0; border-bottom-width: 1px; }
+  .dc-sidebar > div { display: flex; gap: 4px; overflow-x: auto; padding: 8px; }
+  .dc-sidebar .section-label,
+  .dc-sidebar .my-3 { display: none; }
+  .dc-nav-group { display: flex; flex-shrink: 0; gap: 4px; }
+  .dc-nav-item { width: auto; flex-shrink: 0; margin-top: 0; white-space: nowrap; }
+  .dc-toolbar { padding: 8px 12px; }
+  .dc-list { padding: 12px; }
+  .dc-list :deep(.parent-header) { flex-wrap: wrap; gap: 8px; }
+  .dc-list :deep(.parent-header > div:first-child) { flex-basis: 100%; }
+  .dc-list :deep(.parent-header > div:last-child) { margin-left: auto; }
 }
 
 /* ── 左側導航項目 ─────────────────────── */

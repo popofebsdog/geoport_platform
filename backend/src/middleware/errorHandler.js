@@ -6,10 +6,14 @@ export const errorHandler = (err, req, res, next) => {
   log.error('Unhandled request error', {
     requestId: req.id,
     method: req.method,
-    path: req.originalUrl || req.url,
+    path: (req.originalUrl || req.url).split(/[?#]/, 1)[0],
     statusCode: err.statusCode || err.status || 500,
     error: err
   });
+
+  if (err.type === 'entity.parse.failed') {
+    return res.status(400).json({ success: false, message: '無效的 JSON 資料', requestId: req.id });
+  }
 
   // Multer upload errors
   if (err.name === 'MulterError') {
@@ -86,12 +90,15 @@ export const errorHandler = (err, req, res, next) => {
   }
 
   // 默認錯誤
-  const statusCode = err.statusCode || 500;
-  const message = err.message || '服務器內部錯誤';
+  const statusCode = err.statusCode || err.status || 500;
+  const message = statusCode >= 500 && process.env.NODE_ENV === 'production'
+    ? '服務器內部錯誤，請提供請求編號給維運人員'
+    : err.message || '服務器內部錯誤';
 
   res.status(statusCode).json({
     success: false,
     message,
+    requestId: req.id,
     ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
   });
 };

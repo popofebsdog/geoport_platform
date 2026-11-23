@@ -29,7 +29,7 @@
                     :class="isDarkMode ? 'text-gray-500' : 'text-gray-400'">
                 圖層管理
               </span>
-              <button @click="$emit('open-layer-upload')"
+              <button v-if="canEdit" @click="$emit('open-layer-upload')"
                       class="p-1.5 rounded transition-colors duration-150 border"
                       :class="isDarkMode
                         ? 'border-slate-600 text-slate-400 hover:text-slate-200 hover:bg-slate-700'
@@ -102,7 +102,7 @@
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
                     </svg>
                   </button>
-                  <button @click="$emit('associate-data', layer.data)"
+                  <button v-if="canEdit" @click="$emit('associate-data', layer.data)"
                           class="p-1 rounded transition-colors duration-150"
                           :class="isDarkMode ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-600' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'"
                           title="關聯上傳">
@@ -110,7 +110,7 @@
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
                     </svg>
                   </button>
-                  <button @click="$emit('edit-data', layer.data)"
+                  <button v-if="canEdit" @click="$emit('edit-data', layer.data)"
                           class="p-1 rounded transition-colors duration-150"
                           :class="isDarkMode ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-600' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'"
                           title="編輯">
@@ -118,7 +118,7 @@
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
                     </svg>
                   </button>
-                  <button @click="$emit('delete-data', layer.data)"
+                  <button v-if="canEdit" @click="$emit('delete-data', layer.data)"
                           class="p-1 rounded transition-colors duration-150"
                           :class="isDarkMode ? 'text-gray-400 hover:text-red-400 hover:bg-red-400/10' : 'text-gray-400 hover:text-red-600 hover:bg-red-50'"
                           title="刪除">
@@ -169,7 +169,7 @@
                     :class="isDarkMode ? 'text-gray-500' : 'text-gray-400'">
                 資料管理
               </span>
-              <button @click="showTemporalUploadModal = true"
+              <button v-if="canEdit" @click="showTemporalUploadModal = true"
                       class="p-1.5 rounded transition-colors duration-150 border"
                       :class="isDarkMode
                         ? 'border-slate-600 text-slate-400 hover:text-slate-200 hover:bg-slate-700'
@@ -214,7 +214,7 @@
                     :class="isDarkMode ? 'text-gray-500' : 'text-gray-400'">
                 正射影像
               </span>
-              <button @click="$emit('open-basemap-upload')"
+              <button v-if="canEdit" @click="$emit('open-basemap-upload')"
                       class="p-1.5 rounded transition-colors duration-150 border"
                       :class="isDarkMode
                         ? 'border-slate-600 text-slate-400 hover:text-slate-200 hover:bg-slate-700'
@@ -282,6 +282,7 @@ import { dataFileAPI } from '../../services/api'
 
 export default {
   name: 'ProjectSidebar',
+  inject: { canEdit: { default: true } },
   components: {
     BaseMapSelector,
     TemporalDataManager,
@@ -367,7 +368,7 @@ export default {
       this.uploadedData.forEach(data => {
         // 不再過濾 potential_analysis 類型的資料，讓所有類型都能顯示
         
-        const isGeojson = data.file_extension === '.geojson' || data.file_extension === '.kml' || data.file_extension === '.tif'
+        const isGeojson = ['.geojson', '.json', '.kml', '.tif', '.tiff'].includes(data.file_extension)
         const layerType = this.getLayerTypeLabel(data.file_type, isGeojson)
         
         layers.push({
@@ -614,7 +615,7 @@ export default {
           throw new Error(result.message || '刪除失敗')
         }
       } catch (error) {
-        console.error('刪除正射影像失敗:', error)
+
         // 顯示錯誤訊息（通過 emit 傳遞給父組件）
         this.$emit('show-error', {
           type: 'error',
@@ -810,7 +811,7 @@ export default {
         try {
           this.layerOrder = JSON.parse(saved)
         } catch (error) {
-          console.error('載入圖層順序失敗:', error)
+
           this.layerOrder = []
         }
       }

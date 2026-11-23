@@ -299,7 +299,7 @@ export default {
         
         
       } catch (error) {
-        console.error('解析檔案名稱失敗:', error)
+
         this.parsedInfo = null
       }
     },
@@ -329,9 +329,10 @@ export default {
       this.showProgress = true
       this.uploadProgress = 0
 
+      let progressInterval
       try {
         // 進度模擬（大型 TIF 可能需數分鐘，放慢增長速度）
-        const progressInterval = setInterval(() => {
+        progressInterval = setInterval(() => {
           if (this.uploadProgress < 88) {
             // 前 40% 較快（上傳阶段），之後放慢（COG 轉換耗時）
             const step = this.uploadProgress < 40 ? Math.random() * 3 : Math.random() * 0.5
@@ -352,6 +353,7 @@ export default {
         formData.append('file', this.form.file)
         formData.append('project_id', this.projectId)
         formData.append('data_type', 'basemap') // 標記為底圖類型
+        formData.append('enable_cog', String(this.form.enableCOG))
 
         this.uploadStatus = '正在上傳到伺服器...'
         this.uploadProgress = 20
@@ -361,7 +363,6 @@ export default {
         this.uploadStatus = '正在處理檔案...'
         this.uploadProgress = 70
 
-        clearInterval(progressInterval)
         this.uploadProgress = 100
         this.uploadStatus = '處理完成！'
 
@@ -380,13 +381,15 @@ export default {
           throw new Error(result.message || '上傳失敗')
         }
       } catch (error) {
-        console.error('上傳自有底圖錯誤:', error)
+
         this.isUploading = false
         this.showAlert({
           type: 'error',
           title: '上傳失敗',
           message: error.message || '上傳過程中發生錯誤'
         })
+      } finally {
+        clearInterval(progressInterval)
       }
     }
   }

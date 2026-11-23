@@ -22,7 +22,7 @@
       <section class="monitor-card" :class="isDarkMode ? 'is-dark' : ''">
         <div class="monitor-card-head">
           <span>微地動</span>
-          <small>TYPE I / II / III</small>
+          <small>TYPE I / II / III / IV</small>
         </div>
         <div class="monitor-card-body integrated-card chart-content">
           <div class="metric-board">
@@ -41,7 +41,7 @@
           <MicroseismicChart 
             :key="`chart1-integrated-${regionId || regionCode}`"
             :data="chartData.chart1" 
-            :loading="loading"
+            :loading="loading.chart1"
             :regionCode="regionCode"
             :regionId="regionId"
             :isDarkMode="isDarkMode"
@@ -100,7 +100,8 @@
           <RainfallChart
             :key="`chart2-integrated-${regionId || regionCode}`"
             :data="chartData.chart2"
-            :loading="loading"
+            :loading="loading.chart2"
+            :managed="true"
             :regionCode="regionCode"
             :regionId="regionId"
             :isDarkMode="isDarkMode"
@@ -138,7 +139,7 @@
               <StrongMotionChart 
                 :key="`chart3-integrated-${regionId || regionCode}`"
                 :data="chartData.chart3" 
-                :loading="loading"
+                :loading="loading.chart3"
                 :regionCode="regionCode"
                 :regionId="regionId"
                 :isDarkMode="isDarkMode"
@@ -154,6 +155,7 @@
 
 <script>
 import api from '@/services/api';
+import { getMonitoringState } from '@/utils/monitoringData.js';
 import MicroseismicChart from './charts/MicroseismicChart.vue';
 import RainfallChart from './charts/RainfallChart.vue';
 import StrongMotionChart from './charts/StrongMotionChart.vue';
@@ -194,13 +196,13 @@ export default {
         chart2: null,
         chart3: null
       },
-      loading: false,
+      loading: { chart1: false, chart2: false, chart3: false },
       refreshIntervals: {
         chart1: null,
         chart2: null,
         chart3: null
       },
-      currentLoadRequestId: 0,
+      chartRequestIds: { chart1: 0, chart2: 0, chart3: 0 },
       // 雨量日期選擇
       rainfallDate: today,
       rainfallMaxDate: today,
@@ -234,6 +236,7 @@ export default {
         {
           key: 'strong-motion',
           label: '強地動',
+          enabled: this.shouldShowStrongMotion,
           ...this.resolveStrongMotionStatus(this.chartData.chart3)
         }
       ];
@@ -249,12 +252,12 @@ export default {
         return acc;
       }, { typeI: 0, typeII: 0, typeIII: 0 });
 
-      return [
-        { label: '總事件', value: counts.typeI + counts.typeII + counts.typeIII, unit: '件' },
+      return this.withAvailableMetrics([
+        { label: '總事件', value: rows.length, unit: '件' },
         { label: 'TYPE II', value: counts.typeII, unit: '件', tone: counts.typeII > 0 ? 'medium' : '' },
         { label: 'TYPE III', value: counts.typeIII, unit: '件', tone: counts.typeIII > 0 ? 'high' : '' },
         { label: '最新', value: this.formatLatestTime(rows), unit: '' }
-      ];
+      ], data);
     },
     rainfallMetrics() {
       const data = this.chartData.chart2;
@@ -280,35 +283,40 @@ export default {
           ? 'medium'
           : '';
 
-      return [
+      return this.withAvailableMetrics([
         { label: '累積', value: this.formatNumber(accumulated), unit: 'mm', tone },
         { label: '時雨量', value: this.formatNumber(hourly), unit: 'mm' },
         { label: '最高', value: this.formatNumber(maxHourly), unit: 'mm' },
         { label: '有雨', value: rainyHours, unit: '時' }
-      ];
+      ], data);
     },
     strongMotionMetrics() {
       const data = this.chartData.chart3;
       const series = this.getStrongMotionSeries(data);
       const pgaValues = series
-        .map(item => Number(item?.pga ?? item?.PGA ?? item?.acceleration ?? item?.absAcceleration ?? 0))
-        .filter(value => Number.isFinite(value));
+        .map(item => item?.pga ?? item?.PGA ?? item?.absAcceleration ?? item?.acceleration)
+        .filter(value => value != null && value !== '' && Number.isFinite(Number(value)))
+        .map(value => Math.abs(Number(value)));
       const pgvValues = series
-        .map(item => Number(item?.pgv ?? item?.PGV ?? 0))
-        .filter(value => Number.isFinite(value));
-      const maxPga = pgaValues.length ? Math.max(...pgaValues.map(Math.abs)) : 0;
-      const maxPgv = pgvValues.length ? Math.max(...pgvValues.map(Math.abs)) : 0;
+        .map(item => item?.pgv ?? item?.PGV)
+        .filter(value => value != null && value !== '' && Number.isFinite(Number(value)))
+        .map(value => Math.abs(Number(value)));
+      const maxPga = data?.pga ?? (pgaValues.length ? Math.max(...pgaValues) : null);
+      const maxPgv = data?.pgv ?? (pgvValues.length ? Math.max(...pgvValues) : null);
       const tone = maxPga >= 80 ? 'high' : maxPga >= 25 ? 'medium' : '';
 
-      return [
+      return this.withAvailableMetrics([
         { label: 'PGA', value: this.formatNumber(maxPga), unit: 'gal', tone },
         { label: 'PGV', value: this.formatNumber(maxPgv), unit: 'cm/s' },
         { label: '震度', value: this.resolveIntensity(maxPga), unit: '' },
         { label: '資料點', value: series.length, unit: '筆' }
-      ];
+      ], data);
     }
   },
   watch: {
+    rainfallDate() {
+      this.loadSingleChartData('chart2');
+    },
     // 統一監聽 regionId 的變化（優先使用 regionId）
     regionId: {
       immediate: true,
@@ -368,9 +376,22 @@ export default {
     }
   },
   methods: {
+    withAvailableMetrics(metrics, data) {
+      const state = getMonitoringState(data);
+      return metrics.map(metric => ({ ...metric,
+        value: state.available ? metric.value : '-',
+        tone: state.status === 'ok' ? metric.tone : ''
+      }));
+    },
+    unavailableStatus(data, chartKey) {
+      if (this.loading[chartKey]) return { level: 'unknown', text: '載入中' };
+      const state = getMonitoringState(data);
+      if (state.status !== 'ok') return { level: 'unknown', text: state.text };
+      return null;
+    },
     resolveMicroseismicStatus(data) {
-      if (this.loading && !data) return { level: 'unknown', text: '載入中' };
-      if (!data) return { level: 'unknown', text: '無資料' };
+      const unavailable = this.unavailableStatus(data, 'chart1');
+      if (unavailable) return unavailable;
 
       const rows = Array.isArray(data.time_series) ? data.time_series : [];
       const typeCounts = rows.reduce((counts, item) => {
@@ -385,8 +406,8 @@ export default {
       return { level: 'normal', text: '正常' };
     },
     resolveRainfallStatus(data) {
-      if (this.loading && !data) return { level: 'unknown', text: '載入中' };
-      if (!data) return { level: 'unknown', text: '無資料' };
+      const unavailable = this.unavailableStatus(data, 'chart2');
+      if (unavailable) return unavailable;
 
       const series = Array.isArray(data.time_series) ? data.time_series : [];
       const last = series.length ? series[series.length - 1] : null;
@@ -405,8 +426,8 @@ export default {
     },
     resolveStrongMotionStatus(data) {
       if (!this.shouldShowStrongMotion) return { level: 'unknown', text: '未啟用' };
-      if (this.loading && !data) return { level: 'unknown', text: '載入中' };
-      if (!data) return { level: 'unknown', text: '無資料' };
+      const unavailable = this.unavailableStatus(data, 'chart3');
+      if (unavailable) return unavailable;
 
       const series = this.getStrongMotionSeries(data);
       const values = series
@@ -432,6 +453,7 @@ export default {
       return [];
     },
     formatNumber(value) {
+      if (value == null || value === '') return '-';
       const number = Number(value);
       if (!Number.isFinite(number)) return '-';
       if (Math.abs(number) >= 100) return number.toFixed(0);
@@ -462,127 +484,10 @@ export default {
       return '0-2';
     },
     async loadChartData() {
-      // 优先使用 regionId，如果没有则使用 regionCode（向后兼容）
       if (!this.regionId && !this.regionCode) return;
-      
-      // 生成新的請求 ID，用於識別這次加載請求
-      const requestId = ++this.currentLoadRequestId;
-      
-      try {
-        this.loading = true;
-        
-        // 根据是否有 regionId 选择不同的 API 路径
-        const apiBasePath = this.regionId 
-          ? `/warning-regions/id/${this.regionId}/data`
-          : `/warning-regions/${this.regionCode}/data`;
-        
-        // 並行載入圖表的數據（優先使用外部API）
-        // 只有台7地區才加載強地動數據
-        const requests = [
-          api.get(apiBasePath, {
-            params: { dataType: 'chart1', useExternalApi: 'true' }
-          }).catch(() => ({ success: false, data: null })),
-          api.get(apiBasePath, {
-            params: { dataType: 'chart2', useExternalApi: 'true' }
-          }).catch(() => ({ success: false, data: null }))
-        ];
-        
-        // 只有台7地區才加載強地動數據
-        if (this.shouldShowStrongMotion) {
-          requests.push(
-            api.get(apiBasePath, {
-              params: { dataType: 'chart3', useExternalApi: 'true' }
-            }).catch(() => ({ success: false, data: null }))
-          );
-        }
-        
-        const results = await Promise.all(requests);
-        const chart1Res = results[0];
-        const chart2Res = results[1];
-        const chart3Res = this.shouldShowStrongMotion ? results[2] : { success: false, data: null };
-        
-        // 檢查這是否還是最新的請求（防止異步競態）
-        if (requestId !== this.currentLoadRequestId) {
-          return;
-        }
-        
-        
-        // 處理返回的數據
-        // 如果從外部API獲取，data是對象；如果從數據庫獲取，data是數組
-        if (chart1Res.success) {
-          if (chart1Res.source === 'external_api') {
-            // 外部API返回的數據格式
-            const data = chart1Res.data;
-            // 對於外部API，只要 dataDensity !== 'none'，就認為API調用成功
-            // 即使當天沒有記錄（records為空），也應該顯示空圖表
-            if (data && data.dataDensity !== 'none') {
-              this.chartData.chart1 = data;
-              // 根據數據密度設置自動刷新（微地動更新較慢，預設10分鐘）
-              this.setupAutoRefresh('chart1', data?.updateInterval || 600);
-            } else {
-              // 只有當 dataDensity === 'none' 時才認為沒有數據
-              this.chartData.chart1 = null;
-            }
-          } else if (Array.isArray(chart1Res.data) && chart1Res.data.length > 0) {
-            // 數據庫返回的數據格式
-            this.chartData.chart1 = chart1Res.data[0].data_content;
-          } else {
-            this.chartData.chart1 = null;
-          }
-        } else {
-          this.chartData.chart1 = null;
-        }
-        
-        if (chart2Res.success) {
-          if (chart2Res.source === 'external_api') {
-            const data = chart2Res.data;
-            // 只要 dataDensity !== 'none' 就代表端點已設定，顯示圖表（即使今日無降雨）
-            if (data && data.dataDensity !== 'none') {
-              this.chartData.chart2 = data;
-              // 雨量更新較慢，預設10分鐘
-              this.setupAutoRefresh('chart2', data?.updateInterval || 600);
-            } else {
-              this.chartData.chart2 = null;
-            }
-          } else if (Array.isArray(chart2Res.data) && chart2Res.data.length > 0) {
-            this.chartData.chart2 = chart2Res.data[0].data_content;
-          } else {
-            this.chartData.chart2 = null;
-          }
-        } else {
-          this.chartData.chart2 = null;
-        }
-        
-        // 只有台7地區才處理強地動數據
-        if (this.shouldShowStrongMotion) {
-          if (chart3Res.success) {
-            if (chart3Res.source === 'external_api') {
-              const data = chart3Res.data;
-              // 檢查是否為有效數據
-              if (data && data.dataDensity !== 'none' && this.hasValidChartData(data)) {
-                this.chartData.chart3 = data;
-                // 強地動更新較快，預設2分鐘
-                this.setupAutoRefresh('chart3', data?.updateInterval || 120);
-              } else {
-                this.chartData.chart3 = null;
-              }
-            } else if (Array.isArray(chart3Res.data) && chart3Res.data.length > 0) {
-              this.chartData.chart3 = chart3Res.data[0].data_content;
-            } else {
-              this.chartData.chart3 = null;
-            }
-          } else {
-            this.chartData.chart3 = null;
-          }
-        } else {
-          // 非台7地區不設置數據
-          this.chartData.chart3 = null;
-        }
-      } catch (error) {
-        console.error('載入圖表數據失敗:', error);
-      } finally {
-        this.loading = false;
-      }
+      const keys = this.shouldShowStrongMotion ? ['chart1', 'chart2', 'chart3'] : ['chart1', 'chart2'];
+      // Each request publishes its own result; this wait is only for callers of refresh().
+      await Promise.all(keys.map(key => this.loadSingleChartData(key)));
     },
     // 設置自動刷新（根據數據更新頻率）
     setupAutoRefresh(chartKey, intervalSeconds) {
@@ -602,50 +507,41 @@ export default {
     },
     // 載入單個圖表的數據
     async loadSingleChartData(chartKey) {
-      // 优先使用 regionId，如果没有则使用 regionCode（向后兼容）
       if (!this.regionId && !this.regionCode) return;
-      
+      const region = this.regionId || this.regionCode;
+      const requestId = ++this.chartRequestIds[chartKey];
+      const isCurrent = () => requestId === this.chartRequestIds[chartKey] && region === (this.regionId || this.regionCode);
+      this.loading[chartKey] = true;
       try {
-        const dataTypeMap = {
-          'chart1': 'chart1',
-          'chart2': 'chart2',
-          'chart3': 'chart3'
-        };
-        
-        // 根据是否有 regionId 选择不同的 API 路径
         const apiBasePath = this.regionId 
-          ? `/warning-regions/id/${this.regionId}/data`
-          : `/warning-regions/${this.regionCode}/data`;
-        
+          ? `/warning-regions/id/${encodeURIComponent(this.regionId)}/data`
+          : `/warning-regions/${encodeURIComponent(this.regionCode)}/data`;
         const response = await api.get(apiBasePath, {
-          params: { dataType: dataTypeMap[chartKey], useExternalApi: 'true' }
-        }).catch(() => ({ success: false, data: null }));
-        
-        if (response.success && response.source === 'external_api') {
-          this.chartData[chartKey] = response.data;
+          params: { dataType: chartKey, useExternalApi: 'true', ...(chartKey === 'chart2' ? { date: this.rainfallDate } : {}) }
+        });
+        if (!isCurrent()) return;
+        if (response.source === 'external_api' && response.data) {
+          const unavailable = ['empty', 'error', 'not_configured'].includes(response.data.dataStatus);
+          this.chartData[chartKey] = response.success || unavailable
+            ? response.data : { dataStatus: 'error' };
+        } else if (response.success && Array.isArray(response.data)) {
+          this.chartData[chartKey] = response.data[0]?.data_content || null;
+        } else {
+          this.chartData[chartKey] = { dataStatus: 'error' };
         }
       } catch (error) {
-        console.error(`載入 ${chartKey} 數據失敗:`, error);
+        if (isCurrent()) this.chartData[chartKey] = { dataStatus: 'error' };
+      } finally {
+        if (isCurrent()) {
+          this.loading[chartKey] = false;
+          const seconds = Number(this.chartData[chartKey]?.updateInterval);
+          this.setupAutoRefresh(chartKey, Number.isFinite(seconds) && seconds > 0 ? seconds : chartKey === 'chart3' ? 120 : 600);
+        }
       }
-    },
-    // 檢查圖表數據是否有效
-    hasValidChartData(data) {
-      if (!data) return false;
-      
-      // 檢查是否有任何有意義的數據
-      const hasValues = data.values && Array.isArray(data.values) && data.values.length > 0;
-      const hasTimeSeries = data.time_series && Array.isArray(data.time_series) && data.time_series.length > 0;
-      const hasTimeSeriesAlt = data.timeSeries && Array.isArray(data.timeSeries) && data.timeSeries.length > 0;
-      const hasLabels = data.labels && Array.isArray(data.labels) && data.labels.length > 0;
-      const hasCatalog = data.catalog && data.catalog.records && data.catalog.records.length > 0;
-      const hasParsed = data.parsed && data.parsed.timeSeries && data.parsed.timeSeries.length > 0;
-      
-      return hasValues || hasTimeSeries || hasTimeSeriesAlt || hasLabels || hasCatalog || hasParsed;
     },
     // 清除所有數據和定時器
     clearAllData() {
-      
-      // 強制清除所有圖表數據（使用 Vue.set 確保響應式更新）
+      Object.keys(this.chartRequestIds).forEach(key => { this.chartRequestIds[key] += 1; });
       this.chartData = {
         chart1: null,
         chart2: null,
@@ -660,13 +556,12 @@ export default {
         }
       });
       
-      // 清除載入狀態
-      this.loading = false;
+      this.loading = { chart1: false, chart2: false, chart3: false };
       
     },
     // 提供給父組件調用的刷新方法
     refresh() {
-      this.loadChartData();
+      return this.loadChartData();
     },
     rainfallPrevDay() {
       const d = new Date(this.rainfallDate);
@@ -712,13 +607,7 @@ export default {
     },
   },
   beforeUnmount() {
-    // 清除所有自動刷新定時器
-    Object.keys(this.refreshIntervals).forEach(key => {
-      if (this.refreshIntervals[key]) {
-        clearInterval(this.refreshIntervals[key]);
-        this.refreshIntervals[key] = null;
-      }
-    });
+    this.clearAllData();
   }
 };
 </script>
@@ -1228,6 +1117,7 @@ pre {
     grid-template-columns: 1fr;
     grid-template-rows: none;
     height: auto;
+    overflow-y: auto;
   }
 
   .monitor-card {

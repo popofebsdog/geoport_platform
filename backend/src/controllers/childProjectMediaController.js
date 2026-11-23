@@ -7,18 +7,15 @@
 import path from 'path';
 import fs from 'fs/promises';
 import multer from 'multer';
-import { fileURLToPath } from 'url';
 import { pool } from '../config/database.js';
 import { createMulterFileFilter, createStoredFilename, maxUploadSize } from '../config/uploadPolicy.js';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+import { resolveStoragePath, toStoragePath, storageConfig, storageAdapter } from '../services/storageService.js';
 
 // ─────────────────── Multer 設定 ───────────────────
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    const dir = path.join(process.cwd(), 'uploads', 'data', 'child-project-media');
+    const dir = path.join(storageConfig.uploadsRoot, 'data', 'child-project-media');
     fs.mkdir(dir, { recursive: true })
       .then(() => cb(null, dir))
       .catch(cb);
@@ -35,14 +32,6 @@ export const upload = multer({
 });
 
 // ─────────────────── 工具函式 ───────────────────
-
-const resolveStoragePath = (storagePath) => {
-  if (!storagePath) return null;
-  const relative = storagePath.startsWith('/uploads/')
-    ? storagePath.substring('/uploads/'.length)
-    : storagePath;
-  return path.join(process.cwd(), 'uploads', relative);
-};
 
 // ─────────────────── Controllers ───────────────────
 
@@ -76,8 +65,8 @@ export const getChildProjectMedia = async (req, res) => {
       name: row.original_name,
       size: row.file_size,
       mimeType: row.mime_type,
-      url: row.storage_path,
-      thumbnail: row.media_type === 'image' ? row.storage_path : null,
+      url: storageAdapter.publicUrl(row.storage_path),
+      thumbnail: row.media_type === 'image' ? storageAdapter.publicUrl(row.storage_path) : null,
       createdAt: row.created_at
     }));
 
@@ -106,7 +95,7 @@ export const uploadChildProjectMedia = async (req, res) => {
     for (const file of req.files) {
       const ext = path.extname(file.originalname).toLowerCase();
       const mediaType = file.mimetype.startsWith('video/') ? 'video' : 'image';
-      const storagePath = `/uploads/data/child-project-media/${file.filename}`;
+      const storagePath = toStoragePath(file.path);
 
       const result = await pool.query(
         `INSERT INTO image_records (
@@ -141,8 +130,8 @@ export const uploadChildProjectMedia = async (req, res) => {
         name: file.originalname,
         size: file.size,
         mimeType: file.mimetype,
-        url: storagePath,
-        thumbnail: mediaType === 'image' ? storagePath : null,
+        url: storageAdapter.publicUrl(storagePath),
+        thumbnail: mediaType === 'image' ? storageAdapter.publicUrl(storagePath) : null,
         createdAt: row.created_at
       });
     }

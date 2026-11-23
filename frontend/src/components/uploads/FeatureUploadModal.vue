@@ -310,6 +310,7 @@
 </template>
 
 <script>
+import { staticUrl } from '@/utils/urls.js'
 import { useAlert } from '@/composables/useAlert'
 
 export default {
@@ -389,7 +390,7 @@ export default {
           this.$emit('delete-feature-upload', uploadId, featureId)
         }
       } catch (error) {
-        console.error('刪除確認錯誤:', error)
+
       }
     },
 
@@ -408,20 +409,7 @@ export default {
 
     // 獲取檔案 URL
     getFileUrl(storagePath) {
-      // 檢查 storagePath 是否存在
-      if (!storagePath) {
-        console.warn('storagePath 為空，無法構建檔案 URL')
-        return ''
-      }
-      
-      // 如果 storage_path 已經是完整 URL，直接返回
-      if (storagePath.startsWith('http')) {
-        return storagePath
-      }
-      
-      // Use relative path — Vite proxy routes /uploads and /data to localhost:3001
-      const cleanPath = storagePath.startsWith('/') ? storagePath : `/${storagePath}`
-      return cleanPath
+      return staticUrl(storagePath)
     },
 
     // 獲取檔案類型顯示名稱
@@ -453,7 +441,7 @@ export default {
 
     // 處理圖片載入錯誤
     handleImageError(event) {
-      console.error('圖片載入失敗:', event.target.src)
+
       // 可以設置一個預設的錯誤圖片
       event.target.style.display = 'none'
     },
@@ -461,13 +449,13 @@ export default {
     // 下載檔案
     downloadFile(upload) {
       if (!upload || !upload.storage_path || !upload.original_name) {
-        console.warn('下載檔案失敗：缺少必要資訊', upload)
+
         return
       }
       
       const url = this.getFileUrl(upload.storage_path)
       if (!url) {
-        console.warn('下載檔案失敗：無法構建檔案 URL')
+
         return
       }
       

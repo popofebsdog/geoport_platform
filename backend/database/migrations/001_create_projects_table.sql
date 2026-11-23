@@ -130,38 +130,6 @@ SELECT
 FROM projects 
 WHERE deleted_at IS NULL;
 
--- 創建視圖：專案統計
-CREATE OR REPLACE VIEW project_statistics AS
-SELECT 
-    p.project_id,
-    p.name,
-    p.status,
-    p.file_count,
-    p.total_size,
-    p.layer_count,
-    COALESCE(df.file_count, 0) as actual_file_count,
-    COALESCE(sl.layer_count, 0) as actual_layer_count,
-    COALESCE(df.total_size, 0) as actual_total_size
-FROM projects p
-LEFT JOIN (
-    SELECT 
-        project_id,
-        COUNT(*) as file_count,
-        SUM(file_size) as total_size
-    FROM data_files 
-    WHERE deleted_at IS NULL
-    GROUP BY project_id
-) df ON p.project_id = df.project_id
-LEFT JOIN (
-    SELECT 
-        project_id,
-        COUNT(*) as layer_count
-    FROM spatial_layers 
-    WHERE deleted_at IS NULL
-    GROUP BY project_id
-) sl ON p.project_id = sl.project_id
-WHERE p.deleted_at IS NULL;
-
 -- 添加註釋
 COMMENT ON TABLE projects IS '專案/事件資料表，對應事件專案資料夾概念';
 COMMENT ON COLUMN projects.project_id IS '專案唯一識別碼';
@@ -187,4 +155,3 @@ COMMENT ON COLUMN projects.metadata IS '額外的元數據 (JSON)';
 COMMENT ON COLUMN projects.deleted_at IS '軟刪除時間戳記';
 
 COMMENT ON VIEW active_projects IS '活躍專案視圖 (排除已刪除)';
-COMMENT ON VIEW project_statistics IS '專案統計資訊視圖';

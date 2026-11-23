@@ -1,5 +1,5 @@
 import { pool } from '../config/database.js';
-import { checkTitilerHealth } from '../services/healthService.js';
+import { checkTitilerHealth, getDeepHealth } from '../services/healthService.js';
 import { directoryStats, statStoragePath, storageConfig } from '../services/storageService.js';
 
 async function countFrom(table, where = 'deleted_at IS NULL') {
@@ -488,35 +488,30 @@ export async function getAdminProjectDetail(req, res) {
 export async function getAdminHealth(req, res) {
   const started = Date.now();
   try {
-    const dbStarted = Date.now();
-    await pool.query('SELECT 1');
-
-    const [uploads, data, titiler, failedFiles, invalidLayers] = await Promise.all([
-      directoryStats(storageConfig.uploadsRoot),
-      directoryStats(storageConfig.dataRoot),
-      checkTitilerHealth(),
+    const [health, failedFiles, invalidLayers] = await Promise.all([
+      getDeepHealth(),
       countFrom('data_files', "deleted_at IS NULL AND processing_status = 'failed'"),
       countFrom('spatial_layers', "deleted_at IS NULL AND processing_status = 'failed'")
     ]);
 
-    const issues = [];
-    if (titiler.status !== 'ok') issues.push('TiTiler 無法通過 health check');
+    const { database, titiler, storage, migrations } = health.components;
+    const issues = Object.entries(health.components)
+      .filter(([, component]) => component.status !== 'ok')
+      .map(([name, component]) => `${name}: ${component.message || component.status}`);
     if (failedFiles > 0) issues.push(`有 ${failedFiles} 筆檔案處理失敗`);
     if (invalidLayers > 0) issues.push(`有 ${invalidLayers} 筆圖層處理失敗`);
 
     return res.json({
       success: true,
-      status: issues.length ? 'warning' : 'ok',
-      checkedAt: new Date().toISOString(),
+      status: health.status === 'error' ? 'error' : issues.length ? 'warning' : 'ok',
+      checkedAt: health.checkedAt,
       latencyMs: Date.now() - started,
       services: {
-        database: { status: 'ok', latencyMs: Date.now() - dbStarted },
+        database,
         titiler
       },
-      storage: {
-        uploads: { ...uploads, label: formatBytes(uploads.totalBytes) },
-        data: { ...data, label: formatBytes(data.totalBytes) }
-      },
+      storage,
+      migrations,
       issues
     });
   } catch (error) {

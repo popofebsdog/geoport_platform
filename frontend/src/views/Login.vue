@@ -58,24 +58,11 @@
         <div class="mb-7">
           <h1 class="text-xl font-bold tracking-tight mb-1"
               :class="isDarkMode ? 'text-white' : 'text-gray-900'">
-            {{ activeTab === 'login' ? '登入' : '建立帳號' }}
+            登入
           </h1>
           <p class="text-xs" :class="isDarkMode ? 'text-slate-500' : 'text-gray-400'">
-            {{ activeTab === 'login' ? '輸入帳號與密碼以繼續' : '填寫以下資訊建立新帳號' }}
+            輸入帳號與密碼以繼續
           </p>
-        </div>
-
-        <!-- Tab switcher — 底線式，非 pill -->
-        <div class="flex gap-0 mb-6 border-b transition-colors"
-             :class="isDarkMode ? 'border-slate-800' : 'border-gray-200'">
-          <button v-for="tab in ['login','register']" :key="tab"
-                  @click="activeTab = tab"
-                  class="px-0 mr-6 pb-2.5 text-xs font-semibold transition-colors border-b-2 -mb-px focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-300"
-                  :class="activeTab === tab
-                    ? (isDarkMode ? 'text-white border-white' : 'text-gray-900 border-gray-900')
-                    : (isDarkMode ? 'text-slate-600 border-transparent hover:text-slate-400' : 'text-gray-400 border-transparent hover:text-gray-600')">
-            {{ tab === 'login' ? '登入' : '註冊' }}
-          </button>
         </div>
 
         <!-- Error -->
@@ -90,7 +77,7 @@
         </div>
 
         <!-- Login form -->
-        <form v-if="activeTab === 'login'" @submit.prevent="handleLogin" class="space-y-4">
+        <form @submit.prevent="handleLogin" class="space-y-4">
           <div>
             <label class="block text-xs font-medium mb-1.5"
                    :class="isDarkMode ? 'text-slate-300' : 'text-gray-700'">帳號 / Email</label>
@@ -127,66 +114,6 @@
           </button>
         </form>
 
-        <!-- Register form -->
-        <form v-else @submit.prevent="handleRegister" class="space-y-4">
-          <div class="grid grid-cols-2 gap-3">
-            <div>
-              <label class="block text-xs font-medium mb-1.5"
-                     :class="isDarkMode ? 'text-slate-300' : 'text-gray-700'">帳號</label>
-              <input v-model="regForm.username" type="text" required autocomplete="username"
-                     placeholder="英數字、_  -"
-                     class="w-full px-3.5 py-2.5 rounded-lg border text-sm transition-colors outline-none focus:ring-2 min-h-11"
-                     :class="isDarkMode
-                       ? 'bg-slate-800 border-slate-700 text-white placeholder-slate-500 focus:ring-brand-400 focus:border-brand-400'
-                       : 'bg-white border-surface-300 text-gray-900 placeholder-surface-400 focus:ring-brand-300 focus:border-brand'" />
-            </div>
-            <div>
-              <label class="block text-xs font-medium mb-1.5"
-                     :class="isDarkMode ? 'text-slate-300' : 'text-gray-700'">顯示名稱（選填）</label>
-              <input v-model="regForm.display_name" type="text" autocomplete="name"
-                     placeholder="顯示名稱"
-                     class="w-full px-3.5 py-2.5 rounded-lg border text-sm transition-colors outline-none focus:ring-2 min-h-11"
-                     :class="isDarkMode
-                       ? 'bg-slate-800 border-slate-700 text-white placeholder-slate-500 focus:ring-brand-400 focus:border-brand-400'
-                       : 'bg-white border-surface-300 text-gray-900 placeholder-surface-400 focus:ring-brand-300 focus:border-brand'" />
-            </div>
-          </div>
-          <div>
-            <label class="block text-xs font-medium mb-1.5"
-                   :class="isDarkMode ? 'text-slate-300' : 'text-gray-700'">Email</label>
-            <input v-model="regForm.email" type="email" required autocomplete="email"
-                   placeholder="example@domain.com"
-                   class="w-full px-3.5 py-2.5 rounded-lg border text-sm transition-colors outline-none focus:ring-2 min-h-11"
-                   :class="isDarkMode
-                     ? 'bg-slate-800 border-slate-700 text-white placeholder-slate-500 focus:ring-brand-400 focus:border-brand-400'
-                     : 'bg-white border-surface-300 text-gray-900 placeholder-surface-400 focus:ring-brand-300 focus:border-brand'" />
-          </div>
-          <div>
-            <label class="block text-xs font-medium mb-1.5"
-                   :class="isDarkMode ? 'text-slate-300' : 'text-gray-700'">密碼 <span class="font-normal text-surface-400">（至少 8 字元）</span></label>
-            <input v-model="regForm.password" type="password" required autocomplete="new-password"
-                   placeholder="至少 8 個字元"
-                   class="w-full px-3.5 py-2.5 rounded-lg border text-sm transition-colors outline-none focus:ring-2 min-h-11"
-                   :class="isDarkMode
-                     ? 'bg-slate-800 border-slate-700 text-white placeholder-slate-500 focus:ring-brand-400 focus:border-brand-400'
-                     : 'bg-white border-surface-300 text-gray-900 placeholder-surface-400 focus:ring-brand-300 focus:border-brand'" />
-          </div>
-          <button type="submit" :disabled="loading"
-                  class="w-full min-h-11 py-2.5 rounded-lg font-medium text-sm text-white transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed mt-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-300 focus-visible:ring-offset-2"
-                  :style="{ backgroundColor: loading ? '#3378b5' : '#1e5c8a' }"
-                  @mouseover="e => !loading && (e.target.style.backgroundColor='#153f62')"
-                  @mouseout="e => !loading && (e.target.style.backgroundColor='#1e5c8a')">
-            <span v-if="loading" class="flex items-center justify-center gap-2">
-              <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-              </svg>
-              建立中...
-            </span>
-            <span v-else>建立帳號</span>
-          </button>
-        </form>
-
         <!-- Dark mode toggle -->
         <div class="mt-8 pt-6 border-t flex justify-center transition-colors"
              :class="isDarkMode ? 'border-slate-800' : 'border-gray-100'">
@@ -209,11 +136,9 @@ export default {
   name: 'Login',
   data() {
     return {
-      activeTab: 'login',
       loading: false,
       errorMsg: '',
       form: { username: '', password: '' },
-      regForm: { username: '', email: '', display_name: '', password: '' },
       isDarkMode: localStorage.getItem('darkMode') === 'true',
       features: [
         { label: '即時監測資料整合', icon: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z' },
@@ -243,29 +168,6 @@ export default {
         }
       } catch (err) {
         this.errorMsg = err.response?.data?.message || err.message || '登入失敗'
-      } finally {
-        this.loading = false
-      }
-    },
-
-    async handleRegister() {
-      this.errorMsg = ''
-      if (this.regForm.password.length < 8) {
-        this.errorMsg = '密碼至少需要 8 個字元'
-        return
-      }
-      this.loading = true
-      try {
-        const result = await authAPI.register(this.regForm)
-        if (result.success && result.token) {
-          localStorage.setItem('authToken', result.token)
-          localStorage.setItem('authUser', JSON.stringify(result.user))
-          this.$router.push('/')
-        } else {
-          this.errorMsg = result.message || '註冊失敗'
-        }
-      } catch (err) {
-        this.errorMsg = err.response?.data?.message || err.message || '註冊失敗'
       } finally {
         this.loading = false
       }

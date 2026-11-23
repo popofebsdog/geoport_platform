@@ -251,7 +251,7 @@ export default {
     initMap() {
       
       if (!this.$refs.mapContainer) {
-        console.error('地圖容器未找到')
+
         return
       }
 
@@ -510,7 +510,7 @@ export default {
           return `${year}/${month}/${day}`
         }
       } catch (error) {
-        console.error('格式化日期失敗:', error)
+
         return dateString
       }
     },

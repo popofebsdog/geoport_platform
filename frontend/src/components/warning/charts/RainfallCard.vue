@@ -132,7 +132,7 @@ export default {
           }));
         }
       } catch (e) {
-        console.warn('解析雨量時間序列數據時出錯:', e);
+
       }
       
       return [];

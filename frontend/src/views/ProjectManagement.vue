@@ -35,6 +35,7 @@
           
           <!-- 新增地點按鈕 -->
           <button 
+            v-if="canEdit"
             @click="showCreateParentModal = true"
             class="flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors duration-300 shadow-sm"
           >
@@ -73,6 +74,7 @@
           開始創建您的第一個地點專案
         </p>
         <button
+          v-if="canEdit"
           @click="showCreateParentModal = true"
           class="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors duration-300 shadow-sm font-medium"
         >
@@ -103,7 +105,8 @@
           :child-projects="getChildProjects(parent.project_id)"
           :is-dark-mode="isDarkMode"
           @add-child="handleAddChild"
-          @locate="handleLocateParent"
+          @open="handleOpenParent"
+          @add-report-link="handleManageReportLinks"
           @edit="handleEditParent"
           @delete="handleDeleteParent"
           @open-child="handleOpenChild"
@@ -159,6 +162,7 @@ export default {
   setup() {
     const isDarkMode = inject('isDarkMode', ref(false))
     const router = useRouter()
+    const canEdit = inject('canEdit', ref(true))
     
     const parentProjects = ref([])
     const childProjectsMap = ref({}) // key: parent_id, value: array of children
@@ -205,7 +209,7 @@ export default {
           }
         }
       } catch (error) {
-        console.error('載入母專案列表失敗:', error)
+
         showAlert('載入專案列表失敗', '錯誤', isDarkMode.value)
       } finally {
         isLoading.value = false
@@ -220,7 +224,7 @@ export default {
           childProjectsMap.value[parentId] = response.data.children
         }
       } catch (error) {
-        console.error(`載入母專案 ${parentId} 的子專案失敗:`, error)
+
       }
     }
     
@@ -241,6 +245,14 @@ export default {
       await loadChildProjects(childProject.parent_project_id)
     }
     
+    const handleOpenParent = parent => {
+      router.push({ path: '/disaster-collection', query: { project: parent.project_id } })
+    }
+
+    const handleManageReportLinks = parent => {
+      router.push({ path: '/disaster-collection', query: { reportLinks: parent.project_id } })
+    }
+
     // 處理定位母專案
     const handleLocateParent = (parentProject) => {
       showAlert(`座標: ${parentProject.latitude}, ${parentProject.longitude}`, `定位到: ${parentProject.name}`, isDarkMode.value)
@@ -272,7 +284,7 @@ export default {
           await loadParentProjects()
         }
       } catch (error) {
-        console.error('刪除母專案失敗:', error)
+
         showError('刪除地點失敗，請稍後再試', '刪除失敗', isDarkMode.value)
       }
     }
@@ -303,7 +315,7 @@ export default {
           await loadChildProjects(childProject.parent_project_id)
         }
       } catch (error) {
-        console.error('刪除子專案失敗:', error)
+
         showError('刪除時期專案失敗，請稍後再試', '刪除失敗', isDarkMode.value)
       }
     }
@@ -315,6 +327,7 @@ export default {
     
     return {
       isDarkMode,
+      canEdit,
       parentProjects,
       filteredParentProjects,
       childProjectsMap,
@@ -330,6 +343,8 @@ export default {
       handleAddChild,
       handleChildCreated,
       handleLocateParent,
+      handleOpenParent,
+      handleManageReportLinks,
       handleEditParent,
       handleParentUpdated,
       handleDeleteParent,

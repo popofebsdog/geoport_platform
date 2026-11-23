@@ -35,6 +35,7 @@
       <div class="flex items-center space-x-1 flex-shrink-0 ml-3" @click.stop>
         <!-- 新增紀錄 -->
         <button
+          v-if="canEdit"
           @click="$emit('add-child', parentProject)"
           class="card-btn card-btn-ghost"
           :class="isDarkMode ? 'card-btn-dark' : 'card-btn-light'"
@@ -64,6 +65,7 @@
 
         <!-- 報告連結 -->
         <button
+          v-if="canEdit"
           @click="$emit('add-report-link', parentProject)"
           class="card-icon-btn"
           :class="isDarkMode ? 'card-icon-btn-dark' : 'card-icon-btn-light'"
@@ -76,6 +78,7 @@
 
         <!-- 編輯 -->
         <button
+          v-if="canEdit"
           @click="$emit('edit', parentProject)"
           class="card-icon-btn"
           :class="isDarkMode ? 'card-icon-btn-dark' : 'card-icon-btn-light'"
@@ -88,6 +91,7 @@
 
         <!-- 刪除 -->
         <button
+          v-if="canEdit"
           @click="$emit('delete', parentProject)"
           class="card-icon-btn card-icon-btn-danger"
           :class="isDarkMode ? 'card-icon-btn-danger-dark' : 'card-icon-btn-danger-light'"
@@ -132,6 +136,7 @@
 <script>
 export default {
   name: 'ParentProjectCard',
+  inject: { canEdit: { default: true } },
   props: {
     parentProject: {
       type: Object,

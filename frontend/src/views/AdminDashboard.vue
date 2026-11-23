@@ -170,6 +170,7 @@
           <div v-else class="mt-4 space-y-3">
             <HealthRow label="Database" :status="health.services?.database?.status" :detail="`${health.services?.database?.latencyMs || 0} ms`" :is-dark-mode="isDarkMode" />
             <HealthRow label="TiTiler" :status="health.services?.titiler?.status" :detail="titilerDetail" :is-dark-mode="isDarkMode" />
+            <HealthRow label="資料庫版本" :status="health.migrations?.status" :detail="migrationDetail" :is-dark-mode="isDarkMode" />
             <div class="pt-3 border-t" :class="isDarkMode ? 'border-slate-700' : 'border-gray-100'">
               <p class="text-xs font-medium mb-2">注意事項</p>
               <p v-if="!health.issues?.length" class="text-xs" :class="mutedTextClass">目前沒有系統警示。</p>
@@ -461,29 +462,29 @@
 </template>
 
 <script>
+import { h } from 'vue'
 import { adminAPI } from '@/services/api.js'
 
 const HealthRow = {
   props: { label: String, status: String, detail: String, isDarkMode: Boolean },
   computed: {
-    statusText() { return this.status === 'ok' ? '正常' : '異常' },
+    statusText() { return { ok: '正常', warning: '需注意', error: '異常' }[this.status] || '未知' },
     badgeClass() {
       if (this.status === 'ok') {
         return this.isDarkMode ? 'text-emerald-300 border-emerald-900 bg-emerald-950/30' : 'text-emerald-700 border-emerald-200 bg-emerald-50'
       }
+      if (this.status === 'warning') return this.isDarkMode ? 'text-amber-300 border-amber-900' : 'text-amber-700 border-amber-200'
       return this.isDarkMode ? 'text-red-300 border-red-900 bg-red-950/30' : 'text-red-700 border-red-200 bg-red-50'
     },
     mutedClass() { return this.isDarkMode ? 'text-slate-400' : 'text-gray-500' }
   },
-  template: `
-    <div class="flex items-center justify-between gap-3">
-      <div>
-        <p class="text-sm font-medium">{{ label }}</p>
-        <p class="text-xs mt-0.5" :class="mutedClass">{{ detail }}</p>
-      </div>
-      <span class="text-xs px-2 py-0.5 rounded border" :class="badgeClass">{{ statusText }}</span>
-    </div>
-  `
+  render() {
+    return h('div', { class: 'flex items-center justify-between gap-3' }, [
+      h('div', [h('p', { class: 'text-sm font-medium' }, this.label),
+        h('p', { class: ['text-xs mt-0.5', this.mutedClass] }, this.detail)]),
+      h('span', { class: ['text-xs px-2 py-0.5 rounded border', this.badgeClass] }, this.statusText)
+    ])
+  }
 }
 
 const StorageRow = {
@@ -491,15 +492,15 @@ const StorageRow = {
   computed: {
     mutedClass() { return this.isDarkMode ? 'text-slate-400' : 'text-gray-500' }
   },
-  template: `
-    <div>
-      <div class="flex items-center justify-between gap-3">
-        <span class="text-sm font-medium">{{ label }}</span>
-        <span class="text-sm font-semibold tabular-nums">{{ item?.label || '0 B' }}</span>
-      </div>
-      <p class="text-xs mt-1 truncate" :class="mutedClass">{{ item?.fileCount || 0 }} files · {{ item?.path || '' }}</p>
-    </div>
-  `
+  render() {
+    return h('div', [
+      h('div', { class: 'flex items-center justify-between gap-3' }, [
+        h('span', { class: 'text-sm font-medium' }, this.label),
+        h('span', { class: 'text-sm font-semibold tabular-nums' }, this.item?.label || '0 B')
+      ]),
+      h('p', { class: ['text-xs mt-1 break-all', this.mutedClass] }, `${this.item?.fileCount || 0} files · ${this.item?.path || ''}`)
+    ])
+  }
 }
 
 export default {
@@ -544,7 +545,7 @@ export default {
     summaryCards() {
       const summary = this.overview?.summary || {}
       return [
-        { label: '專案', value: summary.projects || 0 },
+        { label: '專案（含調查）', value: summary.projects || 0 },
         { label: '檔案', value: summary.dataFiles || 0, hint: summary.totalFileSizeLabel || '0 B' },
         { label: '圖層', value: summary.spatialLayers || 0 },
         { label: '災點', value: summary.disasterPoints || 0 },
@@ -574,6 +575,11 @@ export default {
       if (this.health.status === 'ok') return 'bg-emerald-500'
       if (this.health.status === 'warning') return 'bg-amber-500'
       return 'bg-red-500'
+    },
+    migrationDetail() {
+      const migrations = this.health.migrations
+      if (!migrations) return '尚未檢查'
+      return `待套用 ${migrations.pendingCount || 0} / 版本差異 ${migrations.checksumMismatches?.length || 0}`
     },
     titilerDetail() {
       const titiler = this.health.services?.titiler || {}
@@ -671,6 +677,7 @@ export default {
         this.health = await adminAPI.getHealth()
       } catch (err) {
         this.error = err.response?.data?.message || '無法載入健康檢查'
+        this.health = { status: 'error', issues: [this.error] }
       } finally {
         this.healthLoading = false
       }

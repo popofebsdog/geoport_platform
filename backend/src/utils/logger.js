@@ -1,4 +1,8 @@
 import util from 'node:util';
+import { AsyncLocalStorage } from 'node:async_hooks';
+
+const requestContext = new AsyncLocalStorage();
+export const withRequestLogContext = (request, callback) => requestContext.run(request, callback);
 
 const LEVELS = {
   trace: 10,
@@ -19,7 +23,12 @@ const SENSITIVE_KEYS = [
   'jwt',
   'apiKey',
   'accessKey',
-  'refreshToken'
+  'refreshToken',
+  'credential',
+  'privateKey',
+  'parameters',
+  'replacements',
+  'requestBody'
 ];
 
 let consoleBridgeInstalled = false;
@@ -46,26 +55,43 @@ function isSensitiveKey(key) {
   return SENSITIVE_KEYS.some((sensitive) => normalized.includes(sensitive.toLowerCase()));
 }
 
-function serializeError(error) {
-  return {
+function serializeError(error, depth) {
+  if (error.type === 'entity.parse.failed') {
+    return { name: error.name, message: 'Invalid JSON request body', type: error.type, statusCode: 400 };
+  }
+  return sanitize({
     name: error.name,
     message: error.message,
     stack: error.stack,
     code: error.code,
     statusCode: error.statusCode,
-    status: error.status
-  };
+    status: error.status,
+    cause: error.cause
+  }, depth + 1);
 }
 
 function sanitize(value, depth = 0) {
   if (depth > 6) return '[MaxDepth]';
-  if (value instanceof Error) return serializeError(value);
+  if (value instanceof Error) return serializeError(value, depth);
+  if (typeof value === 'string') {
+    return value.replace(/https?:\/\/[^\s"'<>]+/gi, candidate => {
+      try {
+        const url = new URL(candidate);
+        return `${url.origin}${url.pathname}`;
+      } catch {
+        return '[Invalid URL]';
+      }
+    }).replace(/\bBearer\s+[^\s,;"']+/gi, 'Bearer [REDACTED]')
+      .replace(/\b(password|passwd|token|secret|api[_-]?key)\s*[=:]\s*[^\s,;"']+/gi, '$1=[REDACTED]');
+  }
   if (value === null || typeof value !== 'object') return value;
   if (Array.isArray(value)) return value.map((item) => sanitize(item, depth + 1));
 
   const result = {};
   for (const [key, child] of Object.entries(value)) {
-    result[key] = isSensitiveKey(key) ? '[REDACTED]' : sanitize(child, depth + 1);
+    const content = /^(url|path|originalurl)$/i.test(key) && typeof child === 'string'
+      ? child.split(/[?#]/, 1)[0] : child;
+    result[key] = isSensitiveKey(key) ? '[REDACTED]' : sanitize(content, depth + 1);
   }
   return result;
 }
@@ -93,26 +119,30 @@ function normalizeArgs(args) {
 
   if (first instanceof Error) {
     meta.error = sanitize(first);
-    return { message: first.message, meta };
+    return { message: sanitize(first).message, meta };
   }
 
   if (first && typeof first === 'object' && !Array.isArray(first)) {
     return { message: 'log event', meta: { ...sanitize(first), ...meta } };
   }
 
-  return { message: String(first), meta };
+  return { message: sanitize(String(first)), meta };
 }
 
 function write(level, scope, args) {
   if (!shouldLog(level)) return;
 
   const { message, meta } = normalizeArgs(args);
+  const req = requestContext.getStore();
   const event = {
     timestamp: new Date().toISOString(),
     level,
     service: process.env.SERVICE_NAME || 'geoport-backend',
     scope,
     message,
+    ...(req && { requestId: req.id, method: req.method,
+      path: (req.originalUrl || req.url || '').split(/[?#]/, 1)[0],
+      userId: req.user?.userId || null, role: req.user?.role || null }),
     ...meta
   };
 

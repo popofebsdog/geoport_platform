@@ -17,7 +17,7 @@
             {{ regionName }} · {{ regionCode }}
           </p>
         </div>
-        <button @click="$emit('close')" class="p-1.5 rounded-lg hover:bg-black/10 transition-colors">
+        <button @click="$emit('close')" aria-label="關閉地區資料管理" class="p-1.5 rounded-lg hover:bg-black/10 transition-colors">
           <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M6 18L18 6M6 6l12 12"/>
           </svg>
@@ -164,8 +164,9 @@
 </template>
 
 <script>
+import { apiUrl } from '@/utils/urls.js'
 import api from '@/services/api'
-import { success as showSuccess, error as showError, alert as showAlert } from '@/utils/simpleAlertService'
+import { success as showSuccess, error as showError, confirm as showConfirm } from '@/utils/simpleAlertService'
 
 export default {
   name: 'RegionManagePanel',
@@ -183,24 +184,30 @@ export default {
         { key: 'layers', label: '監測圖資' }
       ],
       layerCategories: [
-        { key: 'numerical', label: '數值模擬', icon: '📊', namePlaceholder: '數值模擬資料' },
-        { key: 'insar',     label: 'InSAR監測', icon: '🛰️', namePlaceholder: 'ATS-InSAR 地表形變' },
-        { key: 'disaster',  label: '災點熱區', icon: '🔥', namePlaceholder: '災害熱點分布' }
+        { key: 'road', label: '道路線形', icon: 'GIS', namePlaceholder: '道路線形圖資' },
+        { key: 'insar', label: 'InSAR監測', icon: 'SAR', namePlaceholder: 'ATS-InSAR 地表形變' },
+        { key: 'shapefile', label: '向量圖資', icon: 'SHP', namePlaceholder: '向量圖資' },
+        { key: 'hotspot', label: '災點熱區', icon: 'TIF', namePlaceholder: '災害熱點分布' }
       ],
       // layers
       layers: [],
+      layersRequestId: 0,
       loadingLayers: false,
       expandedUpload: null,
       uploadForms: {
-        numerical: { layer_name: '', file: null },
+        road:      { layer_name: '', file: null },
         insar:     { layer_name: '', file: null },
-        disaster:  { layer_name: '', file: null }
+        shapefile: { layer_name: '', file: null },
+        hotspot:   { layer_name: '', file: null }
       },
       uploading: null // key of the category being uploaded
     }
   },
   mounted() {
     this.fetchLayers()
+  },
+  beforeUnmount() {
+    this.layersRequestId += 1
   },
   methods: {
     layersByType(type) {
@@ -212,15 +219,19 @@ export default {
     },
 
     async fetchLayers() {
+      const requestId = ++this.layersRequestId
       this.loadingLayers = true
       try {
-        const res = await fetch(`/api/warning-regions/${encodeURIComponent(this.regionCode)}/layers`)
+        const path = this.regionId ? `/warning-regions/id/${encodeURIComponent(this.regionId)}/layers`
+          : `/warning-regions/${encodeURIComponent(this.regionCode)}/layers`
+        const res = await fetch(apiUrl(path))
         const json = await res.json()
-        this.layers = json.success ? json.data : []
+        if (requestId !== this.layersRequestId) return
+        this.layers = res.ok !== false && json.success ? json.data : []
       } catch {
-        this.layers = []
+        if (requestId === this.layersRequestId) this.layers = []
       } finally {
-        this.loadingLayers = false
+        if (requestId === this.layersRequestId) this.loadingLayers = false
       }
     },
 
@@ -237,6 +248,7 @@ export default {
         fd.append('file', form.file)
         fd.append('layer_type', catKey)
         fd.append('layer_name', form.layer_name)
+        fd.append('region_id', this.regionId)
         const res = await api.post(`/warning-regions/${encodeURIComponent(this.regionCode)}/layers`, fd, {
           headers: { 'Content-Type': 'multipart/form-data' }
         })
@@ -257,10 +269,11 @@ export default {
     },
 
     async deleteLayer(layer) {
-      await showAlert(
+      const confirmed = await showConfirm(
         `確定要移除「${layer.layer_name}」嗎？`,
         '確認移除', this.isDarkMode
       )
+      if (!confirmed) return
       try {
         const res = await api.delete(`/warning-regions/layers/${layer.layer_id}`)
         if (res?.success) {

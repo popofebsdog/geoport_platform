@@ -30,7 +30,7 @@
         :class="isDarkMode ? 'bg-slate-800 hover:bg-slate-750 border-slate-700' : 'bg-white hover:bg-gray-50 border-gray-200'"
       >
         <!-- 卡片右上角操作按鈕 -->
-        <div class="flex items-center gap-1 absolute top-2.5 right-2.5 z-10">
+        <div v-if="canEdit" class="flex items-center gap-1 absolute top-2.5 right-2.5 z-10">
           <button
             @click.stop="$emit('edit', child)"
             class="p-1 rounded transition-colors duration-150"
@@ -109,7 +109,7 @@
     </div>
     
     <!-- 當沒有子專案時，只顯示新增紀錄按鈕 -->
-    <div v-if="sortedChildProjects.length === 0" class="timeline-item timeline-add-record-item">
+    <div v-if="sortedChildProjects.length === 0 && canEdit" class="timeline-item timeline-add-record-item">
       <!-- 新增紀錄節點包裝器 -->
       <div class="timeline-add-record-node-wrapper">
         <div class="timeline-add-record-node">
@@ -122,7 +122,7 @@
       </div>
       
       <!-- 新增紀錄卡片（可點擊，固定顯示） -->
-      <div class="timeline-add-record-expanded" @click="$emit('add-record')">
+      <div v-if="canEdit" class="timeline-add-record-expanded" @click="$emit('add-record')">
         <div class="add-record-expanded-content">
           <div class="flex items-center justify-center py-3">
             <span class="add-record-expanded-text">新增紀錄</span>
@@ -132,7 +132,7 @@
     </div>
     
     <!-- 當有子專案時，顯示整合的功能按鈕區域 - 新增紀錄 / 動畫模式 -->
-    <div v-else class="timeline-item timeline-action-item" 
+    <div v-else-if="sortedChildProjects.length > 0" class="timeline-item timeline-action-item"
          :class="isAnimationMode ? 'timeline-animation-item' : 'timeline-add-record-item'">
       <!-- 從節點往上連接到最後一個項目的連接線 -->
       <div class="animation-timeline-line-up"></div>
@@ -168,7 +168,7 @@
             </span>
             
             <!-- 切換按鈕（僅當有子專案時顯示） -->
-            <div class="action-toggle-wrapper">
+            <div v-if="canEdit" class="action-toggle-wrapper">
               <button 
                 @click.stop="toggleMode"
                 class="action-toggle-btn"
@@ -196,6 +196,7 @@ import { confirm } from '@/utils/simpleAlertService'
 
 export default {
   name: 'ChildProjectTimeline',
+  inject: { canEdit: { default: true } },
   props: {
     childProjects: {
       type: Array,
@@ -242,7 +243,7 @@ export default {
         const date = new Date(normalized)
         return isNaN(date.getTime()) ? null : date
       } catch (error) {
-        console.warn('解析日期失敗:', dateString, error)
+
         return null
       }
     }

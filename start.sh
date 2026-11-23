@@ -9,7 +9,7 @@ node_version=$(node -v 2>/dev/null)
 if [ $? -eq 0 ]; then
     echo "✅ Node.js 版本: $node_version"
 else
-    echo "❌ 未找到 Node.js，請先安裝 Node.js 18+"
+    echo "❌ 未找到 Node.js，請先安裝 Node.js 20.19+（建議 Node 22）"
     exit 1
 fi
 

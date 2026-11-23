@@ -70,6 +70,16 @@ data/projects/**/*.geojson
 
 # Backup files
 *.backup
+backups/
+releases/
+.geoport-release-*/
+geoport_bundle_*/
+.geoport_bundle_*/
+geoport_backup_*
+.geoport_backup_*
+
+# Local Python environment
+backend/.venv/
 
 # Database
 *.sqlite

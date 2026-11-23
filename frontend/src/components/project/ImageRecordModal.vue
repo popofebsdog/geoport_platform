@@ -244,6 +244,7 @@
 </template>
 
 <script>
+import { staticUrl } from '@/utils/urls.js'
 import { confirm as showConfirm, error as showError } from '@/utils/simpleAlertService'
 
 export default {
@@ -288,7 +289,7 @@ export default {
 
     async loadMediaList() {
       if (!this.childProject?.project_id) {
-        console.warn('缺少子專案 ID，無法載入影像紀錄')
+
         return
       }
 
@@ -296,10 +297,14 @@ export default {
       try {
         const response = await this.$api.get(`/child-projects/${this.childProject.project_id}/media`)
         if (response.success) {
-          this.mediaList = response.data
+          this.mediaList = response.data.map(media => ({
+            ...media,
+            url: staticUrl(media.url),
+            thumbnail: media.thumbnail ? staticUrl(media.thumbnail) : null
+          }))
         }
       } catch (error) {
-        console.error('載入影像紀錄失敗:', error)
+
       } finally {
         this.isLoading = false
       }
@@ -311,7 +316,7 @@ export default {
 
       for (const file of files) {
         if (!file.type.startsWith('image/')) {
-          console.warn('不是有效的圖片文件:', file.name)
+
           continue
         }
 
@@ -330,7 +335,7 @@ export default {
 
       for (const file of files) {
         if (!file.type.startsWith('video/')) {
-          console.warn('不是有效的影片文件:', file.name)
+
           continue
         }
 
@@ -345,7 +350,7 @@ export default {
 
     async uploadFile(file, type) {
       if (!this.childProject?.project_id) {
-        console.error('缺少子專案 ID，無法上傳')
+
         return
       }
 
@@ -374,21 +379,20 @@ export default {
 
         if (response.success && response.data?.[0]) {
           const uploaded = response.data[0]
-          const staticBase = import.meta.env.VITE_STATIC_URL || window.location.origin
           // 用真實資料替換暫存項目
           const idx = this.mediaList.findIndex(m => m.id === tempId)
           if (idx > -1) {
             this.mediaList.splice(idx, 1, {
               ...uploaded,
-              url: `${staticBase}${uploaded.url}`,
-              thumbnail: uploaded.thumbnail ? `${staticBase}${uploaded.thumbnail}` : null
+              url: staticUrl(uploaded.url),
+              thumbnail: uploaded.thumbnail ? staticUrl(uploaded.thumbnail) : null
             })
           }
         } else {
           throw new Error(response.message || '上傳失敗')
         }
       } catch (error) {
-        console.error('上傳失敗:', error)
+
         // 移除暫存項目
         const idx = this.mediaList.findIndex(m => m.id === tempId)
         if (idx > -1) this.mediaList.splice(idx, 1)
@@ -426,7 +430,7 @@ export default {
           throw new Error(response.message || '刪除失敗')
         }
       } catch (error) {
-        console.error('刪除失敗:', error)
+
         await showError('刪除失敗，請稍後再試', '刪除失敗', this.isDarkMode)
       }
     },

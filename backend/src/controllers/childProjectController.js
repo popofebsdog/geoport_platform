@@ -57,6 +57,7 @@ export const getChildProjectsByParent = async (req, res) => {
         c.event_date,
         c.status,
         c.priority,
+        c.is_bookmarked,
         c.file_count,
         c.total_size,
         c.layer_count,

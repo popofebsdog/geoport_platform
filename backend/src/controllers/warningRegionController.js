@@ -1,12 +1,9 @@
 import { pool } from '../config/database.js';
 import ExcelJS from 'exceljs';
 import path from 'path';
-import { fileURLToPath } from 'url';
 import fs from 'fs/promises';
 import { validateUUID } from '../utils/validators.js';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+import { resolveStoragePath, toStoragePath } from '../services/storageService.js';
 
 /**
  * 將里程數轉換為標準格式
@@ -255,10 +252,40 @@ async function getWarningRegionData(req, res) {
 /**
  * 從外部API獲取數據
  */
+function emptyExternalData(dataType, now) {
+  const strongMotion = ['chart3', 'earthquake', 'strong_motion'].includes(dataType);
+  const data = {
+    dataType, timestamp: now.toISOString(), time_series: [], values: [], labels: [],
+    updateInterval: strongMotion ? 120 : 600, dataDensity: 'none'
+  };
+  if (['chart1', 'microseismic'].includes(dataType)) {
+    Object.assign(data, { warningFlags: { warnings: [], alerts: [] }, catalog: { records: [], count: 0 }, latest_value: null, average: null });
+  } else if (['chart2', 'rainfall'].includes(dataType)) {
+    Object.assign(data, { timeSeries: [], statistics: { total: null, accumulated: null, max: null, min: null, avg: null, average: null, count: 0 }, latest: null, hourly: null, accumulated: null, hourly_values: [] });
+  } else if (strongMotion) {
+    Object.assign(data, { parsed: { raw: [], count: 0, timeSeries: [], metadata: {} }, pga: null, max_acceleration: null, acceleration: null, latest_value: null });
+  }
+  return data;
+}
+
+function externalObservationTime(value, assumeUtc = false) {
+  if (typeof value !== 'string' || !value.trim()) return null;
+  let date;
+  if (/^\d{14}\.\d{2}$/.test(value)) {
+    date = new Date(Number(value.slice(0, 4)), Number(value.slice(4, 6)) - 1, Number(value.slice(6, 8)), Number(value.slice(8, 10)), Number(value.slice(10, 12)), Number(value.slice(12, 14)), Number(value.slice(15)) * 10);
+  } else {
+    // The microseismic catalog explicitly labels its timestamps UTC+0.
+    let normalized = value.replace(/^(\d{4}-\d{2}-\d{2})-(\d{2})-(\d{2})-(\d{2})$/, '$1T$2:$3:$4Z');
+    if (assumeUtc && /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(?:\.\d+)?$/.test(normalized)) normalized += 'Z';
+    date = new Date(normalized);
+  }
+  return Number.isNaN(date.getTime()) ? null : date.toISOString();
+}
+
 async function getExternalApiData(regionCode, dataType, apiConfig, req, res) {
+  const now = new Date();
   try {
     const { MicroseismicApiService, RainfallEarthquakeApiService } = await import('../services/externalApiService.js');
-    const now = new Date();
     
     // 從 apiConfig 中提取各類型的 endpoint
     // 確保正確處理 null、undefined、空字符串的情況
@@ -278,57 +305,26 @@ async function getExternalApiData(regionCode, dataType, apiConfig, req, res) {
     // 調試：輸出配置信息
     
     // 根據數據類型確定要使用的 endpoint
-    let endpointToUse = null;
     let hasConfiguredEndpoint = false;
     
     if (dataType === 'chart1' || dataType === 'microseismic') {
       hasConfiguredEndpoint = !!microseismicEndpoint && microseismicEndpoint.length > 0;
-      endpointToUse = microseismicEndpoint;
     } else if (dataType === 'chart2' || dataType === 'rainfall') {
       hasConfiguredEndpoint = !!rainfallEndpoint && rainfallEndpoint.length > 0;
-      endpointToUse = rainfallEndpoint;
     } else if (dataType === 'chart3' || dataType === 'earthquake' || dataType === 'strong_motion') {
       hasConfiguredEndpoint = !!earthquakeEndpoint && earthquakeEndpoint.length > 0;
-      endpointToUse = earthquakeEndpoint;
     }
     
     // 如果不是台7線且沒有配置 endpoint，返回空數據
     if (!isTaiwan7 && !hasConfiguredEndpoint) {
       
-      // 根據數據類型返回空數據結構
-      let emptyResult = {
-        dataType: dataType,
-        timestamp: now.toISOString(),
-        time_series: [],
-        values: [],
-        updateInterval: 600,
-        dataDensity: 'none'
-      };
-      
-      if (dataType === 'chart1' || dataType === 'microseismic') {
-        emptyResult.warningFlags = { warnings: [], alerts: [] };
-        emptyResult.catalog = { records: [], count: 0 };
-        emptyResult.latest_value = null;
-        emptyResult.average = 0;
-      } else if (dataType === 'chart2' || dataType === 'rainfall') {
-        emptyResult.timeSeries = [];
-        emptyResult.statistics = { max: 0, min: 0, average: 0, total: 0 };
-        emptyResult.latest = { hourly: 0, accumulated: 0 };
-        emptyResult.accumulated = 0;
-        emptyResult.hourly = 0;
-      } else if (dataType === 'chart3' || dataType === 'earthquake' || dataType === 'strong_motion') {
-        emptyResult.parsed = { timeSeries: [], metadata: {} };
-        emptyResult.pga = null;
-        emptyResult.max_acceleration = null;
-        emptyResult.acceleration = null;
-        emptyResult.latest_value = null;
-      }
-      
+      const message = `項目 ${regionCode} 未配置 ${dataType} 的API端點`;
       return res.json({
-        success: true,
+        success: false,
         source: 'external_api',
-        data: emptyResult,
-        message: `項目 ${regionCode} 未配置 ${dataType} 的API端點`
+        dataStatus: 'not_configured', message,
+        timestamp: now.toISOString(),
+        data: { ...emptyExternalData(dataType, now), dataStatus: 'not_configured', message }
       });
     }
     
@@ -338,9 +334,11 @@ async function getExternalApiData(regionCode, dataType, apiConfig, req, res) {
     const finalEarthquakeEndpoint = earthquakeEndpoint || 'http://140.113.16.140';
     
     // 創建帶有正確 baseUrl 的服務實例
-    const microseismicService = new MicroseismicApiService(finalMicroseismicEndpoint);
-    const rainfallService = new RainfallEarthquakeApiService(finalRainfallEndpoint);
-    const earthquakeService = new RainfallEarthquakeApiService(finalEarthquakeEndpoint);
+    // Share a deadline across all probes and the optional legend, below the UI's 30s timeout.
+    const requestOptions = { signal: AbortSignal.timeout(25000) };
+    const microseismicService = new MicroseismicApiService(finalMicroseismicEndpoint, requestOptions);
+    const rainfallService = new RainfallEarthquakeApiService(finalRainfallEndpoint, requestOptions);
+    const earthquakeService = new RainfallEarthquakeApiService(finalEarthquakeEndpoint, requestOptions);
     
     
     // 根據數據類型設置更新間隔（秒）
@@ -356,6 +354,12 @@ async function getExternalApiData(regionCode, dataType, apiConfig, req, res) {
     }
     
     let result = null;
+    let upstreamResults = [];
+    let sourceDate = null;
+    let hasData = false;
+    let observationTime = null;
+    let flagsObservedAt = null;
+    let historicalCatalog = false;
     
     switch (dataType) {
       case 'chart1': // 微地動
@@ -365,6 +369,7 @@ async function getExternalApiData(regionCode, dataType, apiConfig, req, res) {
         
         // 獲取今日目錄
         const catalog = await microseismicService.getDailyCatalog(now);
+        upstreamResults = [warningFlags, catalog];
         
         // 調試：輸出微地動API原始內容
         if (catalog.data && catalog.data.records && catalog.data.records.length > 0) {
@@ -381,11 +386,7 @@ async function getExternalApiData(regionCode, dataType, apiConfig, req, res) {
           // 優先使用 DateTime(UTC+0) 字段
           const recordDate = record['DateTime(UTC+0)'] || record.date || record.timestamp || record.time || record['DateTime'] || '';
           // 檢查是否包含今天的日期（支持多種格式）
-          return recordDate.includes(todayStr) || 
-                 recordDate.includes(todayStrCompact) ||
-                 recordDate.includes(now.getFullYear().toString() + String(now.getMonth() + 1).padStart(2, '0') + String(now.getDate()).padStart(2, '0')) ||
-                 recordDate.startsWith(todayStr) ||
-                 recordDate.startsWith(todayStrCompact);
+          return externalObservationTime(recordDate, true)?.slice(0, 10) === todayStr;
         });
         
         // 如果今天沒有數據，使用最近24條記錄（可能是跨日的情況）
@@ -397,12 +398,13 @@ async function getExternalApiData(regionCode, dataType, apiConfig, req, res) {
           // 優先使用 Time(sec) 字段（微地動時間）
           // 格式可能是：+   81.0000000 或 -   81.0000000，需要去除加號和空格
           if (record['Time(sec)'] !== undefined && record['Time(sec)'] !== '') {
-            const timeSec = record['Time(sec)'].trim().replace(/^[+\-]\s*/, ''); // 去除開頭的+/-和空格
+            const timeSec = String(record['Time(sec)']).trim().replace(/^[+\-]\s*/, ''); // 去除開頭的+/-和空格
             const value = parseFloat(timeSec);
-            return isNaN(value) ? 0 : value;
+            return Number.isFinite(value) ? value : null;
           }
           // 兼容其他可能的字段名
-          return parseFloat(record.value || record.magnitude || record.data || record['Time'] || record['time'] || 0);
+          const value = parseFloat(record.value ?? record.magnitude ?? record.data ?? record['Time'] ?? record['time']);
+          return Number.isFinite(value) ? value : null;
         };
         
         const extractTime = (record) => {
@@ -417,12 +419,22 @@ async function getExternalApiData(regionCode, dataType, apiConfig, req, res) {
         const extractType = (record) => {
           return record.Type || record.type || record['Type'] || '';
         };
+
+        hasData = recentRecords.length > 0 && recentRecords.every(record => Number.isFinite(extractValue(record)))
+          && warningFlags.data != null && typeof warningFlags.data === 'object' && Object.keys(warningFlags.data).length > 0;
+        sourceDate = recentRecords.length ? extractTime(recentRecords[recentRecords.length - 1]) : null;
+        observationTime = externalObservationTime(sourceDate, true);
+        flagsObservedAt = externalObservationTime(warningFlags.observedAt, true);
+        const catalogDay = String(catalogData.date || '').replace(/-/g, '');
+        historicalCatalog = /^\d{8}$/.test(catalogDay) && catalogDay < todayStrCompact
+          || Boolean(observationTime && observationTime.slice(0, 10) < todayStr);
         
         result = {
           dataType: 'microseismic',
           timestamp: now.toISOString(),
           warningFlags: warningFlags.data || { warnings: [], alerts: [] },
           catalog: catalogData,
+          flagsObservedAt,
           // 為了兼容前端組件，提供標準化的數據格式
           values: recentRecords.map((record, index) => {
             return extractValue(record);
@@ -434,7 +446,7 @@ async function getExternalApiData(regionCode, dataType, apiConfig, req, res) {
             return {
               time: timeStr || `T${index}`,
               value: value,
-              timestamp: timeStr || now.toISOString(),
+              timestamp: timeStr || null,
               type: type,
               // 保留原始記錄以便調試
               raw: record
@@ -445,7 +457,7 @@ async function getExternalApiData(regionCode, dataType, apiConfig, req, res) {
             : null,
           average: records.length > 0
             ? records.reduce((sum, r) => sum + extractValue(r), 0) / records.length
-            : 0,
+            : null,
           // 數據更新頻率提示
           updateInterval: updateInterval,
           dataDensity: records.length > 24 ? 'high' : records.length > 12 ? 'medium' : 'low'
@@ -471,6 +483,7 @@ async function getExternalApiData(regionCode, dataType, apiConfig, req, res) {
         
         // 獲取降雨數據（TXT格式，包含時間序列）
         const rainfallData = await rainfallService.getRainfallData(targetDate, 'txt');
+        upstreamResults = [rainfallData];
         
         // 調試：輸出雨量API原始內容
         if (rainfallData.success && rainfallData.data) {
@@ -484,32 +497,27 @@ async function getExternalApiData(regionCode, dataType, apiConfig, req, res) {
         
         // 如果API調用失敗，返回空數據而不是拋出錯誤
         if (!rainfallData.success) {
-          result = {
-            dataType: 'rainfall',
-            timestamp: now.toISOString(),
-            timeSeries: [],
-            statistics: { total: 0, accumulated: 0, max: 0, avg: 0, count: 0 },
-            latest: null,
-            time_series: [],
-            accumulated: 0,
-            hourly: 0,
-            labels: [],
-            values: [],
-            hourly_values: [] // 時雨量數組
-          };
+          result = emptyExternalData('rainfall', now);
         } else {
           const data = rainfallData.data || {};
+          const latest = data.timeSeries?.[data.timeSeries.length - 1];
+          hasData = (data.timeSeries?.length || 0) > 0 && Number.isFinite(latest?.hourly ?? latest?.rain ?? latest?.value);
+          sourceDate = latest?.datetime || latest?.time || data.latest?.time || null;
+          observationTime = Number.isFinite(latest?.epoch)
+            ? externalObservationTime(new Date(latest.epoch * 1000).toISOString())
+            : externalObservationTime(latest?.observedAt || sourceDate, true);
           result = {
+            ...emptyExternalData('rainfall', now),
             dataType: 'rainfall',
             timestamp: now.toISOString(),
             ...data,
             // 為了兼容前端組件
             time_series: data.timeSeries || [],
-            accumulated: data.statistics?.accumulated || data.statistics?.total || 0, // 累積雨量
-            hourly: data.latest?.hourly || data.latest?.value || 0, // 最新時雨量
+            accumulated: hasData ? (data.statistics?.accumulated ?? data.statistics?.total ?? null) : null,
+            hourly: hasData ? (data.latest?.hourly ?? data.latest?.value ?? null) : null,
             labels: data.timeSeries?.map(item => item.datetime || item.time || item.timeHr) || [],
-            values: data.timeSeries?.map(item => item.hourly || item.rain || item.value || 0) || [], // 優先使用時雨量
-            hourly_values: data.timeSeries?.map(item => item.hourly || item.rain || item.value || 0) || [], // 時雨量數組
+            values: data.timeSeries?.map(item => item.hourly ?? item.rain ?? item.value ?? null) || [],
+            hourly_values: data.timeSeries?.map(item => item.hourly ?? item.rain ?? item.value ?? null) || [],
             // 數據更新頻率提示
             updateInterval: updateInterval,
             dataDensity: (data.timeSeries?.length || 0) > 24 ? 'high' : (data.timeSeries?.length || 0) > 12 ? 'medium' : 'low'
@@ -522,82 +530,27 @@ async function getExternalApiData(regionCode, dataType, apiConfig, req, res) {
       case 'chart3': // 強地動
       case 'earthquake':
       case 'strong_motion': {
-        // 獲取強地動數據
-        // 注意：強地動數據只在觸發事件時才生成，所以需要回溯尋找最近的數據
-        
-        // 先嘗試當前時間
         let strongMotionData = await earthquakeService.getStrongMotionData(now, 0, 'DH3A.cwa.txt');
-        
-        
-        if (strongMotionData.success && strongMotionData.data) {
-          if (strongMotionData.data.raw) {
-          }
-          if (strongMotionData.data.lines && strongMotionData.data.lines.length > 0) {
-          }
-          if (strongMotionData.data.parsed) {
-          }
-        } else {
-        }
-        
-        // 如果當前時間的數據不存在，先嘗試獲取目錄列表找到最新的可用數據
+        let eventTimestamp = null;
+
+        // Probe only known event directories; guessing 198 timestamps can take hours.
         if (!strongMotionData.success && strongMotionData.statusCode === 404) {
-          
-          // 嘗試獲取目錄列表
           const dirList = await earthquakeService.getStrongMotionDirectoryList();
-          
-          if (dirList.success && dirList.timestamps.length > 0) {
-            
-            // 嘗試最新的5個時間戳
-            for (let i = 0; i < Math.min(5, dirList.timestamps.length); i++) {
-              const timestampStr = dirList.timestamps[i];
-              
-              // 解析時間戳為Date對象
-              // 格式：20250425015806.70 -> 2025-04-25 01:58:06.70
-              const year = parseInt(timestampStr.substring(0, 4));
-              const month = parseInt(timestampStr.substring(4, 6)) - 1; // 月份從0開始
-              const day = parseInt(timestampStr.substring(6, 8));
-              const hour = parseInt(timestampStr.substring(8, 10));
-              const minute = parseInt(timestampStr.substring(10, 12));
-              const second = parseInt(timestampStr.substring(12, 14));
-              const ss = parseInt(timestampStr.substring(15, 17));
-              
-              const timestampDate = new Date(year, month, day, hour, minute, second, ss * 10);
-              
-              strongMotionData = await earthquakeService.getStrongMotionData(timestampDate, ss, 'DH3A.cwa.txt');
-              if (strongMotionData.success) {
-                break;
-              }
-            }
-          }
-          
-          // 如果目錄列表方法失敗，嘗試回溯更長的時間（最多回溯7天）
-          if (!strongMotionData.success) {
-            
-            // 先嘗試前30分鐘（每次1分鐘）
-            for (let i = 1; i <= 30; i++) {
-              const pastTime = new Date(now.getTime() - i * 60 * 1000);
-              strongMotionData = await earthquakeService.getStrongMotionData(pastTime, 0, 'DH3A.cwa.txt');
-              if (strongMotionData.success) {
-                break;
-              }
-              if (i % 10 === 0) {
-              }
-            }
-            
-            // 如果還是失敗，嘗試回溯到幾天前（每次1小時）
-            if (!strongMotionData.success) {
-              for (let hour = 1; hour <= 168; hour++) { // 7天 = 168小時
-                const pastTime = new Date(now.getTime() - hour * 60 * 60 * 1000);
-                strongMotionData = await earthquakeService.getStrongMotionData(pastTime, 0, 'DH3A.cwa.txt');
-                if (strongMotionData.success) {
-                  break;
-                }
-                if (hour % 24 === 0) {
-                }
-              }
+          if (!dirList.success) {
+            strongMotionData = dirList;
+          } else {
+            const timestamps = [...new Set(dirList.timestamps || [])]
+              .filter(value => /^\d{14}\.\d{2}$/.test(value)).sort().reverse().slice(0, 3);
+            for (const timestamp of timestamps) {
+              const observedAt = externalObservationTime(timestamp);
+              if (!observedAt) continue;
+              eventTimestamp = timestamp;
+              strongMotionData = await earthquakeService.getStrongMotionData(new Date(observedAt), Number(timestamp.slice(15)), 'DH3A.cwa.txt');
+              if (strongMotionData.success || strongMotionData.statusCode !== 404) break;
             }
           }
         }
+        upstreamResults = [strongMotionData];
         
         // 如果API調用失敗，返回空數據而不是拋出錯誤
         if (!strongMotionData.success) {
@@ -606,47 +559,27 @@ async function getExternalApiData(regionCode, dataType, apiConfig, req, res) {
             statusCode: strongMotionData.statusCode
           });
           result = {
-            dataType: 'strong_motion',
-            timestamp: now.toISOString(),
-            pga: null,
-            max_acceleration: null,
-            acceleration: null,
-            parsed: { raw: [], count: 0, timeSeries: [] },
-            time_series: [],
-            values: [],
+            ...emptyExternalData('strong_motion', now),
             error: strongMotionData.error || 'API調用失敗'
           };
         } else {
           const parsed = strongMotionData.data?.parsed || {};
           const timeSeries = parsed.timeSeries || [];
-          
-          
-          // 如果解析後沒有時間序列數據，但有PGA或加速度值，至少返回這些值
-          if (timeSeries.length === 0 && (parsed.pga !== null || parsed.acceleration !== null)) {
-            // 創建一個單一數據點的時間序列
-            const singleValue = parsed.pga || parsed.acceleration || parsed.maxAcceleration || 0;
-            const currentHour = now.getHours();
-            timeSeries.push({
-              time: `${String(currentHour).padStart(2, '0')}:00:00`,
-              acceleration: singleValue,
-              index: 0
-            });
-          }
-          
+          hasData = timeSeries.some(item => Number.isFinite(item.absAcceleration ?? item.acceleration));
+          sourceDate = parsed.metadata?.startTime || strongMotionData.data?.timestamp || eventTimestamp;
           result = {
             dataType: 'strong_motion',
             timestamp: now.toISOString(),
             ...(strongMotionData.data || {}),
             // 為了兼容前端組件
-            pga: parsed.pga || strongMotionData.data?.pga || null,
-            max_acceleration: parsed.maxAcceleration || strongMotionData.data?.max_acceleration || null,
-            acceleration: parsed.acceleration || strongMotionData.data?.acceleration || null,
-            // 時間序列數據（如果沒有，但有多值，至少返回一個）
+            pga: strongMotionData.data?.pga ?? parsed.pga ?? null,
+            max_acceleration: parsed.maxAcceleration ?? strongMotionData.data?.max_acceleration ?? null,
+            acceleration: parsed.acceleration ?? strongMotionData.data?.acceleration ?? null,
             // 注意：強地動數據使用 absAcceleration（三個分量的最大絕對值）作為圖表值
             // 這是標準的PGA計算方式，比合成加速度更準確
             time_series: timeSeries,
-            values: timeSeries.length > 0 ? timeSeries.map(item => item.absAcceleration || item.acceleration || 0) : (parsed.pga !== null ? [parsed.pga] : (parsed.maxAcceleration !== null ? [parsed.maxAcceleration] : (parsed.acceleration !== null ? [parsed.acceleration] : []))),
-            labels: timeSeries.length > 0 ? timeSeries.map(item => item.time) : (parsed.pga !== null || parsed.acceleration !== null ? [`${String(now.getHours()).padStart(2, '0')}:00:00`] : []),
+            values: timeSeries.map(item => item.absAcceleration ?? item.acceleration ?? null),
+            labels: timeSeries.map(item => item.time),
             // 數據更新頻率提示
             updateInterval: updateInterval,
             dataDensity: timeSeries.length > 100 ? 'high' : timeSeries.length > 50 ? 'medium' : 'low'
@@ -662,8 +595,28 @@ async function getExternalApiData(regionCode, dataType, apiConfig, req, res) {
         });
     }
     
+    const failure = upstreamResults.find(item => !item.success && item.statusCode !== 404)
+      || upstreamResults.find(item => !item.success);
+    const isMicroseismic = ['chart1', 'microseismic'].includes(dataType);
+    const isRainfall = ['chart2', 'rainfall'].includes(dataType);
+    const observedAt = isMicroseismic || isRainfall ? observationTime : externalObservationTime(sourceDate);
+    // Event silence is not a heartbeat failure; catalog day and flags are checked separately.
+    const freshnessTime = isMicroseismic ? flagsObservedAt : observedAt;
+    const age = freshnessTime ? now.getTime() - new Date(freshnessTime).getTime() : null;
+    const futureObservation = observedAt && new Date(observedAt).getTime() - now.getTime() > updateInterval * 2000;
+    const dataStatus = failure ? (failure.statusCode === 404 ? 'empty' : 'error')
+      : !hasData || !observedAt || futureObservation || age === null || age < -updateInterval * 2000 ? 'empty'
+      : historicalCatalog || age > updateInterval * 2000 ? 'historical' : 'ok';
+    const messages = {
+      ok: '資料可用', empty: '無可用觀測資料或觀測時間', error: '外部API調用失敗',
+      historical: '歷史觀測資料，非即時狀態'
+    };
+    Object.assign(result, { dataStatus, message: messages[dataStatus], updateInterval,
+      ...(sourceDate ? { sourceDate } : {}), ...(observedAt ? { observedAt } : {}),
+      ...(failure ? { error: failure.error, statusCode: failure.statusCode } : {}) });
     res.json({
-      success: true,
+      success: !failure,
+      dataStatus, message: result.message,
       data: result,
       source: 'external_api',
       timestamp: now.toISOString()
@@ -672,37 +625,13 @@ async function getExternalApiData(regionCode, dataType, apiConfig, req, res) {
     console.error('從外部API獲取數據失敗:', error);
     console.error('錯誤堆疊:', error.stack);
     
-    // 即使出錯也返回空數據結構，避免前端崩潰
-    const emptyResult = {
-      dataType: dataType,
-      timestamp: new Date().toISOString(),
-    };
-    
-    // 根據數據類型返回對應的空結構
-    if (dataType === 'chart1' || dataType === 'microseismic') {
-      emptyResult.values = [];
-      emptyResult.time_series = [];
-      emptyResult.latest_value = null;
-      emptyResult.average = 0;
-      emptyResult.warningFlags = { warnings: [], alerts: [] };
-      emptyResult.catalog = { records: [], count: 0 };
-    } else if (dataType === 'chart2' || dataType === 'rainfall') {
-      emptyResult.time_series = [];
-      emptyResult.accumulated = 0;
-      emptyResult.hourly = 0;
-      emptyResult.labels = [];
-      emptyResult.values = [];
-    } else if (dataType === 'chart3' || dataType === 'earthquake' || dataType === 'strong_motion') {
-      emptyResult.pga = null;
-      emptyResult.max_acceleration = null;
-      emptyResult.acceleration = null;
-    }
-    
+    const dataStatus = error.response?.status === 404 ? 'empty' : 'error';
+    const message = dataStatus === 'empty' ? '無可用觀測資料' : '外部API調用失敗';
     res.json({
-      success: true, // 仍然返回success，但數據為空
-      data: emptyResult,
+      success: false, dataStatus, message,
+      data: { ...emptyExternalData(dataType, now), dataStatus, message },
       source: 'external_api',
-      timestamp: new Date().toISOString(),
+      timestamp: now.toISOString(),
       warning: '外部API調用失敗，返回空數據'
     });
   }
@@ -2135,10 +2064,6 @@ async function deleteInspectionRecord(req, res) {
 
 // ─── 監測圖資 (warning_region_layers) ────────────────────────────────────────
 
-const BACKEND_ROOT = path.join(__dirname, '../..');
-const resolveMonitoringPath = (p) =>
-  path.isAbsolute(p) ? p : path.join(BACKEND_ROOT, p);
-
 // GET /api/warning-regions/id/:regionId/layers
 export async function getRegionLayersById(req, res) {
   const { regionId } = req.params;
@@ -2187,42 +2112,50 @@ export async function upsertRegionLayer(req, res) {
     return res.status(400).json({ success: false, message: '缺少 layer_type 或 layer_name' });
   }
 
+  if (!['insar', 'road', 'shapefile', 'hotspot'].includes(layer_type)) {
+    return res.status(400).json({ success: false, message: '不支援的圖資類型' });
+  }
+
   try {
+    const { WarningRegion, WarningRegionLayer } = await import('../models/WarningRegionLayer.js');
+    let regionId = req.body.region_id;
+    if (regionId) {
+      if (!validateUUID(regionId, res, '地區 ID')) return;
+      const region = await WarningRegion.findOne({ where: { region_id: regionId, region_code: regionCode, deleted_at: null } });
+      if (!region) return res.status(404).json({ success: false, message: '找不到指定的預警地區' });
+    } else {
+      const regions = await WarningRegion.findAll({ where: { region_code: regionCode, deleted_at: null }, attributes: ['region_id'], limit: 2 });
+      if (regions.length !== 1) return res.status(400).json({ success: false, message: '請指定地區專案 ID' });
+      regionId = regions[0].region_id;
+    }
+    let config = {};
+    try {
+      config = typeof display_config === 'string' ? JSON.parse(display_config) : display_config || {};
+      if (!config || Array.isArray(config) || typeof config !== 'object') throw new Error('Invalid display config');
+    } catch {
+      return res.status(400).json({ success: false, message: '圖資顯示設定格式不正確' });
+    }
     let storage_path;
 
     // 有上傳檔案的情況
     if (req.file) {
-      const relPath = path.relative(BACKEND_ROOT, req.file.path);
-      storage_path = relPath.replace(/\\/g, '/');
+      storage_path = toStoragePath(req.file.path);
     } else if (req.body.storage_path) {
-      storage_path = req.body.storage_path;
+      storage_path = toStoragePath(req.body.storage_path);
     } else if (!layerId) {
       return res.status(400).json({ success: false, message: '新增圖資需要提供檔案或 storage_path' });
     }
 
     if (layerId) {
-      // 更新
-      const fields = ['layer_type=$2', 'layer_name=$3', 'display_config=$4', 'updated_at=NOW()'];
-      const values = [layerId, layer_type, layer_name, display_config ? JSON.parse(display_config) : {}];
-      if (storage_path) { fields.push(`storage_path=$${values.length + 1}`); values.push(storage_path); }
-
-      const result = await pool.query(
-        `UPDATE warning_region_layers SET ${fields.join(',')} WHERE layer_id=$1 RETURNING *`,
-        values
-      );
-      if (result.rows.length === 0) return res.status(404).json({ success: false, message: '圖資不存在' });
-      return res.json({ success: true, data: result.rows[0] });
+      const layer = await WarningRegionLayer.findOne({ where: { layer_id: layerId, region_id: regionId } });
+      if (!layer) return res.status(404).json({ success: false, message: '圖資不存在' });
+      await layer.update({ layer_type, layer_name, display_config: config, ...(storage_path ? { storage_path } : {}) });
+      return res.json({ success: true, data: layer });
     }
 
-    // 新增
-    const result = await pool.query(
-      `INSERT INTO warning_region_layers
-         (region_code, layer_type, layer_name, storage_path, display_config)
-       VALUES ($1,$2,$3,$4,$5) RETURNING *`,
-      [regionCode, layer_type, layer_name, storage_path,
-       display_config ? JSON.parse(display_config) : {}]
-    );
-    res.status(201).json({ success: true, data: result.rows[0] });
+    const layer = await WarningRegionLayer.create({ region_id: regionId, region_code: regionCode,
+      layer_type, layer_name, storage_path, display_config: config });
+    res.status(201).json({ success: true, data: layer });
   } catch (error) {
     console.error('儲存監測圖資失敗:', error);
     res.status(500).json({ success: false, message: '儲存監測圖資失敗' });
@@ -2258,7 +2191,8 @@ export async function serveMonitoringFile(req, res) {
     return res.status(403).json({ success: false, message: '不允許存取此路徑' });
   }
 
-  const absPath = resolveMonitoringPath(normalized);
+  const absPath = resolveStoragePath(normalized);
+  if (!absPath) return res.status(403).json({ success: false, message: '不允許存取此路徑' });
   try {
     await fs.access(absPath);
     const ext = path.extname(absPath).toLowerCase();

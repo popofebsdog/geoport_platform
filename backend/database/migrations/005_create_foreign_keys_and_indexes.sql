@@ -2,6 +2,24 @@
 -- 確保資料完整性和查詢效能
 -- 創建時間: 2025-09-24
 
+-- All three source tables must exist before creating this view.
+CREATE OR REPLACE VIEW project_statistics AS
+SELECT p.project_id, p.name, p.status, p.file_count, p.total_size, p.layer_count,
+    COALESCE(df.file_count, 0) AS actual_file_count,
+    COALESCE(sl.layer_count, 0) AS actual_layer_count,
+    COALESCE(df.total_size, 0) AS actual_total_size
+FROM projects p
+LEFT JOIN (
+    SELECT project_id, COUNT(*) AS file_count, SUM(file_size) AS total_size
+    FROM data_files WHERE deleted_at IS NULL GROUP BY project_id
+) df ON p.project_id = df.project_id
+LEFT JOIN (
+    SELECT project_id, COUNT(*) AS layer_count
+    FROM spatial_layers WHERE deleted_at IS NULL GROUP BY project_id
+) sl ON p.project_id = sl.project_id
+WHERE p.deleted_at IS NULL;
+COMMENT ON VIEW project_statistics IS '專案統計資訊視圖';
+
 -- 添加外鍵約束到 projects 表
 ALTER TABLE projects 
 ADD CONSTRAINT fk_projects_owner_id 
@@ -49,6 +67,11 @@ CREATE INDEX IF NOT EXISTS idx_users_verified_active ON users(is_verified, is_ac
 CREATE INDEX IF NOT EXISTS idx_users_last_activity ON users(last_activity_at DESC) WHERE deleted_at IS NULL AND is_active = TRUE;
 
 -- 創建全文搜尋索引
+-- The generic array_to_string is STABLE; text-only joining has no locale-dependent casts.
+CREATE OR REPLACE FUNCTION search_text_array(items TEXT[])
+RETURNS TEXT LANGUAGE SQL IMMUTABLE PARALLEL SAFE
+AS $$ SELECT array_to_string(items, ' '); $$;
+
 CREATE INDEX IF NOT EXISTS idx_projects_fulltext ON projects USING gin(
     to_tsvector('chinese', 
         COALESCE(name, '') || ' ' || 
@@ -63,8 +86,8 @@ CREATE INDEX IF NOT EXISTS idx_data_files_fulltext ON data_files USING gin(
     to_tsvector('chinese', 
         COALESCE(file_name, '') || ' ' || 
         COALESCE(original_name, '') || ' ' || 
-        COALESCE(array_to_string(tags, ' '), '') || ' ' || 
-        COALESCE(array_to_string(keywords, ' '), '')
+        COALESCE(search_text_array(tags), '') || ' ' ||
+        COALESCE(search_text_array(keywords), '')
     )
 ) WHERE deleted_at IS NULL;
 
@@ -73,7 +96,7 @@ CREATE INDEX IF NOT EXISTS idx_spatial_layers_fulltext ON spatial_layers USING g
         COALESCE(layer_name, '') || ' ' || 
         COALESCE(display_name, '') || ' ' || 
         COALESCE(description, '') || ' ' || 
-        COALESCE(array_to_string(tags, ' '), '') || ' ' || 
+        COALESCE(search_text_array(tags), '') || ' ' ||
         COALESCE(category, '')
     )
 ) WHERE deleted_at IS NULL;
@@ -87,9 +110,9 @@ CREATE INDEX IF NOT EXISTS idx_spatial_layers_spatial_extent_geom ON spatial_lay
 CREATE INDEX IF NOT EXISTS idx_projects_active ON projects(created_at DESC) WHERE deleted_at IS NULL AND status = 'active';
 CREATE INDEX IF NOT EXISTS idx_projects_high_priority ON projects(created_at DESC) WHERE deleted_at IS NULL AND priority IN ('high', 'urgent');
 CREATE INDEX IF NOT EXISTS idx_data_files_large ON data_files(file_size DESC) WHERE deleted_at IS NULL AND file_size > 100000000; -- > 100MB
-CREATE INDEX IF NOT EXISTS idx_data_files_recent ON data_files(upload_date DESC) WHERE deleted_at IS NULL AND upload_date >= CURRENT_DATE - INTERVAL '30 days';
+CREATE INDEX IF NOT EXISTS idx_data_files_recent ON data_files(upload_date DESC) WHERE deleted_at IS NULL;
 CREATE INDEX IF NOT EXISTS idx_spatial_layers_visible ON spatial_layers(z_index, layer_name) WHERE deleted_at IS NULL AND visible = TRUE;
-CREATE INDEX IF NOT EXISTS idx_users_recent_login ON users(last_login_at DESC) WHERE deleted_at IS NULL AND last_login_at >= CURRENT_DATE - INTERVAL '7 days';
+CREATE INDEX IF NOT EXISTS idx_users_recent_login ON users(last_login_at DESC) WHERE deleted_at IS NULL;
 
 -- 創建統計資訊更新函數
 CREATE OR REPLACE FUNCTION update_table_statistics()

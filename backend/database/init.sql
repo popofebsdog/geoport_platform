@@ -2,17 +2,21 @@
 -- PostgreSQL 版本
 -- 創建時間: 2025-09-24
 
--- 創建資料庫（如果不存在）
--- CREATE DATABASE geoport_db;
-
--- 連接到資料庫
--- \c geoport_db;
+-- 使用呼叫端選定的資料庫，不切換或固定資料庫名稱。
 
 -- 啟用 PostGIS 擴展（用於空間資料處理）
 CREATE EXTENSION IF NOT EXISTS postgis;
 CREATE EXTENSION IF NOT EXISTS postgis_topology;
 CREATE EXTENSION IF NOT EXISTS fuzzystrmatch;
 CREATE EXTENSION IF NOT EXISTS postgis_tiger_geocoder;
+
+-- Keep existing custom parsers; the built-in fallback indexes tokens without Chinese word segmentation.
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_ts_config WHERE cfgname = 'chinese' AND pg_ts_config_is_visible(oid)) THEN
+        CREATE TEXT SEARCH CONFIGURATION public.chinese (COPY = pg_catalog.simple);
+    END IF;
+END $$;
 
 -- 創建自定義類型
 DO $$ BEGIN
@@ -129,7 +133,10 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- 創建註釋
-COMMENT ON DATABASE geoport_db IS 'GeoPort 災情資料搜集系統資料庫';
+DO $$
+BEGIN
+    EXECUTE format('COMMENT ON DATABASE %I IS %L', current_database(), 'GeoPort 災情資料搜集系統資料庫');
+END $$;
 COMMENT ON EXTENSION postgis IS 'PostGIS 空間資料處理擴展';
 COMMENT ON FUNCTION update_updated_at_column() IS '自動更新 updated_at 欄位的觸發器函數';
 COMMENT ON FUNCTION generate_ulid() IS '生成 ULID 格式的唯一識別碼';

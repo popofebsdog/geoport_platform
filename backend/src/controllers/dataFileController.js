@@ -1,5 +1,6 @@
 import { DataFile } from '../models/DataFile.js';
 import { Op } from 'sequelize';
+import { validateUUID } from '../utils/validators.js';
 
 // 獲取所有資料檔案
 export const getAllDataFiles = async (req, res) => {
@@ -46,6 +47,7 @@ export const getAllDataFiles = async (req, res) => {
 
 // 獲取單個資料檔案
 export const getDataFileById = async (req, res) => {
+  if (!validateUUID(req.params.id, res)) return;
   try {
     const { id } = req.params;
     const dataFile = await DataFile.findByPk(id);
@@ -57,6 +59,7 @@ export const getDataFileById = async (req, res) => {
     res.json({ success: true, data: { dataFile } });
   } catch (error) {
     console.error('獲取資料檔案錯誤:', error);
+    return res.status(500).json({ success: false, message: '獲取資料檔案失敗' });
   }
 };
 
@@ -99,6 +102,7 @@ export const createDataFile = async (req, res) => {
 
 // 更新資料檔案
 export const updateDataFile = async (req, res) => {
+  if (!validateUUID(req.params.id, res)) return;
   try {
     const { id } = req.params;
     const updateData = req.body;
@@ -114,11 +118,13 @@ export const updateDataFile = async (req, res) => {
     res.json({ success: true, message: '資料檔案更新成功', data: { dataFile } });
   } catch (error) {
     console.error('更新資料檔案錯誤:', error);
+    return res.status(500).json({ success: false, message: '更新資料檔案失敗' });
   }
 };
 
 // 刪除資料檔案 (軟刪除)
 export const deleteDataFile = async (req, res) => {
+  if (!validateUUID(req.params.id, res)) return;
   try {
     const { id } = req.params;
     const dataFile = await DataFile.findByPk(id);
@@ -132,11 +138,13 @@ export const deleteDataFile = async (req, res) => {
     res.json({ success: true, message: '資料檔案已移至垃圾桶' });
   } catch (error) {
     console.error('刪除資料檔案錯誤:', error);
+    return res.status(500).json({ success: false, message: '刪除資料檔案失敗' });
   }
 };
 
 // 永久刪除資料檔案
 export const permanentDeleteDataFile = async (req, res) => {
+  if (!validateUUID(req.params.id, res)) return;
   try {
     const { id } = req.params;
     const dataFile = await DataFile.findByPk(id, { paranoid: false }); // 查找包括軟刪除的檔案
@@ -150,6 +158,7 @@ export const permanentDeleteDataFile = async (req, res) => {
     res.json({ success: true, message: '資料檔案已永久刪除' });
   } catch (error) {
     console.error('永久刪除資料檔案錯誤:', error);
+    return res.status(500).json({ success: false, message: '永久刪除資料檔案失敗' });
   }
 };
 
@@ -187,6 +196,7 @@ export const getDeletedDataFiles = async (req, res) => {
 
 // 還原資料檔案
 export const restoreDataFile = async (req, res) => {
+  if (!validateUUID(req.params.id, res)) return;
   try {
     const { id } = req.params;
     const dataFile = await DataFile.findByPk(id, { paranoid: false }); // 查找包括軟刪除的檔案
@@ -200,6 +210,7 @@ export const restoreDataFile = async (req, res) => {
     res.json({ success: true, message: '資料檔案已成功還原', data: { dataFile } });
   } catch (error) {
     console.error('還原資料檔案錯誤:', error);
+    return res.status(500).json({ success: false, message: '還原資料檔案失敗' });
   }
 };
 

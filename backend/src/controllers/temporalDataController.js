@@ -4,28 +4,14 @@ import fs, { promises as fsPromises } from 'fs';
 import multer from 'multer';
 import csv from 'csv-parser';
 import { v4 as uuidv4 } from 'uuid';
-import { fileURLToPath } from 'url';
 import { createMulterFileFilter, createStoredFilename, maxUploadSize } from '../config/uploadPolicy.js';
-
-// 在 ES6 模組中獲取 __dirname
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-// Backend root = backend/ directory (two levels up from controllers/)
-const BACKEND_ROOT = path.resolve(path.join(__dirname, '../../'));
-
-// Resolve a storage_path (relative or legacy absolute) to an absolute fs path
-function resolveStoragePath(storagePath) {
-  if (!storagePath) return null;
-  if (path.isAbsolute(storagePath)) return storagePath; // backward-compat with old records
-  return path.join(BACKEND_ROOT, storagePath);
-}
+import { resolveStoragePath, toStoragePath, storageConfig } from '../services/storageService.js';
 
 // 配置 multer 用於檔案上傳
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    const uploadPath = path.join(__dirname, '../../uploads/temporal');
-    cb(null, uploadPath);
+    const uploadPath = path.join(storageConfig.uploadsRoot, 'temporal');
+    fs.mkdir(uploadPath, { recursive: true }, error => cb(error, uploadPath));
   },
   filename: (req, file, cb) => {
     cb(null, createStoredFilename('temporal', file.originalname));
@@ -155,7 +141,7 @@ const uploadTemporalData = async (req, res) => {
       fileExtension,
       fileType,
       file.size,
-      path.relative(BACKEND_ROOT, file.path), // store as relative path
+      toStoragePath(file.path),
       'local',
       hasSpatialData,
       new Date(),

@@ -149,6 +149,7 @@
 </template>
 
 <script>
+import { apiUrl } from '@/utils/urls.js'
 export default {
   name: 'ParentProjectPhotoGalleryModal',
   props: {
@@ -245,7 +246,7 @@ export default {
             }
             return []
           } catch (error) {
-            console.error(`載入子專案 ${childProject.project_id} 的照片失敗:`, error)
+
             return []
           }
         })
@@ -254,7 +255,7 @@ export default {
         this.allPhotos = photosArrays.flat()
         
       } catch (error) {
-        console.error('載入照片失敗:', error)
+
       } finally {
         this.isLoading = false
       }
@@ -269,7 +270,7 @@ export default {
         return '/placeholder-image.jpg'
       }
       // 使用後端 API 獲取照片 URL
-      return `${window.location.origin}/api/media/${media.media_id}`
+      return apiUrl(`/media/${media.media_id}`)
     },
 
     handleImageError(event) {

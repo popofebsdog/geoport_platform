@@ -3,6 +3,11 @@ import { logger } from '@/utils/logger.js'
 
 const log = logger.scoped('mapGeoUtils')
 
+export const getFeatureId = (feature, fallback = 0) => {
+  const properties = feature.properties || {}
+  return properties.Id ?? properties.ProfileId ?? properties.ID ?? properties.fid ?? properties.id ?? feature.id ?? fallback
+}
+
 export const shouldUseTWD97 = (loadedGeojsonLayers = {}) => {
   return Object.values(loadedGeojsonLayers).some(layer => layer?.srid === 3826)
 }
@@ -11,7 +16,7 @@ export const convertPointFromTWD97 = (coords, onFirstPoint) => {
   try {
     const [x, y] = coords
     const wgs84 = proj4('EPSG:3826', 'EPSG:4326', [x, y])
-    const result = [wgs84[0], wgs84[1]]
+    const result = [wgs84[0], wgs84[1], ...coords.slice(2)]
     if (onFirstPoint) onFirstPoint({ source: [x, y], result })
     return result
   } catch (error) {
@@ -34,38 +39,34 @@ export const convertCoordinatesFromTWD97 = (coords, geometryType, convertPoint =
 
 export const convertGeoJsonFromTWD97 = (geojson, convertPoint = convertPointFromTWD97) => {
   if (!geojson?.features) return geojson
-
-  const convertedGeoJSON = JSON.parse(JSON.stringify(geojson))
-  convertedGeoJSON.features.forEach((feature) => {
-    if (feature.geometry?.coordinates) {
-      feature.geometry.coordinates = convertCoordinatesFromTWD97(
-        feature.geometry.coordinates,
-        feature.geometry.type,
-        convertPoint
-      )
+  const convertGeometry = geometry => {
+    if (!geometry) return geometry
+    if (geometry.type === 'GeometryCollection') {
+      return { ...geometry, geometries: geometry.geometries.map(convertGeometry) }
     }
-  })
-
-  return convertedGeoJSON
-}
-
-export const extractAllCoordinates = (geometry) => {
-  const coords = []
-  if (!geometry) return coords
-
-  if (geometry.type === 'Point') coords.push(geometry.coordinates)
-  if (geometry.type === 'LineString') coords.push(...geometry.coordinates)
-  if (geometry.type === 'Polygon') geometry.coordinates.forEach(ring => coords.push(...ring))
-  if (geometry.type === 'MultiPoint') coords.push(...geometry.coordinates)
-  if (geometry.type === 'MultiLineString') geometry.coordinates.forEach(line => coords.push(...line))
-  if (geometry.type === 'MultiPolygon') {
-    geometry.coordinates.forEach(polygon => polygon.forEach(ring => coords.push(...ring)))
+    return { ...geometry, coordinates: convertCoordinatesFromTWD97(geometry.coordinates, geometry.type, convertPoint) }
   }
-
-  return coords
+  // Copy coordinates only; feature attributes are read-only during projection.
+  return { ...geojson, features: geojson.features.map(feature => ({ ...feature, geometry: convertGeometry(feature.geometry) })) }
 }
 
-export const calculateGeoJSONBounds = (geojson, convertPoint = convertPointFromTWD97) => {
+function* positions(geometry) {
+  if (!geometry) return
+  if (geometry.type === 'GeometryCollection') {
+    for (const child of geometry.geometries) yield* positions(child)
+    return
+  }
+  function* walk(coords) {
+    if (!Array.isArray(coords) || !coords.length) return
+    if (typeof coords[0] === 'number') yield coords
+    else for (const child of coords) yield* walk(child)
+  }
+  yield* walk(geometry.coordinates)
+}
+
+export const extractAllCoordinates = geometry => Array.from(positions(geometry))
+
+export const calculateGeoJSONBounds = (geojson, convertPoint = point => point) => {
   if (!geojson?.features?.length) return null
 
   let minLat = Infinity
@@ -74,15 +75,17 @@ export const calculateGeoJSONBounds = (geojson, convertPoint = convertPointFromT
   let maxLng = -Infinity
 
   geojson.features.forEach(feature => {
-    extractAllCoordinates(feature.geometry).forEach((coord) => {
+    for (const coord of positions(feature.geometry)) {
       const [lng, lat] = convertPoint(coord)
+      if (!Number.isFinite(lng) || !Number.isFinite(lat)) continue
       minLat = Math.min(minLat, lat)
       maxLat = Math.max(maxLat, lat)
       minLng = Math.min(minLng, lng)
       maxLng = Math.max(maxLng, lng)
-    })
+    }
   })
 
+  if (!Number.isFinite(minLat)) return null
   return {
     south: minLat,
     north: maxLat,

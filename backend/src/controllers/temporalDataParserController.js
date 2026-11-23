@@ -1,7 +1,8 @@
 import { pool } from '../config/database.js';
 import fs from 'fs';
-import csv from 'csv-parser';
+import { readCSV, readCSVColumns as getCSVColumns, parseCSVNumber } from '../services/csvService.js';
 import path from 'path';
+import { resolveStoragePath } from '../services/storageService.js';
 
 /**
  * 時序資料解析和輸出控制器
@@ -54,7 +55,7 @@ const parseCSVForCharting = async (req, res) => {
     }
 
     const temporalData = temporalResult.rows[0];
-    const filePath = temporalData.storage_path;
+    const filePath = resolveStoragePath(temporalData.storage_path);
 
     // 檢查檔案是否存在
     if (!fs.existsSync(filePath)) {
@@ -88,38 +89,16 @@ const parseCSVForCharting = async (req, res) => {
 
   } catch (error) {
     console.error('解析時序資料失敗:', error);
-    res.status(500).json({
+    res.status(error.status || 500).json({
       success: false,
-      message: '解析時序資料失敗',
+      message: error.status === 400 ? error.message : '解析時序資料失敗',
     });
   }
 };
 
 // 解析 CSV 檔案
-const parseCSVFile = async (filePath, xAxisColumns, yAxisColumns, timeFormat) => {
-  return new Promise((resolve, reject) => {
-    const results = [];
-    const allColumns = [...new Set([...xAxisColumns, ...yAxisColumns])];
-
-    fs.createReadStream(filePath)
-      .pipe(csv())
-      .on('data', (row) => {
-        // 只提取需要的欄位
-        const filteredRow = {};
-        allColumns.forEach(column => {
-          if (row[column] !== undefined) {
-            filteredRow[column] = row[column];
-          }
-        });
-        results.push(filteredRow);
-      })
-      .on('end', () => {
-        resolve(results);
-      })
-      .on('error', (error) => {
-        reject(error);
-      });
-  });
+const parseCSVFile = async (filePath, xAxisColumns, yAxisColumns) => {
+  return (await readCSV(filePath, [...new Set([...xAxisColumns, ...yAxisColumns])])).rows;
 };
 
 // 生成圖表資料
@@ -134,8 +113,7 @@ const generateChartData = (parsedData, xAxisColumns, yAxisColumns) => {
   // 為每個 Y 軸欄位創建一個資料集
   yAxisColumns.forEach((yColumn, index) => {
     const yAxisData = parsedData.map(row => {
-      const value = parseFloat(row[yColumn]);
-      return isNaN(value) ? null : value;
+      return parseCSVNumber(row[yColumn]);
     });
 
     // 過濾掉無效的資料點
@@ -367,7 +345,7 @@ const getAvailableColumns = async (req, res) => {
     }
 
     const temporalData = temporalResult.rows[0];
-    const filePath = temporalData.storage_path;
+    const filePath = resolveStoragePath(temporalData.storage_path);
 
     // 檢查檔案是否存在
     if (!fs.existsSync(filePath)) {
@@ -399,28 +377,6 @@ const getAvailableColumns = async (req, res) => {
 };
 
 // 獲取 CSV 檔案的欄位名稱
-const getCSVColumns = async (filePath) => {
-  return new Promise((resolve, reject) => {
-    const columns = [];
-    let firstRow = true;
-    
-    fs.createReadStream(filePath)
-      .pipe(csv())
-      .on('data', (row) => {
-        if (firstRow) {
-          // 從第一行資料中獲取欄位名稱
-          columns.push(...Object.keys(row));
-          firstRow = false;
-        }
-        // 只讀取第一行就停止
-        resolve(columns);
-      })
-      .on('error', (error) => {
-        reject(error);
-      });
-  });
-};
-
 export {
   parseCSVForCharting,
   getAvailableColumns

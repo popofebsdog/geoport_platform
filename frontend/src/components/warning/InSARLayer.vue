@@ -56,6 +56,7 @@
 </template>
 
 <script>
+import { staticUrl } from '@/utils/urls.js'
 export default {
   name: 'InSARLayer',
   props: {
@@ -155,7 +156,7 @@ export default {
       if (!this.map || this.insarLayer || !this.dataPath) return
 
       try {
-        const response = await fetch(this.dataPath)
+        const response = await fetch(staticUrl(this.dataPath))
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`)
         }
@@ -164,7 +165,7 @@ export default {
         
         this.renderLayer()
       } catch (error) {
-        console.error('[InSAR] 加載 InSAR 數據失敗:', error)
+
       }
     },
     
@@ -244,7 +245,7 @@ export default {
       const timeSeriesData = this.extractTimeSeriesData(this.selectedPoint)
       
       if (timeSeriesData.length === 0) {
-        console.warn('[InSAR] 沒有時間序列數據')
+
         return
       }
       

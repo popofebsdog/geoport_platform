@@ -2,22 +2,10 @@ import { pool } from '../config/database.js';
 import path from 'path';
 import fs, { promises as fsPromises } from 'fs';
 import multer from 'multer';
-import csv from 'csv-parser';
+import { readCSV, readCSVColumns as getCSVColumns, parseCSVNumber } from '../services/csvService.js';
 import { v4 as uuidv4 } from 'uuid';
-import { fileURLToPath } from 'url';
 import { createMulterFileFilter, createStoredFilename, maxUploadSize } from '../config/uploadPolicy.js';
-
-// 在 ES6 模組中獲取 __dirname
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-const BACKEND_ROOT = path.resolve(path.join(__dirname, '../../'));
-
-function resolveStoragePath(storagePath) {
-  if (!storagePath) return null;
-  if (path.isAbsolute(storagePath)) return storagePath;
-  return path.join(BACKEND_ROOT, storagePath);
-}
+import { resolveStoragePath, toStoragePath, storageConfig } from '../services/storageService.js';
 
 /**
  * 增強版時序資料控制器
@@ -31,8 +19,8 @@ function resolveStoragePath(storagePath) {
 // 配置 multer 用於檔案上傳
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    const uploadPath = path.join(__dirname, '../../uploads/temporal');
-    cb(null, uploadPath);
+    const uploadPath = path.join(storageConfig.uploadsRoot, 'temporal');
+    fs.mkdir(uploadPath, { recursive: true }, error => cb(error, uploadPath));
   },
   filename: (req, file, cb) => {
     cb(null, createStoredFilename('temporal', file.originalname));
@@ -49,25 +37,29 @@ const upload = multer({
 
 // 上傳時序資料
 const uploadTemporalData = async (req, res) => {
-  const client = await pool.connect();
+  let client;
   
   try {
+    client = await pool.connect();
     await client.query('BEGIN');
     
     const { projectId } = req.params;
     const { name, description, longitude, latitude, xAxisColumns = [], yAxisColumns = [], timeFormat = 'auto', chartType = 'line' } = req.body;
     
     // 解析 X 軸和 Y 軸欄位（可能是 JSON 字符串）
-    const parsedXAxisColumns = Array.isArray(xAxisColumns) ? xAxisColumns : 
-      (typeof xAxisColumns === 'string' ? JSON.parse(xAxisColumns || '[]') : []);
-    const parsedYAxisColumns = Array.isArray(yAxisColumns) ? yAxisColumns : 
-      (typeof yAxisColumns === 'string' ? JSON.parse(yAxisColumns || '[]') : []);
+    let parsedXAxisColumns, parsedYAxisColumns;
+    try {
+      parsedXAxisColumns = typeof xAxisColumns === 'string' ? JSON.parse(xAxisColumns || '[]') : xAxisColumns;
+      parsedYAxisColumns = typeof yAxisColumns === 'string' ? JSON.parse(yAxisColumns || '[]') : yAxisColumns;
+      if (![parsedXAxisColumns, parsedYAxisColumns].every(columns => Array.isArray(columns) && columns.every(column => typeof column === 'string'))) {
+        throw new Error('Invalid axis columns');
+      }
+    } catch {
+      throw Object.assign(new Error('X 軸與 Y 軸欄位必須是有效的 JSON 字串陣列'), { status: 400 });
+    }
     
     if (!req.file) {
-      return res.status(400).json({
-        success: false,
-        message: '請選擇要上傳的 CSV 檔案'
-      });
+      throw Object.assign(new Error('請選擇要上傳的 CSV 檔案'), { status: 400 });
     }
     
     const file = req.file;
@@ -95,12 +87,12 @@ const uploadTemporalData = async (req, res) => {
       fileExtension,
       fileType,
       file.size,
-      path.relative(BACKEND_ROOT, file.path), // store as relative path
+      toStoragePath(file.path),
       'local',
       hasSpatialData,
       new Date(),
       'active',
-      'processing'
+      'completed'
     ]);
     
     // 2. 解析 CSV 檔案獲取可用欄位
@@ -172,7 +164,7 @@ const uploadTemporalData = async (req, res) => {
         fileName: file.filename,
         originalName: file.originalname,
         fileSize: file.size,
-        filePath: file.path
+        filePath: toStoragePath(file.path)
       },
       chartData // 包含解析後的圖表資料
     };
@@ -197,14 +189,18 @@ const uploadTemporalData = async (req, res) => {
     });
     
   } catch (error) {
-    await client.query('ROLLBACK');
-    console.error('上傳時序資料失敗:', error);
-    res.status(500).json({
+    if (client) await client.query('ROLLBACK').catch(rollbackError => console.error('時序資料回復失敗:', rollbackError));
+    if (req.file?.path) {
+      const staged = resolveStoragePath(req.file.path);
+      if (staged) await fsPromises.rm(staged, { force: true }).catch(cleanupError => console.error('清除上傳暫存檔失敗:', cleanupError));
+    }
+    if (!error.status) console.error('上傳時序資料失敗:', error);
+    res.status(error.status || 500).json({
       success: false,
-      message: '上傳時序資料失敗',
+      message: error.status ? error.message : '上傳時序資料失敗',
     });
   } finally {
-    client.release();
+    client?.release();
   }
 };
 
@@ -264,10 +260,7 @@ const getTemporalDataById = async (req, res) => {
     const result = await pool.query(query, [temporalId]);
     
     if (result.rows.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: '找不到指定的時序資料'
-      });
+      return res.status(404).json({ success: false, message: '找不到指定的時序資料' });
     }
     
     res.json({
@@ -317,10 +310,7 @@ const updateTemporalData = async (req, res) => {
     ]);
     
     if (result.rows.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: '找不到指定的時序資料'
-      });
+      throw Object.assign(new Error('找不到指定的時序資料'), { status: 404 });
     }
     
     await client.query('COMMIT');
@@ -332,10 +322,10 @@ const updateTemporalData = async (req, res) => {
     
   } catch (error) {
     await client.query('ROLLBACK');
-    console.error('更新時序資料失敗:', error);
-    res.status(500).json({
+    if (!error.status) console.error('更新時序資料失敗:', error);
+    res.status(error.status || 500).json({
       success: false,
-      message: '更新時序資料失敗',
+      message: error.status ? error.message : '更新時序資料失敗',
     });
   } finally {
     client.release();
@@ -362,10 +352,7 @@ const deleteTemporalData = async (req, res) => {
     const result = await client.query(deleteQuery, [temporalId]);
     
     if (result.rows.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: '找不到指定的時序資料'
-      });
+      throw Object.assign(new Error('找不到指定的時序資料'), { status: 404 });
     }
     
     await client.query('COMMIT');
@@ -377,10 +364,10 @@ const deleteTemporalData = async (req, res) => {
     
   } catch (error) {
     await client.query('ROLLBACK');
-    console.error('刪除時序資料失敗:', error);
-    res.status(500).json({
+    if (!error.status) console.error('刪除時序資料失敗:', error);
+    res.status(error.status || 500).json({
       success: false,
-      message: '刪除時序資料失敗',
+      message: error.status ? error.message : '刪除時序資料失敗',
     });
   } finally {
     client.release();
@@ -468,69 +455,17 @@ const parseAndGenerateChart = async (req, res) => {
 
   } catch (error) {
     console.error('解析時序資料失敗:', error);
-    res.status(500).json({
+    res.status(error.status || 500).json({
       success: false,
-      message: '解析時序資料失敗',
+      message: error.status === 400 ? error.message : '解析時序資料失敗',
     });
   }
 };
 
 // 獲取 CSV 檔案的欄位名稱
-const getCSVColumns = async (filePath) => {
-  return new Promise((resolve, reject) => {
-    const columns = [];
-    let firstRow = true;
-    let streamEnded = false;
-    
-    const stream = fs.createReadStream(filePath)
-      .pipe(csv())
-      .on('data', (row) => {
-        if (firstRow && !streamEnded) {
-          // 從第一行資料中獲取欄位名稱
-          columns.push(...Object.keys(row));
-          firstRow = false;
-          streamEnded = true;
-          // 停止讀取流
-          stream.destroy();
-          resolve(columns);
-        }
-      })
-      .on('error', (error) => {
-        reject(error);
-      })
-      .on('end', () => {
-        if (!streamEnded) {
-          resolve(columns);
-        }
-      });
-  });
-};
-
 // 解析 CSV 檔案
-const parseCSVFile = async (filePath, xAxisColumns, yAxisColumns, timeFormat) => {
-  return new Promise((resolve, reject) => {
-    const results = [];
-    const allColumns = [...new Set([...xAxisColumns, ...yAxisColumns])];
-
-    fs.createReadStream(filePath)
-      .pipe(csv())
-      .on('data', (row) => {
-        // 只提取需要的欄位
-        const filteredRow = {};
-        allColumns.forEach(column => {
-          if (row[column] !== undefined) {
-            filteredRow[column] = row[column];
-          }
-        });
-        results.push(filteredRow);
-      })
-      .on('end', () => {
-        resolve(results);
-      })
-      .on('error', (error) => {
-        reject(error);
-      });
-  });
+const parseCSVFile = async (filePath, xAxisColumns, yAxisColumns) => {
+  return (await readCSV(filePath, [...new Set([...xAxisColumns, ...yAxisColumns])])).rows;
 };
 
 // 生成圖表資料
@@ -545,8 +480,7 @@ const generateChartData = (parsedData, xAxisColumns, yAxisColumns) => {
   // 為每個 Y 軸欄位創建一個資料集
   yAxisColumns.forEach((yColumn, index) => {
     const yAxisData = parsedData.map(row => {
-      const value = parseFloat(row[yColumn]);
-      return isNaN(value) ? null : value;
+      return parseCSVNumber(row[yColumn]);
     });
 
     // 過濾掉無效的資料點
@@ -754,91 +688,15 @@ const getColorByIndex = (index, alpha = 1) => {
 };
 
 // 解析 CSV 資料用於圖表生成
-const parseCSVForCharting = async (filePath, xAxisColumns, yAxisColumns, timeFormat) => {
-  return new Promise((resolve, reject) => {
-    const data = [];
-    const stream = fs.createReadStream(filePath)
-      .pipe(csv())
-      .on('data', (row) => {
-        data.push(row);
-      })
-      .on('error', (error) => {
-        reject(error);
-      })
-      .on('end', () => {
-        try {
-          // 處理 X 軸資料
-          let xAxisData = [];
-          if (xAxisColumns.length === 1) {
-            // 單一 X 軸欄位
-            xAxisData = data.map(row => row[xAxisColumns[0]]);
-          } else if (xAxisColumns.length > 1) {
-            // 多個 X 軸欄位合併（如日期+時間）
-            xAxisData = data.map(row => {
-              const combinedValue = xAxisColumns.map(col => row[col]).join(' ');
-              return convertToISO8601(combinedValue);
-            });
-          }
-          
-          // 處理 Y 軸資料
-          const yAxisData = {};
-          let nullCount = 0;
-          let validCount = 0;
-          let zeroCount = 0;
-          
-          yAxisColumns.forEach(yCol => {
-            yAxisData[yCol] = data.map(row => {
-              const rawValue = row[yCol];
-              // 檢查是否為空值或無效值
-              if (rawValue === undefined || rawValue === null || rawValue === '' || 
-                  (typeof rawValue === 'string' && rawValue.trim() === '')) {
-                nullCount++;
-                return null;
-              }
-              const value = parseFloat(rawValue);
-              // 返回有效的數值或 null
-              if (isNaN(value) || !isFinite(value)) {
-                nullCount++;
-                return null;
-              }
-              if (value === 0) {
-                zeroCount++;
-              }
-              validCount++;
-              return value;
-            });
-          });
-          
-          
-          // 生成圖表資料集
-          const datasets = yAxisColumns.map((yCol, index) => ({
-            name: yCol,
-            data: yAxisData[yCol].map((value, i) => ({
-              x: xAxisData[i],
-              y: value
-            })).filter(point => {
-              // 過濾掉無效的資料點：
-              // 1. X 軸必須存在
-              // 2. Y 軸必須為有效數值（允許 0，0 值在雨量/位移資料中是合法的）
-              return point.x && point.y !== null && point.y !== undefined;
-            })
-          }));
-          
-          resolve({
-            xAxis: {
-              type: 'datetime',
-              data: xAxisData.filter(x => x)
-            },
-            yAxis: yAxisColumns,
-            datasets: datasets,
-            totalRecords: data.length,
-            processedRecords: datasets[0]?.data.length || 0
-          });
-        } catch (error) {
-          reject(error);
-        }
-      });
-  });
+const parseCSVForCharting = async (filePath, xAxisColumns, yAxisColumns) => {
+  const { rows: data } = await readCSV(filePath, [...new Set([...xAxisColumns, ...yAxisColumns])]);
+  const xAxisData = data.map(row => xAxisColumns.length === 1 ? row[xAxisColumns[0]] : convertToISO8601(xAxisColumns.map(column => row[column]).join(' ')));
+  const datasets = yAxisColumns.map(name => ({
+    name, data: data.map((row, index) => ({ x: xAxisData[index], y: parseCSVNumber(row[name]) }))
+      .filter(point => point.x != null && point.x !== '' && point.y !== null)
+  }));
+  return { xAxis: { type: 'datetime', data: xAxisData.filter(value => value != null && value !== '') },
+    yAxis: yAxisColumns, datasets, totalRecords: data.length, processedRecords: datasets[0]?.data.length || 0 };
 };
 
 // 下載時序資料 JSON 檔案
@@ -848,7 +706,7 @@ const downloadTemporalDataJson = async (req, res) => {
     
     // 檢查 JSON 檔案是否存在
     const jsonFileName = `temporal_data_${temporalId}.json`;
-    const jsonFilePath = path.join(__dirname, '../../uploads/temporal', jsonFileName);
+    const jsonFilePath = resolveStoragePath(`uploads/temporal/${jsonFileName}`);
     
     // 檢查檔案是否存在
     try {
@@ -957,9 +815,9 @@ const getChartData = async (req, res) => {
 
   } catch (error) {
     console.error('獲取圖表數據失敗:', error);
-    res.status(500).json({
+    res.status(error.status || 500).json({
       success: false,
-      message: '獲取圖表數據失敗',
+      message: error.status === 400 ? error.message : '獲取圖表數據失敗',
     });
   }
 };

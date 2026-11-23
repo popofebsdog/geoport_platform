@@ -17,6 +17,8 @@
 
 <script>
 import L from 'leaflet'
+import { markRaw, toRaw } from 'vue'
+import { kml as convertKml } from '@tmcw/togeojson'
 import proj4 from 'proj4'
 import 'proj4leaflet'
 import { BaseMapService } from '../../services/BaseMapService.js'
@@ -32,6 +34,7 @@ import {
   convertGeoJsonFromTWD97,
   convertPointFromTWD97,
   extractAllCoordinates as extractAllCoordinatesUtil,
+  getFeatureId,
   parseCSVLine as parseCSVLineUtil,
   shouldUseTWD97 as shouldUseTWD97Util
 } from '@/utils/mapGeoUtils.js'
@@ -92,78 +95,21 @@ try {
 
 log.log('Leaflet 版本:', L.version)
 
-// KML 顏色轉換函數（從 aabbggrr 格式轉換為 #rrggbb 格式）
-const convertKMLColor = (kmlColor) => {
-  if (!kmlColor || kmlColor.length !== 8) return '#ff0000'
-  
-  // KML 格式：aabbggrr，我們需要 rrggbb
-  const r = kmlColor.substring(6, 8)
-  const g = kmlColor.substring(4, 6)
-  const b = kmlColor.substring(2, 4)
-  
-  return `#${r}${g}${b}`
-}
+const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, char => ({
+  '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+})[char]);
 
-const readKmlText = (node, selector) => {
-  return node.querySelector(selector)?.textContent?.trim() || ''
-}
-
-const parseKmlCoordinates = (text) => {
-  return text
-    .trim()
-    .split(/\s+/)
-    .map(pair => pair.split(',').map(Number))
-    .filter(([lng, lat]) => Number.isFinite(lng) && Number.isFinite(lat))
-    .map(([lng, lat, alt]) => alt === undefined || Number.isNaN(alt) ? [lng, lat] : [lng, lat, alt])
-}
-
-const parseKmlToGeoJson = (kmlText) => {
-  const doc = new DOMParser().parseFromString(kmlText, 'application/xml')
-  const parserError = doc.querySelector('parsererror')
-  if (parserError) {
-    throw new Error(parserError.textContent || 'KML 解析失敗')
+const parseKmlToGeoJson = kmlText => {
+  const doc = new DOMParser().parseFromString(kmlText, 'application/xml');
+  if (doc.querySelector('parsererror') || doc.documentElement?.localName !== 'kml' || doc.doctype) {
+    throw new Error('KML 格式不正確');
   }
-
-  const features = Array.from(doc.querySelectorAll('Placemark')).flatMap((placemark) => {
-    const properties = {
-      name: readKmlText(placemark, 'name'),
-      description: readKmlText(placemark, 'description'),
-      styleUrl: readKmlText(placemark, 'styleUrl')
-    }
-    const geometries = []
-
-    placemark.querySelectorAll('Point').forEach((point) => {
-      const coordinates = parseKmlCoordinates(readKmlText(point, 'coordinates'))[0]
-      if (coordinates) geometries.push({ type: 'Point', coordinates })
-    })
-
-    placemark.querySelectorAll('LineString').forEach((line) => {
-      const coordinates = parseKmlCoordinates(readKmlText(line, 'coordinates'))
-      if (coordinates.length >= 2) geometries.push({ type: 'LineString', coordinates })
-    })
-
-    placemark.querySelectorAll('Polygon').forEach((polygon) => {
-      const rings = Array.from(polygon.querySelectorAll('LinearRing'))
-        .map(ring => parseKmlCoordinates(readKmlText(ring, 'coordinates')))
-        .filter(ring => ring.length >= 4)
-      if (rings.length > 0) geometries.push({ type: 'Polygon', coordinates: rings })
-    })
-
-    return geometries.map(geometry => ({
-      type: 'Feature',
-      properties,
-      geometry
-    }))
-  })
-
-  return {
-    type: 'FeatureCollection',
-    features
-  }
-}
+  return convertKml(doc);
+};
 
 export default {
   name: 'ProjectMap',
+  inject: { canEdit: { default: true } },
   components: {
     WarningLightMarker,
     WarningLightSettingsPanel
@@ -467,32 +413,10 @@ export default {
         this.warningLightControl = null
       }
       
-      // 清理地圖
-    if (this.map) {
+      if (this.map) {
         try {
-          // 停止所有動畫和事件
-          if (this.map.stop) {
-            this.map.stop()
-          }
-          if (this.map.off) {
-            this.map.off()
-          }
-          
-          // 移除所有圖層
-          if (this.map.eachLayer) {
-            this.map.eachLayer((layer) => {
-              try {
-                this.map.removeLayer(layer)
-              } catch (error) {
-                log.warn('移除圖層時發生錯誤:', error)
-              }
-            })
-          }
-          
-          // 銷毀地圖
-          if (this.map.remove) {
-      this.map.remove()
-          }
+          // remove() cancels redraws without stop() forcing a final zoom reset.
+          this.map.remove()
         } catch (error) {
           log.warn('清理地圖時發生錯誤:', error)
         }
@@ -539,7 +463,7 @@ export default {
 
     // 計算 GeoJSON 邊界
     calculateGeoJSONBounds(geojson) {
-      return calculateGeoJSONBoundsUtil(geojson, this.convertPoint)
+      return calculateGeoJSONBoundsUtil(geojson)
     },
 
     // 提取幾何體中的所有坐標
@@ -572,7 +496,8 @@ export default {
         const center = [this.project?.location?.lat || 24.8186, this.project?.location?.lng || 121.2681]
         const zoom = 15
         
-        this.map = L.map(this.$refs.mapContainer, {
+        this.map = markRaw(L.map(this.$refs.mapContainer, {
+          preferCanvas: true,
           center: center,
           zoom: zoom,
           minZoom: 1,
@@ -585,7 +510,7 @@ export default {
           boxZoom: true, // 啟用框選縮放
           keyboard: true, // 啟用鍵盤導航
           // 不指定 crs，使用 Leaflet 默認的 WGS84
-        })
+        }))
         
         log.log('地圖創建成功:', this.map)
         
@@ -601,7 +526,8 @@ export default {
       } catch (error) {
         log.error('地圖初始化失敗:', error)
         // 回退到基本的 WGS84 地圖
-      this.map = L.map(this.$refs.mapContainer, {
+      this.map = markRaw(L.map(this.$refs.mapContainer, {
+        preferCanvas: true,
         center: [this.project?.location?.lat || 24.8186, this.project?.location?.lng || 121.2681],
         zoom: 15,
         minZoom: 1,
@@ -613,7 +539,7 @@ export default {
         scrollWheelZoom: true, // 啟用滾輪縮放
         boxZoom: true, // 啟用框選縮放
         keyboard: true // 啟用鍵盤導航
-      })
+      }))
         log.log('使用回退地圖配置')
       }
       
@@ -832,6 +758,7 @@ export default {
     },
 
     addWarningLightControl() {
+      if (!this.canEdit) return
       this.warningLightControl = createWarningLightControl({
         isDarkMode: () => this.isDarkMode,
         onOpen: () => {
@@ -1030,8 +957,8 @@ export default {
       // 添加彈出窗口
       const popupContent = `
         <div class="project-popup">
-          <h3 class="font-bold text-lg mb-2">${childProject.name || '未命名專案'}</h3>
-          <p class="text-sm text-gray-600 mb-2">${childProject.description || '無描述'}</p>
+          <h3 class="font-bold text-lg mb-2">${escapeHtml(childProject.name || '未命名專案')}</h3>
+          <p class="text-sm text-gray-600 mb-2">${escapeHtml(childProject.description || '無描述')}</p>
           ${childProject.event_date ? `<p class="text-xs text-gray-500">事件日期: ${this.formatEventDate(childProject.event_date)}</p>` : ''}
           <p class="text-xs text-gray-500">座標: ${lat.toFixed(6)}, ${lng.toFixed(6)}</p>
         </div>
@@ -1289,8 +1216,8 @@ export default {
               .addTo(this.map)
               .bindPopup(`
                 <div class="project-popup">
-                  <h3 class="font-bold text-lg mb-2">${this.project.name || '未命名專案'}</h3>
-                  <p class="text-sm text-gray-600 mb-2">${this.project.description || '無描述'}</p>
+                  <h3 class="font-bold text-lg mb-2">${escapeHtml(this.project.name || '未命名專案')}</h3>
+                  <p class="text-sm text-gray-600 mb-2">${escapeHtml(this.project.description || '無描述')}</p>
                   <p class="text-xs text-gray-500">座標: ${parseFloat(lat).toFixed(6)}, ${parseFloat(lng).toFixed(6)}</p>
                 </div>
               `)
@@ -1678,6 +1605,9 @@ export default {
         return
       }
 
+      const geojson = toRaw(layerData.geojson)
+      layerData = { ...layerData, geojson: geojson && { ...geojson, features: geojson.features?.map((feature, index) => feature.id == null ? { ...feature, id: index } : feature) } }
+
       // 檢查是否有有效的數據
       const hasValidData = layerData.geojson || layerData.kml || layerData.storage_path
       if (!hasValidData) {
@@ -1706,7 +1636,14 @@ export default {
         this.$emit('kml-loading-start', { fileId, fileName: layerData.file_name })
         log.log('KML 文件路徑:', layerData.storage_path)
 
-        const kmlGeoJson = parseKmlToGeoJson(layerData.kml || '')
+        let kmlGeoJson
+        try {
+          kmlGeoJson = parseKmlToGeoJson(layerData.kml || '')
+          kmlGeoJson.features.forEach((feature, index) => { if (feature.id == null) feature.id = index })
+        } catch (error) {
+          this.$emit('kml-loading-error', { fileId, fileName: layerData.file_name, error: error.message })
+          return
+        }
         if (!kmlGeoJson.features.length) {
           log.warn('KML 沒有可顯示的 Placemark 幾何')
           this.$emit('kml-loading-complete', { fileId, fileName: layerData.file_name })
@@ -1721,38 +1658,20 @@ export default {
         layer = L.geoJSON(kmlGeoJson, {
           // 計算圖層的 z-index（根據順序）
           zIndex: layerZIndex,
-          style: (feature) => {
-            // 從 styleUrl 中提取樣式 ID
-            const styleUrl = feature.properties?.styleUrl
-            let color = '#ff0000' // 默認顏色
-            
-            if (styleUrl) {
-              const styleId = styleUrl.replace('#', '')
-              // 根據樣式 ID 設置對應的顏色（從 KML 文件中的實際顏色轉換）
-              const styleColors = {
-                'style0': convertKMLColor('ffaf401e'), // 橙色
-                'style1': convertKMLColor('fff6823b'), // 淺橙色
-                'style2': convertKMLColor('ff81b910'), // 綠色
-                'style3': convertKMLColor('ff0b9ef5'), // 藍色
-                'style4': convertKMLColor('ff4444ef')  // 紫色
-              }
-              color = styleColors[styleId] || '#ff0000'
-              log.log(`樣式 ${styleId} 使用顏色: ${color}`)
-            }
-            
-            return {
-              color: color,
-              weight: 2,
-              opacity: 0.8,
-              fillOpacity: 0.5
-            }
-          },
+          pointToLayer: (_feature, latlng) => L.circleMarker(latlng, { radius: 6 }),
+          style: feature => ({
+            color: feature.properties?.stroke || layerData.metadata?.layer_color || '#ff0000',
+            fillColor: feature.properties?.fill || feature.properties?.stroke || '#ff0000',
+            weight: feature.properties?.['stroke-width'] ?? 2,
+            opacity: feature.properties?.['stroke-opacity'] ?? 0.8,
+            fillOpacity: feature.properties?.['fill-opacity'] ?? 0.5
+          }),
           onEachFeature: (feature, layer) => {
             // 添加 tooltip
             const tooltipContent = `
               <div style="max-width: 280px; word-wrap: break-word; white-space: normal; line-height: 1.4;">
-                <div style="font-weight: 600; margin-bottom: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${layerData?.file_name || '潛勢分析快照'}</div>
-                <div style="word-wrap: break-word;">${feature.properties?.name || ''}</div>
+                <div style="font-weight: 600; margin-bottom: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(layerData?.file_name || '潛勢分析快照')}</div>
+                <div style="word-wrap: break-word;">${escapeHtml(feature.properties?.name || '')}</div>
               </div>
             `
             layer.bindTooltip(tooltipContent, {
@@ -1763,11 +1682,11 @@ export default {
 
             // 添加點擊事件
             layer.on('click', (e) => {
-              const uploadCount = this.featureUploads['snapshot_overall'] ? this.featureUploads['snapshot_overall'].length : 0
+              const featureId = isPotentialAnalysis ? (layerData.metadata?.data_type === 'potential_analysis' ? 'potential_analysis_overall' : 'snapshot_overall') : getFeatureId(feature)
               this.$emit('feature-click', {
-                feature: { properties: { Id: 'snapshot_overall', Description: '快照圖層整體' } },
-                featureId: 'snapshot_overall',
-                hasUploads: uploadCount > 0,
+                feature: isPotentialAnalysis ? { properties: { Id: featureId, Description: '圖層整體' } } : feature,
+                featureId,
+                hasUploads: (this.featureUploads[featureId]?.length || 0) > 0,
                 latlng: e.latlng,
                 fileId: fileId
               })
@@ -1842,8 +1761,8 @@ export default {
           // 設置較高的 z-index，確保 GeoJSON 圖層在 WMS 圖層之上
           zIndex: layerZIndex,
           pointToLayer: (feature, latlng) => {
-            const properties = feature.properties;
-            const featureId = properties.Id || properties.ProfileId || properties.ID || properties.fid || properties.id || 0;
+            const properties = feature.properties || {};
+            const featureId = getFeatureId(feature);
             
             let color = '#3388ff';
             if (properties.status === 'warning') {
@@ -1862,9 +1781,9 @@ export default {
             });
           },
           style: (feature) => {
-            const properties = feature.properties;
+            const properties = feature.properties || {};
             // 支持多種 feature ID 格式
-            const featureId = properties.Id || properties.ProfileId || properties.ID || properties.fid || properties.id || 0;
+            const featureId = getFeatureId(feature);
             
             // 總是使用 getFeatureColor 來分配顏色，確保每個 feature 都有獨特的顏色
             const color = this.getFeatureColor(featureId, feature, layerData);
@@ -1881,7 +1800,8 @@ export default {
             };
           },
           onEachFeature: (feature, layer) => {
-            const featureId = feature.properties.Id || feature.properties.ProfileId || feature.properties.ID || feature.properties.fid || feature.properties.id || 0;
+            const properties = feature.properties || {};
+            const featureId = getFeatureId(feature);
             const isOriginalPotentialAnalysis = layerData?.metadata?.data_type === 'potential_analysis';
             const isSnapshotPotentialAnalysis = layerData?.metadata?.data_type === 'potential_analysis_snapshot';
             const hasUploads = (!isOriginalPotentialAnalysis && this.featureUploads[featureId] && this.featureUploads[featureId].length > 0) ||
@@ -1896,8 +1816,8 @@ export default {
                 const uploadCount = this.featureUploads['snapshot_overall'] ? this.featureUploads['snapshot_overall'].length : 0;
                 tooltipContent = `
                   <div style="max-width: 280px; word-wrap: break-word; white-space: normal; line-height: 1.4;">
-                    <div style="font-weight: 600; margin-bottom: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${layerData?.file_name || '潛勢分析快照'}</div>
-                    <div style="color: #9ca3af; margin-bottom: 4px; word-wrap: break-word;">${layerData?.metadata?.data_description || '無描述'}</div>
+                    <div style="font-weight: 600; margin-bottom: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(layerData?.file_name || '潛勢分析快照')}</div>
+                    <div style="color: #9ca3af; margin-bottom: 4px; word-wrap: break-word;">${escapeHtml(layerData?.metadata?.data_description || '無描述')}</div>
                     <div style="font-size: 11px; color: #6b7280; margin-bottom: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Feature: snapshot_overall</div>
                     ${uploadCount > 0 ? `<div style="color: #2563eb; font-size: 11px;">📎 點擊查看關聯資料 (${uploadCount} 個檔案)</div>` : ''}
                   </div>
@@ -1907,8 +1827,8 @@ export default {
                 const uploadCount = this.featureUploads['potential_analysis_overall'] ? this.featureUploads['potential_analysis_overall'].length : 0;
                 tooltipContent = `
                   <div style="max-width: 280px; word-wrap: break-word; white-space: normal; line-height: 1.4;">
-                    <div style="font-weight: 600; margin-bottom: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${layerData?.file_name || '潛勢分析圖層'}</div>
-                    <div style="color: #9ca3af; margin-bottom: 4px; word-wrap: break-word;">${layerData?.metadata?.data_description || '無描述'}</div>
+                    <div style="font-weight: 600; margin-bottom: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(layerData?.file_name || '潛勢分析圖層')}</div>
+                    <div style="color: #9ca3af; margin-bottom: 4px; word-wrap: break-word;">${escapeHtml(layerData?.metadata?.data_description || '無描述')}</div>
                     <div style="font-size: 11px; color: #6b7280; margin-bottom: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Feature: potential_analysis_overall</div>
                     ${uploadCount > 0 ? `<div style="color: #2563eb; font-size: 11px;">📎 點擊查看關聯資料 (${uploadCount} 個檔案)</div>` : ''}
                   </div>
@@ -1925,9 +1845,9 @@ export default {
               const hasUploads = this.featureUploads[featureId] && this.featureUploads[featureId].length > 0;
               const tooltipContent = `
                 <div style="max-width: 280px; word-wrap: break-word; white-space: normal; line-height: 1.4;">
-                  <div style="font-weight: 600; margin-bottom: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${layerData?.file_name || 'Feature'}</div>
-                  <div style="color: #9ca3af; margin-bottom: 4px; word-wrap: break-word;">${layerData?.metadata?.data_description || '無描述'}</div>
-                  <div style="font-size: 11px; color: #6b7280; margin-bottom: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Feature: ${featureId}</div>
+                  <div style="font-weight: 600; margin-bottom: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(layerData?.file_name || 'Feature')}</div>
+                  <div style="color: #9ca3af; margin-bottom: 4px; word-wrap: break-word;">${escapeHtml(layerData?.metadata?.data_description || '無描述')}</div>
+                  <div style="font-size: 11px; color: #6b7280; margin-bottom: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Feature: ${escapeHtml(featureId)}</div>
                   ${hasUploads ? `<div style="color: #2563eb; font-size: 11px;">📎 點擊查看關聯資料</div>` : ''}
                 </div>
               `;
@@ -1982,8 +1902,8 @@ export default {
             // 設置較高的 z-index，確保 GeoJSON 圖層在 WMS 圖層之上
             zIndex: layerZIndex,
             pointToLayer: (feature, latlng) => {
-              const properties = feature.properties;
-              const featureId = properties.Id || properties.ProfileId || properties.ID || properties.fid || properties.id || 0;
+              const properties = feature.properties || {};
+              const featureId = getFeatureId(feature);
               
               let color = '#3388ff';
               if (properties.status === 'warning') {
@@ -2002,9 +1922,9 @@ export default {
               });
             },
             style: (feature) => {
-              const properties = feature.properties;
+              const properties = feature.properties || {};
               // 支持多種 feature ID 格式
-              const featureId = properties.Id || properties.ProfileId || properties.ID || properties.fid || properties.id || 0;
+              const featureId = getFeatureId(feature);
               
               // 總是使用 getFeatureColor 來分配顏色，確保每個 feature 都有獨特的顏色
               const color = this.getFeatureColor(featureId, feature, layerData);
@@ -2021,7 +1941,8 @@ export default {
               };
             },
             onEachFeature: (feature, layer) => {
-              const featureId = feature.properties.Id || feature.properties.ProfileId || feature.properties.ID || feature.properties.fid || feature.properties.id || 0;
+              const properties = feature.properties || {};
+              const featureId = getFeatureId(feature);
               const isOriginalPotentialAnalysis = layerData?.metadata?.data_type === 'potential_analysis';
               const isSnapshotPotentialAnalysis = layerData?.metadata?.data_type === 'potential_analysis_snapshot';
               const hasUploads = (!isOriginalPotentialAnalysis && this.featureUploads[featureId] && this.featureUploads[featureId].length > 0) ||
@@ -2036,8 +1957,8 @@ export default {
                   const uploadCount = this.featureUploads['snapshot_overall'] ? this.featureUploads['snapshot_overall'].length : 0;
                   tooltipContent = `
                     <div style="max-width: 280px; word-wrap: break-word; white-space: normal; line-height: 1.4;">
-                      <div style="font-weight: 600; margin-bottom: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${layerData?.file_name || '潛勢分析快照'}</div>
-                      <div style="color: #9ca3af; margin-bottom: 4px; word-wrap: break-word;">${layerData?.metadata?.data_description || '無描述'}</div>
+                      <div style="font-weight: 600; margin-bottom: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(layerData?.file_name || '潛勢分析快照')}</div>
+                      <div style="color: #9ca3af; margin-bottom: 4px; word-wrap: break-word;">${escapeHtml(layerData?.metadata?.data_description || '無描述')}</div>
                       <div style="font-size: 11px; color: #6b7280; margin-bottom: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Feature: snapshot_overall</div>
                       ${uploadCount > 0 ? `<div style="color: #2563eb; font-size: 11px;">📎 點擊查看關聯資料 (${uploadCount} 個檔案)</div>` : ''}
                     </div>
@@ -2047,8 +1968,8 @@ export default {
                   const uploadCount = this.featureUploads['potential_analysis_overall'] ? this.featureUploads['potential_analysis_overall'].length : 0;
                   tooltipContent = `
                     <div style="max-width: 280px; word-wrap: break-word; white-space: normal; line-height: 1.4;">
-                      <div style="font-weight: 600; margin-bottom: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${layerData?.file_name || '潛勢分析圖層'}</div>
-                      <div style="color: #9ca3af; margin-bottom: 4px; word-wrap: break-word;">${layerData?.metadata?.data_description || '無描述'}</div>
+                      <div style="font-weight: 600; margin-bottom: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(layerData?.file_name || '潛勢分析圖層')}</div>
+                      <div style="color: #9ca3af; margin-bottom: 4px; word-wrap: break-word;">${escapeHtml(layerData?.metadata?.data_description || '無描述')}</div>
                       <div style="font-size: 11px; color: #6b7280; margin-bottom: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Feature: potential_analysis_overall</div>
                       ${uploadCount > 0 ? `<div style="color: #2563eb; font-size: 11px;">📎 點擊查看關聯資料 (${uploadCount} 個檔案)</div>` : ''}
                     </div>
@@ -2066,9 +1987,9 @@ export default {
                 const hasUploads = this.featureUploads[featureId] && this.featureUploads[featureId].length > 0;
                 const tooltipContent = `
                   <div style="max-width: 280px; word-wrap: break-word; white-space: normal; line-height: 1.4;">
-                    <div style="font-weight: 600; margin-bottom: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${layerData?.file_name || 'Feature'}</div>
-                    <div style="color: #9ca3af; margin-bottom: 4px; word-wrap: break-word;">${layerData?.metadata?.data_description || '無描述'}</div>
-                    <div style="font-size: 11px; color: #6b7280; margin-bottom: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Feature: ${featureId}</div>
+                    <div style="font-weight: 600; margin-bottom: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(layerData?.file_name || 'Feature')}</div>
+                    <div style="color: #9ca3af; margin-bottom: 4px; word-wrap: break-word;">${escapeHtml(layerData?.metadata?.data_description || '無描述')}</div>
+                    <div style="font-size: 11px; color: #6b7280; margin-bottom: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Feature: ${escapeHtml(featureId)}</div>
                     ${hasUploads ? `<div style="color: #2563eb; font-size: 11px;">📎 點擊查看關聯資料</div>` : ''}
                   </div>
                 `;
@@ -2108,7 +2029,7 @@ export default {
       }
 
       // 存儲圖層引用
-      this.geojsonLayers[fileId] = layer
+      this.geojsonLayers[fileId] = markRaw(layer)
 
       // 自動添加圖層到地圖上（默認可見）
       layer.addTo(this.map)
@@ -2238,6 +2159,7 @@ export default {
           
           // 驗證圖層是否真的在地圖上
           setTimeout(() => {
+            if (!this.map) return
             log.log(`[驗證] 圖層 ${fileId} 是否在地圖上:`, this.map.hasLayer(layer));
             
             // 檢查圖層的邊界和中心點

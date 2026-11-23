@@ -126,7 +126,7 @@ export default {
                  timeStr.startsWith(todayStrCompact);
         });
       } catch (e) {
-        console.warn('解析微地動時間序列數據時出錯:', e);
+
         return [];
       }
     },

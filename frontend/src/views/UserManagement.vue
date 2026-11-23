@@ -86,7 +86,7 @@
                       :class="isDarkMode
                         ? 'bg-slate-700 border-slate-600 text-slate-200'
                         : 'bg-white border-gray-300 text-gray-700'">
-                <option value="admin">管理員</option>
+                <option value="admin">超級管理者</option>
                 <option value="editor">編輯者</option>
                 <option value="viewer">瀏覽者</option>
               </select>
@@ -123,23 +123,23 @@
     </div>
 
     <!-- Add user modal -->
-    <div v-if="showAddModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div class="w-88 rounded border p-5 transition-colors duration-300"
+    <div v-if="showAddModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <form @submit.prevent="resetPasswordTarget ? submitResetPassword() : createUser()" class="w-full max-w-sm max-h-full overflow-auto rounded border p-5 transition-colors duration-300"
            :class="isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'">
-        <h2 class="text-sm font-semibold mb-4" :class="isDarkMode ? 'text-white' : 'text-gray-900'">新增使用者</h2>
+        <h2 class="text-sm font-semibold mb-4" :class="isDarkMode ? 'text-white' : 'text-gray-900'">{{ resetPasswordTarget ? '重設密碼' : '新增使用者' }}</h2>
         <div v-if="addError" class="mb-3 text-xs border px-3 py-2 rounded"
              :class="isDarkMode ? 'text-red-400 border-red-800 bg-red-900/20' : 'text-red-600 border-red-200 bg-red-50'">{{ addError }}</div>
-        <div class="space-y-2.5">
-          <input v-model="addForm.username" type="text" placeholder="帳號"
+        <div v-if="!resetPasswordTarget" class="space-y-2.5">
+          <input v-model="addForm.username" type="text" autocomplete="username" placeholder="帳號"
                  class="w-full px-3 py-1.5 rounded border text-sm outline-none focus:border-brand transition-colors"
                  :class="isDarkMode ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-500' : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400'" />
-          <input v-model="addForm.email" type="email" placeholder="Email"
+          <input v-model="addForm.email" type="email" autocomplete="email" placeholder="Email"
                  class="w-full px-3 py-1.5 rounded border text-sm outline-none focus:border-brand transition-colors"
                  :class="isDarkMode ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-500' : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400'" />
-          <input v-model="addForm.display_name" type="text" placeholder="顯示名稱（選填）"
+          <input v-model="addForm.display_name" type="text" autocomplete="name" placeholder="顯示名稱（選填）"
                  class="w-full px-3 py-1.5 rounded border text-sm outline-none focus:border-brand transition-colors"
                  :class="isDarkMode ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-500' : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400'" />
-          <input v-model="addForm.password" type="password" placeholder="密碼（至少 6 字元）"
+          <input v-model="addForm.password" type="password" autocomplete="new-password" placeholder="密碼（至少 8 字元）"
                  class="w-full px-3 py-1.5 rounded border text-sm outline-none focus:border-brand transition-colors"
                  :class="isDarkMode ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-500' : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400'" />
           <select v-model="addForm.role"
@@ -147,36 +147,37 @@
                   :class="isDarkMode ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'">
             <option value="viewer">瀏覽者</option>
             <option value="editor">編輯者</option>
-            <option value="admin">管理員</option>
+            <option value="admin">超級管理者</option>
           </select>
         </div>
         <!-- 重設密碼輸入（顯示於 resetPasswordTarget 時） -->
         <template v-if="resetPasswordTarget">
+          <input :value="resetPasswordTarget.username" type="text" autocomplete="username" hidden />
           <div class="mt-4 pt-4 border-t" :class="isDarkMode ? 'border-slate-700' : 'border-gray-100'">
             <p class="text-xs mb-2" :class="isDarkMode ? 'text-slate-400' : 'text-gray-500'">
               重設 <strong>{{ resetPasswordTarget.username }}</strong> 的密碼
             </p>
-            <input v-model="resetPwdValue" type="password" placeholder="新密碼（至少 6 字元）"
+            <input v-model="resetPwdValue" type="password" autocomplete="new-password" placeholder="新密碼（至少 8 字元）"
                    class="w-full px-3 py-1.5 rounded border text-sm outline-none focus:border-brand transition-colors"
                    :class="isDarkMode ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-500' : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400'" />
           </div>
         </template>
         <div class="flex gap-2 mt-4">
-          <button @click="cancelModal"
+          <button type="button" @click="cancelModal"
                   class="flex-1 py-1.5 rounded border text-xs font-medium transition-colors"
                   :class="isDarkMode ? 'border-slate-600 text-slate-300 hover:border-slate-400' : 'border-gray-300 text-gray-600 hover:border-gray-500'">
             取消
           </button>
-          <button v-if="!resetPasswordTarget" @click="createUser" :disabled="addLoading"
+          <button v-if="!resetPasswordTarget" type="submit" :disabled="addLoading"
                   class="flex-1 py-1.5 rounded text-white text-xs font-medium transition-colors disabled:opacity-60 bg-brand border border-brand hover:bg-brand-700">
             {{ addLoading ? '建立中...' : '建立帳號' }}
           </button>
-          <button v-else @click="submitResetPassword" :disabled="addLoading"
+          <button v-else type="submit" :disabled="addLoading"
                   class="flex-1 py-1.5 rounded text-white text-xs font-medium transition-colors disabled:opacity-60 bg-brand border border-brand hover:bg-brand-700">
             {{ addLoading ? '更新中...' : '確認重設' }}
           </button>
         </div>
-      </div>
+      </form>
     </div>
 
   </div>
@@ -261,8 +262,8 @@ export default {
     },
 
     async submitResetPassword() {
-      if (!this.resetPwdValue || this.resetPwdValue.length < 6) {
-        this.addError = '密碼至少 6 個字元'; return
+      if (!this.resetPwdValue || this.resetPwdValue.length < 8) {
+        this.addError = '密碼至少 8 個字元'; return
       }
       this.addLoading = true
       try {
@@ -281,8 +282,8 @@ export default {
       if (!this.addForm.username || !this.addForm.email || !this.addForm.password) {
         this.addError = '請填寫帳號、Email 與密碼'; return
       }
-      if (this.addForm.password.length < 6) {
-        this.addError = '密碼至少 6 個字元'; return
+      if (this.addForm.password.length < 8) {
+        this.addError = '密碼至少 8 個字元'; return
       }
       this.addLoading = true
       try {
